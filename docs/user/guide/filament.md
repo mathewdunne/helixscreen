@@ -491,6 +491,56 @@ Edit the slot when you switch filament.
 
 ---
 
+## Bondtech INDX (Nozzle Changer)
+
+INDX swaps whole nozzle/hotend tools, but every tool shares the printer's one heater and
+extruder motor. HelixScreen shows it as a tool changer with **parallel** topology — each
+tool is its own independent filament path — and recognizes it automatically once your
+Klipper config publishes its `indx` status object; no configuration is needed for
+detection.
+
+### Selecting and parking tools
+
+Tap a tool in the AMS panel to mount it, or use **Park** to unmount whatever is currently
+on the head. HelixScreen shows the tool as busy while the swap is in progress and updates
+once your printer confirms it. If your setup uses non-default macro names for either
+command, you can point HelixScreen at them yourself: open the AMS panel's **Settings**
+button, then Device Operations, for **Select tool macro** and **Park tool macro**. Leave
+either on **auto** to keep HelixScreen's detected default.
+
+### Loading and unloading filament is separate from mounting a tool
+
+Mounting a tool and feeding filament into it are two different actions on this printer.
+The Filament panel's Load and Unload buttons run your configured **Load Filament** /
+**Unload Filament** macros (Settings > Macros) — the same global choice used on every
+other printer profile. A stock INDX installation has neither macro configured out of the
+box, so until you set one up, Load/Unload for filament tells you to configure a macro
+first rather than guessing at a raw extrusion move.
+
+### One heater for every tool
+
+Because all tools share one physical heater, you'll see a single temperature reading and
+control regardless of which tool is mounted — there's no separate temperature per tool,
+and a parked tool never shows a fictitious temperature of its own.
+
+### What HelixScreen remembers per tool
+
+As with other tool changers, your printer doesn't report material, colour or brand for
+each nozzle — whatever you set in HelixScreen's slot editor (or via Spoolman, if
+connected) is the record, and it's kept for you across parking, restarts and reconnects.
+
+### Paused prints
+
+Selecting or parking a tool, and running Load/Unload, both work while a print is paused,
+as long as your printer is homed. If it isn't, HelixScreen refuses the action rather than
+homing on its own — home from the Motion panel first.
+
+> **Note:** Like other tool changers, INDX has no Bypass, Endless Spool or dryer
+> controls, and no per-tool offset editor — offsets are set the same way as any
+> klipper-toolchanger machine, through your printer's own calibration macro.
+
+---
+
 ## Spoolman Integration
 
 Spoolman is an optional filament-inventory server. Once it's connected, the AMS panel shows saved spool data on each slot and lets you assign spools straight from your inventory:
