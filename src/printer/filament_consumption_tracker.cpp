@@ -171,6 +171,11 @@ void FilamentConsumptionTracker::on_print_state_changed(PrintJobState state) {
     case PrintJobState::PRINTING:
         if (!print_in_progress_) {
             snapshot_all_sinks(mm);
+            // A fresh print's aggregate-path baseline is what snapshot_all_sinks()
+            // just established; a slot remembered from the PREVIOUS print (or
+            // from having been parked, which leaves no entry) must not make
+            // this print's own first tick look like a mid-print slot change.
+            last_current_slot_by_backend_.clear();
             warn_unreported_extruder_mappings();
             print_in_progress_ = true;
             // active_ is true iff at least one sink is tracking so that
@@ -240,7 +245,26 @@ void FilamentConsumptionTracker::on_filament_used_changed(int filament_mm) {
 
         // Single-extruder multi-slot backend: only the currently-loaded slot
         // accrues the delta.
-        if (ams->slot_index() == backend->get_current_slot()) {
+        const int current_slot = backend->get_current_slot();
+        if (ams->slot_index() != current_slot) {
+            continue;
+        }
+        // apply_delta() computes its decrement from the TOTAL filament used
+        // since ITS OWN snapshot, which is only correct while this slot has
+        // been continuously current since then. A backend that changes which
+        // slot is current mid-print (a shared-resource tool changer swapping
+        // tools, or a lane change on any other multi-slot backend routed
+        // through this aggregate path) means the newly-current slot was NOT
+        // mounted for the filament used before it became current, so charge
+        // it only from here — never the whole print's history, and never a
+        // parked/uncurrent window it sat out.
+        auto last_it = last_current_slot_by_backend_.find(ams->backend_index());
+        const bool became_current =
+            last_it != last_current_slot_by_backend_.end() && last_it->second != current_slot;
+        last_current_slot_by_backend_[ams->backend_index()] = current_slot;
+        if (became_current) {
+            ams->rebaseline(f_mm);
+        } else {
             ams->apply_delta(f_mm);
         }
     }

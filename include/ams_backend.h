@@ -296,6 +296,41 @@ class AmsBackend {
     }
 
     /**
+     * @brief The physical extruder/heater every currently-configured tool
+     * shares, for a backend that multiplexes several independently
+     * selectable tools onto one hot end (a nozzle changer, as opposed to a
+     * toolchanger with one extruder per tool). nullopt (the default) means
+     * each tool has its own extruder/heater, or none is known here.
+     *
+     * ToolState::set_ams_topology() reads this to assign every tool's
+     * extruder_name, instead of the positional per-index carry-over from
+     * init_tools()'s extruder enumeration, which only ever covers as many
+     * tools as there are physical extruders and silently leaves surplus
+     * tools unmapped.
+     */
+    [[nodiscard]] virtual std::optional<std::string> shared_extruder_name() const {
+        return std::nullopt;
+    }
+
+    /**
+     * @brief Whether a negative get_current_tool()/topology active_tool means
+     * "not yet reported" rather than this backend's own established meaning
+     * for a negative value (Happy Hare bypass, an unmapped route,
+     * disconnected data). Default false preserves every existing backend's
+     * fallback to T0.
+     *
+     * True only for a backend with no native klipper-toolchanger object to
+     * default a tool number from (AmsBackendToolChanger's
+     * ToolCommands::present providers): there is no toolchanger.tool_number
+     * to establish an initial 0, so a negative reading before the first
+     * saved/sensed identity arrives is an honest "unreported", not a fallback
+     * this bridge should paper over with T0.
+     */
+    [[nodiscard]] virtual bool negative_active_tool_is_unreported() const {
+        return false;
+    }
+
+    /**
      * @brief The firmware's DEFAULT tool -> physical head map.
      *
      * What the printer would do with a file if nobody remapped anything. NOT the

@@ -124,11 +124,43 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// Klipper tool-changers have one extruder per tool. Tool N sources slot N
     /// directly — identity mapping — which activates per-extruder consumption
     /// tracking in FilamentConsumptionTracker.
+    ///
+    /// A shared-resource nozzle changer (shared_extruder_name() set) has no
+    /// such per-extruder identity: every tool reports the SAME physical
+    /// extruder, so an identity mapping here would double-count or
+    /// misattribute consumption across whichever tools share it. Returning
+    /// nullopt for every extruder in that case lets the aggregate
+    /// `filament_used` path — keyed on this backend's own current slot —
+    /// own consumption instead (docs/devel/plans/2026-09-20-bondtech-indx.md §6).
     [[nodiscard]] std::optional<int> slot_for_extruder(int extruder_idx) const override {
+        if (shared_extruder_name()) {
+            return std::nullopt;
+        }
         if (extruder_idx < 0 || extruder_idx >= static_cast<int>(get_system_info().total_slots)) {
             return std::nullopt;
         }
         return extruder_idx;
+    }
+
+    /// Bondtech INDX is the one provider on this backend whose tools all
+    /// drive one physical hot end: its own T<n>/PARK_TOOL commands swap only
+    /// the nozzle, never the whole toolhead, so there is exactly one Klipper
+    /// `extruder` object regardless of configured tool count.
+    [[nodiscard]] std::optional<std::string> shared_extruder_name() const override {
+        if (tool_commands_.present && tool_commands_.provider_name == "INDX") {
+            return std::string("extruder");
+        }
+        return std::nullopt;
+    }
+
+    /// INDX has no klipper-toolchanger object to default a tool number from,
+    /// so a negative reading before the first saved active-tool value ever
+    /// arrives is an honest "unreported" rather than a fallback ToolState
+    /// should paper over with T0. Scoped to ToolCommands::present generally
+    /// (not just INDX): every such provider swaps tools without a native
+    /// toolchanger.tool_number to establish an initial 0.
+    [[nodiscard]] bool negative_active_tool_is_unreported() const override {
+        return tool_commands_.present;
     }
 
     // Path visualization (PARALLEL topology for tool changers)

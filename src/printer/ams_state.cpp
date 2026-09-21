@@ -118,6 +118,8 @@ std::optional<helix::ToolTopology> build_ams_topology(AmsBackend* backend, int b
     topo.tool_to_slot = std::move(mapping);
     topo.active_tool = backend->get_current_tool();
     topo.backend_index = backend_index;
+    topo.active_tool_unreported = backend->negative_active_tool_is_unreported();
+    topo.shared_extruder_name = backend->shared_extruder_name();
     return topo;
 }
 
