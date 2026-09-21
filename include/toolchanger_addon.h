@@ -127,6 +127,20 @@ struct ToolCommands {
     /// Unmounts whatever is on the head. Empty when the machine has no such
     /// command and the tool can only be swapped for another.
     std::string unselect;
+    /// Numbered tools (0..N-1, indexed to match) with a working `T<n>`
+    /// shortcut macro on THIS printer. Empty means every numbered tool has
+    /// one -- true by construction for the MedusaHC-shaped providers above,
+    /// whose extra registers T<n> unconditionally. Bondtech INDX is the one
+    /// provider where this can differ: a configured tool count can exceed
+    /// the shortcuts a user's indx.cfg declares (plan §5.1 point 5), so a
+    /// numbered tool can have no working T<n> and must fall back to
+    /// change_tool_macro.
+    std::vector<bool> select_shortcut_available;
+    /// The verified upstream fallback selection macro accepting a bare
+    /// `TOOL=<n>` parameter (e.g. "CHANGE_TOOL"), or empty when this printer
+    /// has none. Only consulted for a tool select_shortcut_available marks
+    /// unavailable.
+    std::string change_tool_macro;
 };
 
 /// Presence of an add-on dock sensor. When set, read_tool() is worth calling on

@@ -44,6 +44,13 @@ class ToolChangerTestAccess {
         b.override_store_ = std::move(s);
     }
 
+    /// Force `running_` true on a bare (not start()-ed) instance, for a case
+    /// that wants a real IMoonrakerAPI wired up (so async gcode errors can be
+    /// injected through it) without the subscription setup start() drags in.
+    static void mark_running(AmsBackendToolChanger& b) {
+        b.running_ = true;
+    }
+
     /// Whether an optimistic dispatch is still armed and awaiting resolution.
     /// A cancelled home confirmation must clear this -- otherwise the next
     /// macro ack (or a superseding dispatch) resolves against a generation

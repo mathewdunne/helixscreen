@@ -337,10 +337,23 @@ ToolCommands resolve_tool_commands(const PrinterDiscovery& hw) {
     // Bondtech INDX ships PARK_TOOL as its default parking command; the
     // MedusaHC-shaped table above never matches it (see the comment on
     // has_indx() in toolchanger_addon.h), so this is the one place its
-    // command default is recorded.
+    // command default is recorded. Both PARK_TOOL and the per-tool T<n>
+    // shortcut are gated on the macro actually existing (plan §7.1: a
+    // missing command is an explicit unsupported capability, never a
+    // successful no-op) - unlike the MedusaHC-shaped providers above, whose
+    // extra registers T<n>/its unmount unconditionally the moment it is
+    // detected at all.
     if (!p && has_indx(hw)) {
         c.provider_name = "INDX";
-        c.unselect = "PARK_TOOL";
+        c.unselect = hw.has_macro("PARK_TOOL") ? "PARK_TOOL" : "";
+        const auto& tools = hw.tool_names();
+        c.select_shortcut_available.reserve(tools.size());
+        for (const auto& id : tools) {
+            c.select_shortcut_available.push_back(hw.has_macro("T" + id));
+        }
+        if (hw.has_macro("CHANGE_TOOL")) {
+            c.change_tool_macro = "CHANGE_TOOL";
+        }
     }
     return c;
 }
