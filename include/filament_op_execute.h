@@ -84,13 +84,18 @@ struct OpNozzle {
                                          const SafetyLimits& limits);
 
 /// plan_load() with the StandardMacros LoadFilament slot read off the registry.
+/// @param intent Defaults to Filament (the Filament panel/runout controls);
+///        the AMS tool-grid/sidebar and the home tool-switcher pass ToolMount.
 [[nodiscard]] FilamentOpPlan plan_live_load(const AmsSystemInfo& info, const BackendCaps& caps,
-                                            int target_slot);
+                                            int target_slot,
+                                            OperationIntent intent = OperationIntent::Filament);
 
 /// plan_unload() with the StandardMacros UnloadFilament slot read off the registry.
 /// @param target_is_loaded From read_unload_target_loaded() — never answered inline.
+/// @param intent See plan_live_load().
 [[nodiscard]] FilamentOpPlan plan_live_unload(const BackendCaps& caps, int target_slot,
-                                              bool target_is_loaded);
+                                              bool target_is_loaded,
+                                              OperationIntent intent = OperationIntent::Filament);
 
 /// unload_target_is_loaded() with the four per-lane answers read off a live
 /// backend. False when @p backend is null: with no backend there is no lane to

@@ -60,6 +60,16 @@ constexpr const char* CHAMBER_HEATER = "heaters/chamber";
 constexpr const char* FEEDER_OPEN_MACRO = "toolchanger/feeder_open_macro";
 constexpr const char* FEEDER_CLOSE_MACRO = "toolchanger/feeder_close_macro";
 
+// Tool-changer Select/Park command overrides (plan D3,
+// docs/devel/plans/2026-09-20-bondtech-indx.md §7.1). "auto" means use
+// whatever toolchanger_addon detects (T<n> shortcut / change_tool_macro,
+// PARK_TOOL). Per-printer, like the feeder overrides above: these movement
+// commands are the provider's own and can differ between machines. Distinct
+// from the global Load/Unload macro choices at /standard_macros/... (D5) —
+// mounting/parking a tool is a different operation from feeding filament.
+constexpr const char* TOOL_SELECT_MACRO = "toolchanger/select_macro";
+constexpr const char* TOOL_PARK_MACRO = "toolchanger/park_macro";
+
 // ACE bypass macros. The ACE Pro has no bypass command, so the master switch
 // that disables its filament path is thrown by macros. "auto" detects the
 // conventional names; a printer exposing neither reports no bypass. Per-printer,

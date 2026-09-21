@@ -462,10 +462,21 @@ TEST_CASE_METHOD(LiveIndxHarness, "dispatch_operation unwinds on an async timeou
                      "T0") == 1);
 }
 
-TEST_CASE_METHOD(LiveIndxHarness, "dispatch_operation unwinds on a G28 rejection before the payload",
+TEST_CASE_METHOD(LiveIndxHarness,
+                 "dispatch_operation sends the payload unhomed instead of a G28 (plan §7.4, "
+                 "package D: delegates_homing_to_printer())",
                  "[indx][backend][toolchanger][error-unwind]") {
+    // Superseded by package D's §7.4 implementation: the stock INDX macros
+    // home conditionally themselves, so AmsBackendToolChanger now answers
+    // true from delegates_homing_to_printer() for this provider (scoped to
+    // provider_name == "INDX", like shared_extruder_name()) and
+    // ensure_homed_then() never synthesizes its own G28 or asks for
+    // confirmation while unhomed -- idle or printing, the macro's own
+    // conditional home runs unencumbered. (Package D's paused-print
+    // precondition in dispatch_operation() is the separate, narrower guard
+    // that keeps a PAUSED+unhomed dispatch from ever reaching this point;
+    // see test_ams_toolchanger_indx_paused_homing.cpp.)
     set_homed(false);
-    client.force_next_gcode_error(MoonrakerErrorType::JSON_RPC_ERROR, "Must home axis first", "G28");
 
     auto err = backend.load_filament(1);
     REQUIRE(err.success());
@@ -473,10 +484,10 @@ TEST_CASE_METHOD(LiveIndxHarness, "dispatch_operation unwinds on a G28 rejection
 
     CHECK(backend.get_current_action() == AmsAction::IDLE);
     CHECK_FALSE(ToolChangerTestAccess::has_pending_dispatch(backend));
-    // G28 was attempted and rejected, but the payload itself was never sent.
+    // No G28 at all -- the payload went straight out, unhomed.
     const auto& history = client.gcode_script_history();
-    CHECK(std::find(history.begin(), history.end(), "G28") != history.end());
-    CHECK(std::find(history.begin(), history.end(), "T1") == history.end());
+    CHECK(std::find(history.begin(), history.end(), "G28") == history.end());
+    CHECK(std::find(history.begin(), history.end(), "T1") != history.end());
 }
 
 TEST_CASE_METHOD(LiveIndxHarness,
@@ -520,13 +531,58 @@ TEST_CASE_METHOD(LiveIndxHarness, "a CONNECTION_LOST failure also unwinds the di
 }
 
 // =============================================================================
-// No homing prompt/G28 injected beyond the shared, existing policy (plan §7.4
-// ownership stays with D; this only proves B's dispatch doesn't add one)
+// Package D's §7.4 implementation: delegates_homing_to_printer() (superseding
+// the "asks like any other provider" placeholder B left here for D to fill).
 // =============================================================================
 
-TEST_CASE("ToolChanger/INDX: an unhomed dispatch asks for confirmation exactly like any other "
-          "toolchanger provider, and declining unwinds cleanly",
+TEST_CASE("ToolChanger/INDX: an unhomed dispatch is NEVER asked to confirm — the "
+          "macro homes itself (plan §7.4)",
           "[indx][backend][toolchanger][homing]") {
+    class ProbeBackend : public helix::AmsBackendToolChanger {
+      public:
+        ProbeBackend() : helix::AmsBackendToolChanger(nullptr, nullptr) {
+            running_ = true;
+        }
+        helix::AmsError execute_gcode(const std::string& gcode) override {
+            sent.push_back(gcode);
+            return AmsErrorHelper::success();
+        }
+        helix::AmsError execute_gcode(const std::string& gcode, std::function<void()>) override {
+            sent.push_back(gcode);
+            return AmsErrorHelper::success();
+        }
+        bool toolhead_homed() const override {
+            return false;
+        }
+        std::vector<std::string> sent;
+    };
+
+    LVGLTestFixture fixture;
+    ProbeBackend backend;
+    backend.set_discovered_tools(discovered_tools(3));
+    backend.set_tool_commands(indx_commands(3));
+
+    bool asked = false;
+    ScopedHomeConfirmPrompter guard(
+        [&asked](std::function<void()>, std::function<void()>) { asked = true; });
+
+    ToolChangerTestAccess::call_dispatch_operation(backend, "T1", AmsAction::SELECTING);
+
+    // delegates_homing_to_printer() short-circuits ensure_homed_then() before
+    // it ever asks toolhead_homed() -- no confirmation, no G28, the payload
+    // goes straight out.
+    CHECK_FALSE(asked);
+    REQUIRE(backend.sent.size() == 1);
+    CHECK(backend.sent[0] == "T1");
+}
+
+TEST_CASE("ToolChanger/INDX: a non-INDX ToolCommands::present provider keeps the "
+          "existing confirmation gate (regression)",
+          "[indx][backend][toolchanger][homing][regression]") {
+    // delegates_homing_to_printer() is scoped to provider_name == "INDX",
+    // like shared_extruder_name() -- a MedusaHC-shaped fork with no verified
+    // self-homing contract keeps asking, exactly as every toolchanger did
+    // before this package.
     class ProbeBackend : public helix::AmsBackendToolChanger {
       public:
         ProbeBackend() : helix::AmsBackendToolChanger(nullptr, nullptr) {
@@ -546,7 +602,9 @@ TEST_CASE("ToolChanger/INDX: an unhomed dispatch asks for confirmation exactly l
     LVGLTestFixture fixture;
     ProbeBackend backend;
     backend.set_discovered_tools(discovered_tools(3));
-    backend.set_tool_commands(indx_commands(3));
+    helix::toolchanger_addon::ToolCommands medusa = indx_commands(3);
+    medusa.provider_name = "MedusaHC";
+    backend.set_tool_commands(medusa);
 
     bool asked = false;
     std::function<void()> pending_cancel;
@@ -558,8 +616,6 @@ TEST_CASE("ToolChanger/INDX: an unhomed dispatch asks for confirmation exactly l
 
     ToolChangerTestAccess::call_dispatch_operation(backend, "T1", AmsAction::SELECTING);
 
-    // Same generic confirmation gate every toolchanger provider gets --
-    // dispatch_operation() injects nothing INDX-specific here.
     CHECK(asked);
     REQUIRE(pending_cancel);
     CHECK(ToolChangerTestAccess::has_pending_dispatch(backend));

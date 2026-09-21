@@ -236,6 +236,56 @@ struct IndxActiveTool {
 IndxActiveTool read_indx_active_tool(const nlohmann::json& save_variables_status,
                                      int configured_tool_count);
 
+/// Per-printer override for the Select/Park commands a `ToolCommands::present`
+/// provider (plan §7.1/D3) uses. Distinct from `Feeder`'s "honour any stored
+/// name" contract: an invalid stored macro here must stay visibly invalid and
+/// send nothing, never silently substitute a different physical movement
+/// command. Three states per direction, not two — "auto" (detected default),
+/// a validated explicit choice, and a stored choice this printer no longer
+/// reports.
+struct ToolMovementOverride {
+    enum class Choice {
+        kAuto,    ///< use the detected default (T<n> shortcut / change_tool_macro, PARK_TOOL)
+        kValid,   ///< explicit choice; the macro is present on this printer
+        kInvalid, ///< explicit choice naming a macro this printer does not have
+    };
+
+    Choice select_choice = Choice::kAuto;
+    /// The raw stored setting value, for the settings dropdown's current
+    /// selection — kAutoMacro, or the (possibly invalid) macro name.
+    std::string select_choice_raw{kAutoMacro};
+    /// Populated only when select_choice == kValid. Sent as
+    /// "<select_macro> TOOL=<n>" — the fixed contract for this override
+    /// (plan §7.1), never an arbitrary template.
+    std::string select_macro;
+
+    Choice park_choice = Choice::kAuto;
+    std::string park_choice_raw{kAutoMacro};
+    /// Populated only when park_choice == kValid. Sent bare — a parking
+    /// override takes no argument.
+    std::string park_macro;
+
+    /// Options for the settings picker: kAutoMacro followed by the plausible
+    /// macros this printer reports. Empty when there is nothing to choose from.
+    std::vector<std::string> macro_options;
+};
+
+/// Resolve the stored Select/Park overrides against this printer's actual
+/// macros. "auto" (or empty) keeps the detected default. A non-"auto" choice
+/// naming a macro this printer does not report resolves to kInvalid — the
+/// caller must send nothing for that direction rather than falling back to
+/// the automatic command (plan §7.1: "an invalid configured command stays
+/// visibly invalid and sends nothing").
+ToolMovementOverride resolve_tool_movement_override(const PrinterDiscovery& hw,
+                                                    const std::string& select_choice = kAutoMacro,
+                                                    const std::string& park_choice = kAutoMacro);
+
+/// Macros on this printer that could plausibly select or park a tool, for the
+/// picker in ToolChanger device-action settings. Sorted, and deliberately
+/// filtered like feeder_macro_candidates() — a printer has hundreds of macros
+/// and a raw list is unusable.
+std::vector<std::string> tool_movement_macro_candidates(const PrinterDiscovery& hw);
+
 /// The dock sensor this printer exposes, or an absent capability.
 ToolSensor resolve_tool_sensor(const PrinterDiscovery& hw);
 

@@ -2930,6 +2930,23 @@ class AmsBackend {
     }
 
     /**
+     * @brief Set the resolved per-printer Select/Park command overrides
+     * (plan D3, docs/devel/plans/2026-09-20-bondtech-indx.md §7.1)
+     *
+     * Called before start(), after set_tool_commands(). Only meaningful on a
+     * backend whose ToolCommands::present is true — a plain klipper-toolchanger
+     * has no Select/Park macro to override, since SELECT_TOOL/UNSELECT_TOOL
+     * are native. Default no-op preserves every other backend exactly.
+     *
+     * @param override Resolved override; every field defaults to "auto" (no
+     *        override) when the user has not configured one.
+     */
+    virtual void
+    set_tool_movement_override(helix::toolchanger_addon::ToolMovementOverride override) {
+        (void)override;
+    }
+
+    /**
      * @brief Set filament sensor names from PrinterCapabilities
      *
      * Called before start() to provide filament sensor names from printer.objects.list.

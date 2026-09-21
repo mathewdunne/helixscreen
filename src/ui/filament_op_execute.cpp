@@ -65,13 +65,18 @@ BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out, int 
     // tell "bypass is suppressing the lane tier" apart from "this backend
     // never wanted a slot", because a named lane wants opposite treatment.
     caps.bypass_active = backend->is_bypass_active();
+    // Only a shared-nozzle-changer backend (Bondtech INDX) sets this: its Load
+    // mounts a tool, so it has a filament capability distinct from that — see
+    // BackendCaps::has_separate_filament_operation.
+    caps.has_separate_filament_operation = backend->shared_extruder_name().has_value();
     return caps;
 }
 
-FilamentOpPlan plan_live_load(const AmsSystemInfo& info, const BackendCaps& caps, int target_slot) {
+FilamentOpPlan plan_live_load(const AmsSystemInfo& info, const BackendCaps& caps, int target_slot,
+                              OperationIntent intent) {
     const auto& macro_info = StandardMacros::instance().get(StandardMacroSlot::LoadFilament);
     return plan_load(info, caps, target_slot, !macro_info.is_empty(),
-                     macro_info.get_source() == MacroSource::CONFIGURED);
+                     macro_info.get_source() == MacroSource::CONFIGURED, intent);
 }
 
 bool read_unload_target_loaded(AmsBackend* backend, const AmsSystemInfo& info, int target_slot) {
@@ -83,10 +88,11 @@ bool read_unload_target_loaded(AmsBackend* backend, const AmsSystemInfo& info, i
                                    info.current_slot == target_slot, info.filament_loaded);
 }
 
-FilamentOpPlan plan_live_unload(const BackendCaps& caps, int target_slot, bool target_is_loaded) {
+FilamentOpPlan plan_live_unload(const BackendCaps& caps, int target_slot, bool target_is_loaded,
+                                OperationIntent intent) {
     const auto& macro_info = StandardMacros::instance().get(StandardMacroSlot::UnloadFilament);
     return plan_unload(caps, target_slot, target_is_loaded, !macro_info.is_empty(),
-                       macro_info.get_source() == MacroSource::CONFIGURED);
+                       macro_info.get_source() == MacroSource::CONFIGURED, intent);
 }
 
 // ============================================================================
@@ -115,6 +121,17 @@ PreheatSkip preheat_skip_reason(const FilamentOpPlan& plan, StandardMacroSlot sl
         return PreheatSkip::None;
 
     case FilamentTier::Macro:
+        // A shared-nozzle-changer's (Bondtech INDX) filament macro tier is
+        // macro-owned end to end (plan §7.2/§7.3 preparation policy):
+        // HelixScreen sends the requested command and the printer macro
+        // decides its own heating, including for a custom wrapper no
+        // name-based profile could ever recognize. Never add the generic
+        // spelling LOAD_FILAMENT to filament_macro_profiles.cpp's table for
+        // this — it would claim every OTHER printer's stock LOAD_FILAMENT
+        // self-heats too.
+        if (backend && backend->shared_extruder_name().has_value()) {
+            return PreheatSkip::MacroSelfHeats;
+        }
         if (filament_macros::macro_heats_hotend(StandardMacros::instance().get(slot).get_macro())) {
             return PreheatSkip::MacroSelfHeats;
         }
@@ -160,6 +177,12 @@ bool needs_home_confirmation(const FilamentOpPlan& plan, StandardMacroSlot slot,
         return !(backend && backend->delegates_homing_to_printer());
 
     case FilamentTier::Macro:
+        // Same provider-owned preparation policy as preheat_skip_reason():
+        // the macro decides its own homing too, so HelixScreen neither
+        // prompts nor synthesizes a G28 ahead of it (plan §7.3/§7.4).
+        if (backend && backend->shared_extruder_name().has_value()) {
+            return false;
+        }
         return !filament_macros::macro_homes_if_needed(
             StandardMacros::instance().get(slot).get_macro());
 
@@ -328,6 +351,11 @@ void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurfac
         if (plan.refusal == helix::ui::FilamentRefusal::AlreadyMounted) {
             spdlog::info("{} Load refused — tool {} already mounted", log_tag, slot);
             NOTIFY_INFO(lv_tr("That tool is already loaded"));
+        } else if (plan.refusal == helix::ui::FilamentRefusal::NoMacroConfigured) {
+            spdlog::warn("{} Load refused — no filament-load macro is configured for this "
+                        "printer",
+                        log_tag);
+            NOTIFY_WARNING(lv_tr("Configure a filament load macro in Settings first"));
         } else {
             spdlog::info("{} Load refused — no slot resolved", log_tag);
             NOTIFY_WARNING(lv_tr("Select a filament slot to load"));
@@ -432,6 +460,8 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
     // nothing here.
     helix::ui::BackendCaps caps;
     caps.present = backend != nullptr;
+    caps.has_separate_filament_operation =
+        backend != nullptr && backend->shared_extruder_name().has_value();
 
     const auto& unload_info = StandardMacros::instance().get(StandardMacroSlot::UnloadFilament);
     const helix::ui::FilamentOpPlan plan = plan_live_unload(caps, slot, target_is_loaded);
@@ -455,7 +485,13 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
             surface.on_refused(plan);
             return;
         }
-        // NothingLoaded is plan_unload's only refusal.
+        if (plan.refusal == helix::ui::FilamentRefusal::NoMacroConfigured) {
+            spdlog::warn("{} Unload refused — no filament-unload macro is configured for this "
+                        "printer",
+                        log_tag);
+            NOTIFY_WARNING(lv_tr("Configure a filament unload macro in Settings first"));
+            return;
+        }
         spdlog::info("{} Unload refused — nothing loaded (slot={})", log_tag, slot);
         NOTIFY_WARNING(lv_tr("No filament loaded to unload"));
         return;

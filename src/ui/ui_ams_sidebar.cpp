@@ -1223,7 +1223,11 @@ void AmsOperationSidebar::handle_unload(int slot_index) {
     const bool loaded =
         helix::ui::read_unload_target_loaded(AmsState::instance().get_backend(), info, target_slot);
 
-    const helix::ui::FilamentOpPlan plan = helix::ui::plan_live_unload(caps, target_slot, loaded);
+    // AMS tool-grid/sidebar Unload is a PARK on a shared-nozzle-changer
+    // backend (Bondtech INDX), not a filament retraction — ToolMount intent
+    // (plan §7.2/D1). Inert on every other backend.
+    const helix::ui::FilamentOpPlan plan = helix::ui::plan_live_unload(
+        caps, target_slot, loaded, helix::ui::OperationIntent::ToolMount);
 
     if (plan.tier == helix::ui::FilamentTier::Refused) {
         // NothingLoaded is plan_unload's only refusal.
@@ -1403,7 +1407,11 @@ void AmsOperationSidebar::handle_load_with_preheat(int slot_index) {
     AmsSystemInfo info;
     const helix::ui::BackendCaps caps = read_backend_caps(info, slot_index);
 
-    const helix::ui::FilamentOpPlan plan = helix::ui::plan_live_load(info, caps, slot_index);
+    // AMS tool-grid/sidebar Load is a MOUNT on a shared-nozzle-changer backend
+    // (Bondtech INDX), not a filament feed — ToolMount intent (plan §7.2/D1).
+    // Inert on every other backend.
+    const helix::ui::FilamentOpPlan plan =
+        helix::ui::plan_live_load(info, caps, slot_index, helix::ui::OperationIntent::ToolMount);
 
     if (plan.tier == helix::ui::FilamentTier::Refused) {
         // Mostly silent on THIS surface. The AMS panel already highlights the
@@ -1571,7 +1579,8 @@ void AmsOperationSidebar::check_pending_load() {
         // while the nozzle came up to temperature, which flips load-vs-swap.
         AmsSystemInfo preheat_info;
         const helix::ui::BackendCaps caps = read_backend_caps(preheat_info, slot);
-        const helix::ui::FilamentOpPlan plan = helix::ui::plan_live_load(preheat_info, caps, slot);
+        const helix::ui::FilamentOpPlan plan = helix::ui::plan_live_load(
+            preheat_info, caps, slot, helix::ui::OperationIntent::ToolMount);
 
         if (plan.tier != helix::ui::FilamentTier::AmsBackend) {
             // The preheat only ever starts on the tier-1 path, so anything else

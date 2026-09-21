@@ -408,6 +408,58 @@ std::vector<std::string> feeder_macro_candidates(const PrinterDiscovery& hw) {
     return out;
 }
 
+std::vector<std::string> tool_movement_macro_candidates(const PrinterDiscovery& hw) {
+    std::vector<std::string> out;
+    // A movement override macro is one whose name says what it does. Unlike
+    // feeder_macro_candidates(), there is no native-prefix shortcut here — the
+    // machines this serves (plan §7.1/D3) have no shared vendor prefix.
+    for (const auto& macro : hw.macros()) {
+        const bool named =
+            macro.find("TOOL") != std::string::npos || macro.find("PARK") != std::string::npos ||
+            macro.find("CHANGE") != std::string::npos || macro.find("SELECT") != std::string::npos ||
+            macro.find("MOUNT") != std::string::npos;
+        if (named) {
+            out.push_back(macro);
+        }
+    }
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
+ToolMovementOverride resolve_tool_movement_override(const PrinterDiscovery& hw,
+                                                     const std::string& select_choice,
+                                                     const std::string& park_choice) {
+    ToolMovementOverride result;
+    result.select_choice_raw = select_choice.empty() ? kAutoMacro : select_choice;
+    result.park_choice_raw = park_choice.empty() ? kAutoMacro : park_choice;
+
+    const auto& macros = hw.macros();
+    if (result.select_choice_raw != kAutoMacro) {
+        if (macros.count(result.select_choice_raw) != 0) {
+            result.select_choice = ToolMovementOverride::Choice::kValid;
+            result.select_macro = result.select_choice_raw;
+        } else {
+            result.select_choice = ToolMovementOverride::Choice::kInvalid;
+        }
+    }
+    if (result.park_choice_raw != kAutoMacro) {
+        if (macros.count(result.park_choice_raw) != 0) {
+            result.park_choice = ToolMovementOverride::Choice::kValid;
+            result.park_macro = result.park_choice_raw;
+        } else {
+            result.park_choice = ToolMovementOverride::Choice::kInvalid;
+        }
+    }
+
+    auto candidates = tool_movement_macro_candidates(hw);
+    if (!candidates.empty()) {
+        result.macro_options.emplace_back(kAutoMacro);
+        result.macro_options.insert(result.macro_options.end(), candidates.begin(),
+                                    candidates.end());
+    }
+    return result;
+}
+
 std::vector<std::string> required_status_objects(const PrinterDiscovery& hw) {
     std::vector<std::string> objects;
     if (const Provider* p = match(hw)) {

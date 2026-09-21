@@ -2872,9 +2872,19 @@ helix::ui::FilamentOpSurface FilamentPanel::op_surface(FilamentOp op) {
 
     surface.on_async_success = [this, op]() {
         operation_guard_.end();
-        // Only on success: a failed op leaves the heater where the user can see
-        // what happened rather than dropping it out from under a retry.
-        restore_heater_after_preheat();
+        // A shared-nozzle-changer's (Bondtech INDX) filament macro tier is
+        // macro-owned end to end: HelixScreen never preheated for it
+        // (preheat_skip_reason() answers MacroSelfHeats for this backend), and
+        // "the macro request returned" is not proof of physical completion —
+        // a printer-side action:prompt_* handoff can return before the user
+        // has chosen anything. Scheduling a cooldown here would turn the
+        // heater off under a macro that may still be running (plan §7.2/§7.3).
+        AmsBackend* backend = AmsState::instance().get_backend();
+        if (!(backend && backend->shared_extruder_name().has_value())) {
+            // Only on success: a failed op leaves the heater where the user can
+            // see what happened rather than dropping it out from under a retry.
+            restore_heater_after_preheat();
+        }
         op_in_flight_.reset();
         op_succeeded(op);
     };
@@ -2933,10 +2943,13 @@ FilamentPanel::UnloadContext FilamentPanel::current_unload_context() const {
     if (backend) {
         sys = backend->get_system_info();
     }
-    // Only `present` matters to plan_unload; the remaining caps answer the
-    // load-vs-swap question, which unload does not ask.
+    // Only `present` (and has_separate_filament_operation) matters to
+    // plan_unload; the remaining caps answer the load-vs-swap question, which
+    // unload does not ask.
     helix::ui::BackendCaps caps;
     caps.present = backend != nullptr;
+    caps.has_separate_filament_operation =
+        backend != nullptr && backend->shared_extruder_name().has_value();
 
     const bool loaded = helix::ui::read_unload_target_loaded(backend, sys, slot);
     return {helix::ui::plan_live_unload(caps, slot, loaded), loaded};

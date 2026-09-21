@@ -163,6 +163,17 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         return tool_commands_.present;
     }
 
+    /// The upstream INDX macros home conditionally themselves — `CHANGE_TOOL`
+    /// only issues G28 when the toolhead is not already homed — so
+    /// HelixScreen must neither prompt for nor synthesize its own G28 ahead
+    /// of a Select/Park dispatch (plan §7.4/D6: "delegate idle homing to the
+    /// macro"). Scoped to INDX specifically, like shared_extruder_name():
+    /// other ToolCommands::present providers have no such documented
+    /// self-homing contract and keep ensure_homed_then()'s normal prompt.
+    [[nodiscard]] bool delegates_homing_to_printer() const override {
+        return tool_commands_.present && tool_commands_.provider_name == "INDX";
+    }
+
     // Path visualization (PARALLEL topology for tool changers)
     [[nodiscard]] PathTopology get_topology() const override;
     [[nodiscard]] PathSegment get_filament_segment() const override;
@@ -359,6 +370,14 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         tool_commands_ = std::move(commands);
     }
 
+    /// Per-printer Select/Park overrides (plan D3). Only consulted when
+    /// tool_commands_.present — a plain klipper-toolchanger has nothing to
+    /// override.
+    void set_tool_movement_override(
+        helix::toolchanger_addon::ToolMovementOverride override) override {
+        movement_override_ = std::move(override);
+    }
+
     // Device Actions -- the feeder, when the machine has one.
     [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override;
     [[nodiscard]] std::vector<helix::printer::DeviceAction> get_device_actions() const override;
@@ -398,6 +417,9 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     helix::toolchanger_addon::ToolSensor tool_sensor_;
     /// Absent whenever klipper-toolchanger owns the swap.
     helix::toolchanger_addon::ToolCommands tool_commands_;
+    /// Per-printer Select/Park overrides (plan D3). Every field defaults to
+    /// "auto" until set_tool_movement_override() runs.
+    helix::toolchanger_addon::ToolMovementOverride movement_override_;
     /// Latest per-dock occupancy from the dock sensors, indexed by slot: true
     /// seated, false empty, nullopt never reported. Kept across frames, because
     /// Moonraker republishes only what CHANGED and a frame carrying just the

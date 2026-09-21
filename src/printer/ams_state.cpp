@@ -988,6 +988,9 @@ void AmsState::init_backends_from_hardware(const helix::PrinterDiscovery& hardwa
         backend->set_bypass_macros(helix::resolve_bypass_macros_for(hardware));
         backend->set_tool_sensor(helix::toolchanger_addon::resolve_tool_sensor(hardware));
         backend->set_tool_commands(helix::toolchanger_addon::resolve_tool_commands(hardware));
+        backend->set_tool_movement_override(helix::toolchanger_addon::resolve_tool_movement_override(
+            hardware, helix::SettingsManager::instance().get_tool_select_macro(),
+            helix::SettingsManager::instance().get_tool_park_macro()));
         backend->set_discovered_sensors(hardware.filament_sensor_names());
 
         int index = add_backend(std::move(backend));

@@ -298,6 +298,12 @@ void SettingsManager::init_subjects() {
     feeder_close_macro_ =
         config->get<std::string>(config->df() + wizard::FEEDER_CLOSE_MACRO, "auto");
 
+    // Tool-changer Select/Park command overrides (default: "auto" = detected
+    // default). Per-printer, unlike the global Load/Unload macro choices (D5).
+    tool_select_macro_ =
+        config->get<std::string>(config->df() + wizard::TOOL_SELECT_MACRO, "auto");
+    tool_park_macro_ = config->get<std::string>(config->df() + wizard::TOOL_PARK_MACRO, "auto");
+
     // ACE bypass macro overrides (default: "auto" = detected default).
     ace_bypass_on_macro_ =
         config->get<std::string>(config->df() + wizard::ACE_BYPASS_ON_MACRO, "auto");
@@ -1067,6 +1073,30 @@ void SettingsManager::set_feeder_close_macro(const std::string& value) {
     spdlog::info("[SettingsManager] set_feeder_close_macro({})", value);
     Config* config = Config::get_instance();
     config->set<std::string>(config->df() + wizard::FEEDER_CLOSE_MACRO, value);
+    config->save();
+}
+
+std::string SettingsManager::get_tool_select_macro() const {
+    return tool_select_macro_;
+}
+
+void SettingsManager::set_tool_select_macro(const std::string& value) {
+    tool_select_macro_ = value;
+    spdlog::info("[SettingsManager] set_tool_select_macro({})", value);
+    Config* config = Config::get_instance();
+    config->set<std::string>(config->df() + wizard::TOOL_SELECT_MACRO, value);
+    config->save();
+}
+
+std::string SettingsManager::get_tool_park_macro() const {
+    return tool_park_macro_;
+}
+
+void SettingsManager::set_tool_park_macro(const std::string& value) {
+    tool_park_macro_ = value;
+    spdlog::info("[SettingsManager] set_tool_park_macro({})", value);
+    Config* config = Config::get_instance();
+    config->set<std::string>(config->df() + wizard::TOOL_PARK_MACRO, value);
     config->save();
 }
 

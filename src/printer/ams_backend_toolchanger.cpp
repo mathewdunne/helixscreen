@@ -11,7 +11,10 @@
 #include "lane_legacy_migration.h"
 #include "lane_source_store.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "print_lifecycle_state.h"
+#include "printer_state.h"
 #include "settings_manager.h"
+#include "toolhead_homing.h"
 
 #include <spdlog/spdlog.h>
 
@@ -1122,6 +1125,30 @@ void AmsBackendToolChanger::finalize_dispatch_after_macro(uint64_t generation) {
 }
 
 AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction action) {
+    // Paused-print precondition (plan §7.4/D6), INDX only: delegates_homing_to_printer()
+    // makes ensure_homed_then() skip its own toolhead_homed() check below, deferring
+    // entirely to the macro's own conditional G28 — correct while idle or printing,
+    // where that G28 runs freely. During a PAUSED print it is not: Layer 1
+    // (helix::api::reject_homing_during_active_print) blocks any HelixScreen-emitted
+    // G28 while paused, but cannot see one buried inside this macro, and injecting a
+    // home into a paused print is exactly what this plan forbids. So a paused
+    // dispatch on this provider requires a KNOWN homed toolhead before the gcode
+    // ever leaves — zero commands and an actionable refusal otherwise, never a
+    // synthesized home. Checked here, immediately before the send: this backend's
+    // Select/Park path has no parameter-prompt step in between to invalidate a
+    // stale answer.
+    if (tool_commands_.present && tool_commands_.provider_name == "INDX" && api_) {
+        const auto lifecycle = api_->printer_state().get_print_lifecycle();
+        if (lifecycle == PrintState::Paused &&
+            !helix::toolhead_is_homed(api_->printer_state())) {
+            spdlog::warn("[AMS ToolChanger] Refusing INDX dispatch on a PAUSED print: "
+                         "toolhead axes are not confirmed homed");
+            return AmsErrorHelper::wrong_state(
+                "toolhead axes not homed",
+                "home the printer (outside this paused print) before this operation");
+        }
+    }
+
     uint64_t generation;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -1218,6 +1245,18 @@ AmsError AmsBackendToolChanger::do_unload_filament(int slot_index) {
     // its unmount takes no tool argument, because there is only ever one tool on
     // the head to drop.
     if (tool_commands_.present) {
+        // An explicit Park override (plan D3/§7.1) outranks PARK_TOOL/unselect.
+        // A stored choice this printer no longer reports is an explicit
+        // unsupported capability — zero sends, never a silent substitution.
+        using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
+        if (movement_override_.park_choice == Choice::kInvalid) {
+            return AmsErrorHelper::not_supported("unmount (configured macro not found)");
+        }
+        if (movement_override_.park_choice == Choice::kValid) {
+            spdlog::info("[AMS ToolChanger] Parking via configured override: {}",
+                         movement_override_.park_macro);
+            return dispatch_operation(movement_override_.park_macro, AmsAction::UNLOADING);
+        }
         if (tool_commands_.unselect.empty()) {
             return AmsErrorHelper::not_supported("unmount");
         }
@@ -1255,23 +1294,37 @@ AmsError AmsBackendToolChanger::do_change_tool(int tool_number) {
         }
 
         if (tool_commands_.present) {
-            // select_shortcut_available is only populated for a provider
-            // whose configured tool count can exceed its T<n> shortcuts
-            // (Bondtech INDX); empty means every numbered tool has one, true
-            // by construction for the MedusaHC-shaped providers this table
-            // also serves. Missing BOTH the shortcut and the verified
-            // fallback macro is an explicit unsupported capability (plan
-            // §7.1), never a silent substitution.
-            const bool shortcut_available =
-                tool_commands_.select_shortcut_available.empty() ||
-                (tool_number < static_cast<int>(tool_commands_.select_shortcut_available.size()) &&
-                 tool_commands_.select_shortcut_available[static_cast<size_t>(tool_number)]);
-            if (shortcut_available) {
-                cmd = tool_commands_.select_prefix + std::to_string(tool_number);
-            } else if (!tool_commands_.change_tool_macro.empty()) {
-                cmd = tool_commands_.change_tool_macro + " TOOL=" + std::to_string(tool_number);
+            // An explicit Select override (plan D3/§7.1) outranks both the
+            // T<n> shortcut and the CHANGE_TOOL fallback. A stored choice
+            // this printer no longer reports (kInvalid) is an explicit
+            // unsupported capability — zero sends, never a silent fall
+            // through to the automatic command.
+            using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
+            if (movement_override_.select_choice == Choice::kInvalid) {
+                return AmsErrorHelper::not_supported("Tool selection (configured macro not found)");
+            }
+            if (movement_override_.select_choice == Choice::kValid) {
+                cmd = movement_override_.select_macro + " TOOL=" + std::to_string(tool_number);
             } else {
-                return AmsErrorHelper::not_supported("Tool selection");
+                // select_shortcut_available is only populated for a provider
+                // whose configured tool count can exceed its T<n> shortcuts
+                // (Bondtech INDX); empty means every numbered tool has one, true
+                // by construction for the MedusaHC-shaped providers this table
+                // also serves. Missing BOTH the shortcut and the verified
+                // fallback macro is an explicit unsupported capability (plan
+                // §7.1), never a silent substitution.
+                const bool shortcut_available =
+                    tool_commands_.select_shortcut_available.empty() ||
+                    (tool_number <
+                         static_cast<int>(tool_commands_.select_shortcut_available.size()) &&
+                     tool_commands_.select_shortcut_available[static_cast<size_t>(tool_number)]);
+                if (shortcut_available) {
+                    cmd = tool_commands_.select_prefix + std::to_string(tool_number);
+                } else if (!tool_commands_.change_tool_macro.empty()) {
+                    cmd = tool_commands_.change_tool_macro + " TOOL=" + std::to_string(tool_number);
+                } else {
+                    return AmsErrorHelper::not_supported("Tool selection");
+                }
             }
         } else {
             // Use SELECT_TOOL T={n} to select by tool number via the
@@ -1588,19 +1641,55 @@ bool AmsBackendToolChanger::is_bypass_active() const {
 // ============================================================================
 
 std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sections() const {
-    // A toolhead changer carries its own extruder and has nothing to expose.
-    // Only a machine with a frame-side feeder gets a section.
-    if (!feeder_.present) {
-        return {};
-    }
     using DS = helix::printer::DeviceSection;
-    return {
-        DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"},
-    };
+    std::vector<DS> sections;
+    // A toolhead changer carries its own extruder and has nothing to expose.
+    // Only a machine with a frame-side feeder gets a feeder section.
+    if (feeder_.present) {
+        sections.push_back(DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"});
+    }
+    // Select/Park overrides (plan D3) need no feeder — the provider owns
+    // applicability, which here is simply "this machine has its own
+    // Select/Park commands and reports at least one plausible macro to pick".
+    if (tool_commands_.present && !movement_override_.macro_options.empty()) {
+        sections.push_back(DS{"tool_commands", "Tool commands", static_cast<int>(sections.size()),
+                              "Which macro selects and parks a tool"});
+    }
+    return sections;
 }
 
 std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_actions() const {
     std::vector<helix::printer::DeviceAction> actions;
+    if (tool_commands_.present && !movement_override_.macro_options.empty()) {
+        actions.push_back({.id = "tool_select_macro",
+                           .label = "Tool select macro",
+                           .icon = "",
+                           .section = "tool_commands",
+                           .description = "Which macro selects a tool (sent as MACRO TOOL=<n>)",
+                           .type = helix::printer::ActionType::DROPDOWN,
+                           .current_value = std::any(movement_override_.select_choice_raw),
+                           .options = movement_override_.macro_options,
+                           .min_value = 0,
+                           .max_value = 0,
+                           .unit = "",
+                           .slot_index = -1,
+                           .enabled = true,
+                           .disable_reason = ""});
+        actions.push_back({.id = "tool_park_macro",
+                           .label = "Tool park macro",
+                           .icon = "",
+                           .section = "tool_commands",
+                           .description = "Which macro parks the current tool",
+                           .type = helix::printer::ActionType::DROPDOWN,
+                           .current_value = std::any(movement_override_.park_choice_raw),
+                           .options = movement_override_.macro_options,
+                           .min_value = 0,
+                           .max_value = 0,
+                           .unit = "",
+                           .slot_index = -1,
+                           .enabled = true,
+                           .disable_reason = ""});
+    }
     if (!feeder_.present) {
         return actions;
     }
@@ -1680,6 +1769,42 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
 
 AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_id,
                                                       const std::any& value) {
+    if (tool_commands_.present &&
+        (action_id == "tool_select_macro" || action_id == "tool_park_macro")) {
+        const auto* chosen = std::any_cast<std::string>(&value);
+        if (!chosen || chosen->empty()) {
+            return AmsErrorHelper::invalid_parameter("No macro selected");
+        }
+        using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
+        const bool is_select = (action_id == "tool_select_macro");
+        const bool is_auto = (*chosen == helix::toolchanger_addon::kAutoMacro);
+        const bool is_known = is_auto ||
+            std::find(movement_override_.macro_options.begin(),
+                     movement_override_.macro_options.end(),
+                     *chosen) != movement_override_.macro_options.end();
+        const Choice resolved = is_auto ? Choice::kAuto
+                                        : (is_known ? Choice::kValid : Choice::kInvalid);
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (is_select) {
+                movement_override_.select_choice_raw = *chosen;
+                movement_override_.select_choice = resolved;
+                movement_override_.select_macro = (resolved == Choice::kValid) ? *chosen : "";
+            } else {
+                movement_override_.park_choice_raw = *chosen;
+                movement_override_.park_choice = resolved;
+                movement_override_.park_macro = (resolved == Choice::kValid) ? *chosen : "";
+            }
+        }
+        if (is_select) {
+            helix::SettingsManager::instance().set_tool_select_macro(*chosen);
+        } else {
+            helix::SettingsManager::instance().set_tool_park_macro(*chosen);
+        }
+        spdlog::info("{} Tool {} macro set to {}", backend_log_tag(),
+                     is_select ? "select" : "park", *chosen);
+        return AmsErrorHelper::success();
+    }
     (void)value;
     if (feeder_.present && (action_id == "open_feeder" || action_id == "close_feeder")) {
         // On a hotend changer the feeder gripper is the only thing holding the
