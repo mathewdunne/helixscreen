@@ -721,7 +721,7 @@ static std::unique_ptr<AmsBackend> try_create_mock(IMoonrakerClient* mock_client
     if (mock_ams_env) {
         const std::string mode = to_lower(mock_ams_env);
         if (mode == "medusahc" || mode == "medusa" || mode == "mhc" || mode == "medusahc-fork" ||
-            mode == "medusa-fork") {
+            mode == "medusa-fork" || mode == "indx") {
             spdlog::info("[AMS Backend] HELIX_MOCK_AMS={} selects mock hardware, not a mock "
                          "backend - deferring to real discovery",
                          mode);

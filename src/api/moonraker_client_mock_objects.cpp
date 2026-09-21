@@ -436,6 +436,19 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                 }
             }
 
+            // Bondtech INDX (HELIX_MOCK_AMS=indx). See the identical block in
+            // the subscribe handler below for the override precedence.
+            if (objects.contains("gcode_macro TOOL_POSITIONS")) {
+                if (auto tp = self->indx_tool_positions_status_json(); !tp.empty()) {
+                    status_obj["gcode_macro TOOL_POSITIONS"] = tp;
+                }
+            }
+            if (objects.contains("save_variables")) {
+                if (auto sv = self->indx_save_variables_status_json(); !sv.empty()) {
+                    status_obj["save_variables"] = sv;
+                }
+            }
+
             // MCU objects (for discovery - chip type and firmware version)
             for (const auto& [key, val] : objects.items()) {
                 if (key == "mcu" || key.rfind("mcu ", 0) == 0) {
@@ -638,20 +651,22 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             }
 
             // Bondtech INDX runtime inventory + saved active-tool identity
-            // (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1/§5.2). Test-settable
-            // overrides (see set_indx_tool_count()/set_indx_active_tool()) let the
-            // production MoonrakerDiscoverySequence's deferred-inventory finalization
-            // be exercised through a real subscription reply; a full
-            // HELIX_MOCK_AMS=indx production route is a separate, later addition.
-            // Absent when not set, so an ordinary printer's subscription is unaffected.
+            // (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1/§5.2).
+            // indx_tool_positions_status_json()/indx_save_variables_status_json()
+            // return a unit test's set_indx_tool_count()/set_indx_active_tool()
+            // override when set (letting the production MoonrakerDiscoverySequence's
+            // deferred-inventory finalization be exercised through a real
+            // subscription reply), else the HELIX_MOCK_AMS=indx interactive
+            // simulation's current state, else empty - so an ordinary printer's
+            // subscription is unaffected either way.
             if (objects.contains("gcode_macro TOOL_POSITIONS")) {
-                if (auto tool_count = self->test_indx_tool_count()) {
-                    status_obj["gcode_macro TOOL_POSITIONS"] = {{"tool_count", *tool_count}};
+                if (auto tp = self->indx_tool_positions_status_json(); !tp.empty()) {
+                    status_obj["gcode_macro TOOL_POSITIONS"] = tp;
                 }
             }
             if (objects.contains("save_variables")) {
-                if (auto active_tool = self->test_indx_active_tool()) {
-                    status_obj["save_variables"] = {{"variables", {{"active_tool", *active_tool}}}};
+                if (auto sv = self->indx_save_variables_status_json(); !sv.empty()) {
+                    status_obj["save_variables"] = sv;
                 }
             }
 
