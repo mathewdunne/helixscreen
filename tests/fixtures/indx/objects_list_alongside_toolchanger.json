@@ -1,0 +1,15 @@
+[
+    "webhooks",
+    "configfile",
+    "gcode_move",
+    "print_stats",
+    "toolhead",
+    "extruder",
+    "extruder1",
+    "heater_bed",
+    "save_variables",
+    "toolchanger",
+    "tool T0",
+    "tool T1",
+    "indx"
+]

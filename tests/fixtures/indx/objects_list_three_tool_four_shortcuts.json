@@ -1,0 +1,18 @@
+[
+    "webhooks",
+    "configfile",
+    "gcode_move",
+    "print_stats",
+    "toolhead",
+    "extruder",
+    "heater_bed",
+    "save_variables",
+    "indx",
+    "gcode_macro TOOL_POSITIONS",
+    "gcode_macro CHANGE_TOOL",
+    "gcode_macro PARK_TOOL",
+    "gcode_macro T0",
+    "gcode_macro T1",
+    "gcode_macro T2",
+    "gcode_macro T3"
+]

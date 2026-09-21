@@ -1,0 +1,21 @@
+{
+    "boolean_tool_count": {
+        "tool_count": true
+    },
+    "fractional_tool_count": {
+        "tool_count": 3.5
+    },
+    "zero_tool_count": {
+        "tool_count": 0
+    },
+    "negative_tool_count": {
+        "tool_count": -1
+    },
+    "oversized_tool_count": {
+        "tool_count": 17
+    },
+    "string_tool_count": {
+        "tool_count": "6"
+    },
+    "empty_object": {}
+}

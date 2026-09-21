@@ -637,6 +637,24 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                 status_obj["gcode_macro _HELIX_STATE"] = {{"print_started", false}};
             }
 
+            // Bondtech INDX runtime inventory + saved active-tool identity
+            // (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1/§5.2). Test-settable
+            // overrides (see set_indx_tool_count()/set_indx_active_tool()) let the
+            // production MoonrakerDiscoverySequence's deferred-inventory finalization
+            // be exercised through a real subscription reply; a full
+            // HELIX_MOCK_AMS=indx production route is a separate, later addition.
+            // Absent when not set, so an ordinary printer's subscription is unaffected.
+            if (objects.contains("gcode_macro TOOL_POSITIONS")) {
+                if (auto tool_count = self->test_indx_tool_count()) {
+                    status_obj["gcode_macro TOOL_POSITIONS"] = {{"tool_count", *tool_count}};
+                }
+            }
+            if (objects.contains("save_variables")) {
+                if (auto active_tool = self->test_indx_active_tool()) {
+                    status_obj["save_variables"] = {{"variables", {{"active_tool", *active_tool}}}};
+                }
+            }
+
             // fan_feedback (Creality tachometer module — fan0_speed..fan9_speed RPM).
             if (objects.contains("fan_feedback")) {
                 status_obj["fan_feedback"] = {{"fan0_speed", 0.0}, {"fan1_speed", 0.0},

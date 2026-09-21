@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
+#include <cstdlib>
 #include <string_view>
 
 namespace helix::toolchanger_addon {
@@ -332,6 +334,14 @@ ToolCommands resolve_tool_commands(const PrinterDiscovery& hw) {
     c.provider_name = p ? p->name : std::string();
     c.select_prefix = (p && p->select_prefix) ? p->select_prefix : "T";
     c.unselect = (p && p->unselect_gcode) ? p->unselect_gcode : "";
+    // Bondtech INDX ships PARK_TOOL as its default parking command; the
+    // MedusaHC-shaped table above never matches it (see the comment on
+    // has_indx() in toolchanger_addon.h), so this is the one place its
+    // command default is recorded.
+    if (!p && has_indx(hw)) {
+        c.provider_name = "INDX";
+        c.unselect = "PARK_TOOL";
+    }
     return c;
 }
 
@@ -386,8 +396,21 @@ std::vector<std::string> feeder_macro_candidates(const PrinterDiscovery& hw) {
 }
 
 std::vector<std::string> required_status_objects(const PrinterDiscovery& hw) {
-    const Provider* p = match(hw);
-    return p ? p->status_objects(hw) : std::vector<std::string>{};
+    std::vector<std::string> objects;
+    if (const Provider* p = match(hw)) {
+        objects = p->status_objects(hw);
+    }
+    // INDX's inventory and active-tool identity both live in objects the
+    // MedusaHC-shaped table above never names (see the comment on has_indx()
+    // in toolchanger_addon.h). Subscribing real `TOOL_POSITIONS`/
+    // `save_variables` is what breaks the discovery/subscription cycle
+    // described in the plan's §5.1 - never fabricated `toolchanger`/`tool
+    // T<n>` objects for this provider.
+    if (has_indx(hw)) {
+        objects.emplace_back("save_variables");
+        objects.emplace_back("gcode_macro TOOL_POSITIONS");
+    }
+    return objects;
 }
 
 std::optional<ToolReading> read_tool(const nlohmann::json& status) {
@@ -417,6 +440,103 @@ bool sensor_error_is_fault(const ToolReading& reading, bool swap_in_flight) {
         return false;
     }
     return reading.sensor_error_reported || !swap_in_flight;
+}
+
+// --- Bondtech INDX ----------------------------------------------------------
+
+bool has_indx(const PrinterDiscovery& hw) {
+    return hw.has_indx();
+}
+
+bool is_indx_inventory_candidate(const PrinterDiscovery& hw) {
+    if (!has_indx(hw)) {
+        return false;
+    }
+    // A real klipper-toolchanger, an already-claimed MMU/filament backend, or
+    // an auto-detected multi-extruder tool list all outrank an INDX facts-only
+    // guess (docs/devel/plans/2026-09-20-bondtech-indx.md §10 "Priority").
+    // Recording the candidate must never disturb their selection.
+    if (hw.has_tool_changer() || hw.has_mmu() || hw.has_snapmaker()) {
+        return false;
+    }
+    return hw.tool_names().empty();
+}
+
+std::vector<std::string> indx_tool_ids(int tool_count) {
+    std::vector<std::string> ids;
+    if (tool_count < 1) {
+        return ids;
+    }
+    ids.reserve(static_cast<std::size_t>(tool_count));
+    for (int i = 0; i < tool_count; ++i) {
+        ids.push_back(std::to_string(i));
+    }
+    return ids;
+}
+
+std::optional<IndxInventory> read_indx_inventory(const nlohmann::json& tool_positions_status) {
+    if (!tool_positions_status.is_object()) {
+        return std::nullopt;
+    }
+    auto it = tool_positions_status.find("tool_count");
+    if (it == tool_positions_status.end()) {
+        return std::nullopt; // no news this frame
+    }
+    // is_number_integer() is false for JSON booleans and floats, so both are
+    // already rejected here without a separate check - only a genuine integer
+    // reaches the bounds test. No config-string fallback: this is the runtime
+    // field the plan requires, not configfile.config's string-typed sibling.
+    if (!it->is_number_integer()) {
+        return IndxInventory{false, 0, "tool_count is not an integer"};
+    }
+    const long long raw = it->get<long long>();
+    if (raw < 1 || raw > kIndxMaxTools) {
+        return IndxInventory{false, 0,
+                             "tool_count " + std::to_string(raw) + " out of range 1.." +
+                                 std::to_string(kIndxMaxTools)};
+    }
+    return IndxInventory{true, static_cast<int>(raw), std::string()};
+}
+
+IndxActiveTool read_indx_active_tool(const nlohmann::json& save_variables_status,
+                                     int configured_tool_count) {
+    if (!save_variables_status.is_object()) {
+        return {};
+    }
+    auto vars = save_variables_status.find("variables");
+    if (vars == save_variables_status.end() || !vars->is_object()) {
+        return {}; // no news: this delta carried no variables at all
+    }
+    auto it = vars->find("active_tool");
+    if (it == vars->end()) {
+        return {}; // no news: fresh install, active_tool never saved
+    }
+
+    std::optional<long long> parsed;
+    if (it->is_number_integer()) {
+        parsed = it->get<long long>();
+    } else if (it->is_string()) {
+        // Compatibility: strictly parsed integer strings only. A partial
+        // parse ("3junk") or an empty string is malformed, not truncated.
+        const std::string& s = it->get_ref<const std::string&>();
+        if (!s.empty()) {
+            errno = 0;
+            char* end = nullptr;
+            long long v = std::strtoll(s.c_str(), &end, 10);
+            if (end == s.c_str() + s.size() && errno == 0) {
+                parsed = v;
+            }
+        }
+    }
+    // Booleans, fractional values, unparseable/partial strings, huge numbers
+    // already fail to parse above; explicit rejection, never a guess.
+    if (!parsed || *parsed < -1) {
+        return {IndxActiveToolStatus::kMalformed, -1};
+    }
+    if (*parsed >= 0 && configured_tool_count > 0 && *parsed >= configured_tool_count) {
+        return {IndxActiveToolStatus::kMalformed, -1}; // outside the finalized inventory
+    }
+    return {IndxActiveToolStatus::kValid, static_cast<int>(*parsed)};
 }
 
 } // namespace helix::toolchanger_addon

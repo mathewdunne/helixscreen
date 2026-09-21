@@ -509,14 +509,28 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
             // Early hardware discovery callback - allows AMS/MMU backends to initialize
             // BEFORE the subscription response arrives, so they can receive initial state
             // naturally. Copy hardware_ under lock to prevent data races (#562, #777).
+            //
+            // An INDX inventory candidate is the one exception: its slot count is not
+            // in the object list at all, so this snapshot cannot describe it as a Tool
+            // Changer yet. Deferring the callback here breaks the discovery/subscription
+            // dependency cycle - complete_discovery_subscription() finalizes inventory
+            // from the subscription reply and fires this callback (with the finalized
+            // snapshot) immediately before on_discovery_complete_, once, for this
+            // discovery generation. Every other printer's early callback timing is
+            // unchanged (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1 point 3).
             if (on_hardware_discovered_) {
-                spdlog::debug("[Moonraker Client] Invoking early hardware discovery callback");
                 PrinterDiscovery hw_snapshot;
                 {
                     std::lock_guard<std::mutex> lock(hardware_mutex_);
                     hw_snapshot = hardware_;
                 }
-                on_hardware_discovered_(hw_snapshot);
+                if (helix::toolchanger_addon::is_indx_inventory_candidate(hw_snapshot)) {
+                    spdlog::debug("[Moonraker Client] Deferring early hardware discovery "
+                                  "callback for an INDX inventory candidate");
+                } else {
+                    spdlog::debug("[Moonraker Client] Invoking early hardware discovery callback");
+                    on_hardware_discovered_(hw_snapshot);
+                }
             }
 
             // Step 2: Get server information
@@ -1616,9 +1630,14 @@ void MoonrakerDiscoverySequence::complete_discovery_subscription(uint64_t seq) {
     json subscribe_params = {{"objects", subscription_objects}};
     size_t num_subscribed = subscription_objects.size();
 
+    // The pre-subscription snapshot: whether THIS pass deferred its early
+    // hardware callback for an INDX inventory candidate is decided from facts
+    // as of the subscribe request, not whatever hardware_ becomes afterward.
+    const bool was_indx_candidate = helix::toolchanger_addon::is_indx_inventory_candidate(hw);
+
     client_.send_jsonrpc(
         "printer.objects.subscribe", subscribe_params,
-        [this, seq, num_subscribed](json sub_response) {
+        [this, seq, num_subscribed, was_indx_candidate](json sub_response) {
             if (is_stale() || !is_current_sequence(seq))
                 return;
             if (sub_response.contains("result")) {
@@ -1662,6 +1681,42 @@ void MoonrakerDiscoverySequence::complete_discovery_subscription(uint64_t seq) {
             if (sub_response.contains("result") && sub_response["result"].contains("status")) {
                 initial_status = sub_response["result"]["status"];
             }
+
+            // Finalize a deferred INDX candidate's inventory from this reply,
+            // then fire its deferred early hardware callback before
+            // on_discovery_complete_ - exactly once for this generation
+            // (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1 points 4-8).
+            // A missing/malformed snapshot leaves tool_names_ empty: the
+            // printer still completes discovery, just with no INDX backend.
+            if (was_indx_candidate) {
+                auto tool_positions = initial_status.find("gcode_macro TOOL_POSITIONS");
+                if (tool_positions != initial_status.end()) {
+                    if (auto inv = helix::toolchanger_addon::read_indx_inventory(*tool_positions)) {
+                        if (inv->valid) {
+                            std::lock_guard<std::mutex> lock(hardware_mutex_);
+                            hardware_.finalize_indx_inventory(
+                                helix::toolchanger_addon::indx_tool_ids(inv->tool_count));
+                        } else {
+                            spdlog::warn("[Moonraker Client] INDX inventory rejected: {}",
+                                         inv->rejection);
+                        }
+                    }
+                } else {
+                    spdlog::warn("[Moonraker Client] INDX candidate but subscription reply "
+                                 "carried no TOOL_POSITIONS status - no INDX backend this pass");
+                }
+                if (on_hardware_discovered_) {
+                    PrinterDiscovery finalized_snapshot;
+                    {
+                        std::lock_guard<std::mutex> lock(hardware_mutex_);
+                        finalized_snapshot = hardware_;
+                    }
+                    spdlog::debug("[Moonraker Client] Invoking deferred early hardware "
+                                  "discovery callback (INDX candidate finalized)");
+                    on_hardware_discovered_(finalized_snapshot);
+                }
+            }
+
             if (on_discovery_complete_) {
                 PrinterDiscovery hw_snapshot;
                 {

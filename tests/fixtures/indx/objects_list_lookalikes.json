@@ -1,0 +1,15 @@
+[
+    "webhooks",
+    "configfile",
+    "gcode_move",
+    "print_stats",
+    "toolhead",
+    "extruder",
+    "heater_bed",
+    "mcu indxmcu",
+    "angle indx",
+    "neopixel indx",
+    "gcode_macro T0",
+    "gcode_macro T1",
+    "gcode_macro T2"
+]

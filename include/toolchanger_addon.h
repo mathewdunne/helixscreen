@@ -139,6 +139,89 @@ struct ToolSensor {
 /// Whether any provider claims this printer.
 bool present(const PrinterDiscovery& hw);
 
+// --- Bondtech INDX ----------------------------------------------------------
+//
+// A nozzle changer with its own T<n>/PARK_TOOL commands and no
+// klipper-toolchanger, several tools sharing one physical extruder/heater.
+// Its inventory is not in printer.objects.list at all: the configured tool
+// count lives in a runtime macro variable, discovered only once that macro's
+// status is subscribed and read. This is why INDX is NOT folded into the
+// MedusaHC-shaped Provider table above - that table answers "does this
+// printer have a DOCK SENSOR / FEEDER add-on", which INDX has neither of, and
+// its identity signal (`save_variables.active_tool`) is deliberately never
+// merged into the shared read_tool() dispatch (see read_indx_active_tool()).
+// Only resolve_tool_commands()'s existing generic seam gains an INDX default;
+// resolve_tool_sensor()/resolve_feeder() correctly stay absent for it.
+//
+// See docs/devel/plans/2026-09-20-bondtech-indx.md §5 for the full contract.
+
+/// Bounds on INDX's provider-supplied tool inventory. Mirrors
+/// `AmsState::MAX_SLOTS` (currently 16); kept as its own constant so this
+/// low-level module does not depend on the UI-facing AmsState header.
+inline constexpr int kIndxMaxTools = 16;
+
+/// Whether the exact `indx` status object is present. The sole detection
+/// signal for this delivery - see PrinterDiscovery::has_indx().
+bool has_indx(const PrinterDiscovery& hw);
+
+/// Whether this printer is an unresolved INDX inventory candidate: the exact
+/// `indx` object is present and no other filament-management or tool-changer
+/// backend has already claimed it from object-list facts alone. `parse_objects()`
+/// cannot pick INDX's slot count itself - it lives in a runtime macro value,
+/// not the object list - so a true result means the caller must subscribe
+/// required_status_objects() and finalize inventory (read_indx_inventory())
+/// before this printer's AMS backend can be selected. A false result here
+/// with has_indx() true means a different backend legitimately outranks INDX
+/// and its facts must not be disturbed.
+bool is_indx_inventory_candidate(const PrinterDiscovery& hw);
+
+/// A validated (or explicitly rejected) INDX tool count.
+struct IndxInventory {
+    bool valid = false;
+    int tool_count = 0;    ///< 1..kIndxMaxTools when valid, 0 otherwise
+    std::string rejection; ///< populated only when !valid, for diagnostics
+};
+
+/// Numbered tool ids "0".."tool_count-1" a valid inventory produces, already
+/// in the natural/numeric order finalization must preserve. Empty for a
+/// non-positive count.
+std::vector<std::string> indx_tool_ids(int tool_count);
+
+/// Parse and bounds-validate the runtime tool count out of a
+/// `gcode_macro TOOL_POSITIONS` status object (pass the object itself, e.g.
+/// `status["gcode_macro TOOL_POSITIONS"]`).
+///
+/// nullopt means "no news": the object or its `tool_count` field was absent
+/// from this frame (Moonraker republishes only fields that changed), which
+/// callers must not treat as a rejection. A non-nullopt result with
+/// `valid == false` means the field WAS present this frame but is not usable
+/// (wrong JSON type, non-positive, or over kIndxMaxTools) - config text,
+/// shortcut count and saved offsets are never a fallback for this value.
+std::optional<IndxInventory> read_indx_inventory(const nlohmann::json& tool_positions_status);
+
+/// Outcome of reading INDX's saved active-tool identity.
+enum class IndxActiveToolStatus {
+    kAbsent,    ///< no news this frame - preserve the last known identity
+    kValid,     ///< `value` is a numbered tool (0..count-1) or -1 (parked)
+    kMalformed, ///< the field was present but unusable - report unavailable,
+                ///< never silently preserved as fresh truth nor treated as "no news"
+};
+
+struct IndxActiveTool {
+    IndxActiveToolStatus status = IndxActiveToolStatus::kAbsent;
+    int value = -1; ///< meaningful only when status == kValid
+};
+
+/// Read INDX's saved active-tool identity out of a `save_variables` status
+/// object (pass the object itself, e.g. `status["save_variables"]`).
+/// `active_tool` is a saved macro assertion, never physical seating proof.
+///
+/// @param configured_tool_count the finalized inventory size; a positive
+///        value bounds-checks the id. 0 (inventory not yet finalized) accepts
+///        any -1 or non-negative integer without an upper bound.
+IndxActiveTool read_indx_active_tool(const nlohmann::json& save_variables_status,
+                                     int configured_tool_count);
+
 /// The dock sensor this printer exposes, or an absent capability.
 ToolSensor resolve_tool_sensor(const PrinterDiscovery& hw);
 

@@ -561,6 +561,31 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     }
 
     /**
+     * @brief Test-only override for INDX's `gcode_macro TOOL_POSITIONS.tool_count`
+     * (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1). Combine with
+     * set_additional_objects() including "indx" and "gcode_macro TOOL_POSITIONS" so
+     * a controlled-transport test exercises the real MoonrakerDiscoverySequence's
+     * deferred-inventory finalization through an actual subscription reply.
+     * nullopt (the default) means the subscription reply carries no
+     * TOOL_POSITIONS status at all, matching an unconfigured printer.
+     */
+    void set_indx_tool_count(std::optional<int> tool_count) {
+        indx_tool_count_ = tool_count;
+    }
+    [[nodiscard]] std::optional<int> test_indx_tool_count() const {
+        return indx_tool_count_;
+    }
+
+    /// Test-only override for INDX's saved `save_variables.variables.active_tool`.
+    /// See set_indx_tool_count().
+    void set_indx_active_tool(std::optional<int> active_tool) {
+        indx_active_tool_ = active_tool;
+    }
+    [[nodiscard]] std::optional<int> test_indx_active_tool() const {
+        return indx_active_tool_;
+    }
+
+    /**
      * @brief Set MMU availability for testing
      *
      * Controls whether the mock includes "mmu" in its printer objects,
@@ -1894,6 +1919,11 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
 
     // Additional objects for testing (e.g., "mmu", "AFC", "toolchanger")
     std::vector<std::string> additional_objects_;
+
+    // Test-only INDX subscription-reply overrides — see set_indx_tool_count()/
+    // set_indx_active_tool().
+    std::optional<int> indx_tool_count_;
+    std::optional<int> indx_active_tool_;
 
     // Cached chamber heater status key (updated by override_chamber_heater / populate)
     std::string cached_chamber_status_key_;
