@@ -76,7 +76,8 @@ TEST_CASE_METHOD(LVGLTestFixture,
     // Simulate init_printer_state() building new widgets in the window: this
     // observer is registered on a freshly-(re)created, LIVE subject.
     ObserverGuard guard = helix::ui::observe_int_sync<CountingPanel>(
-        &subject, &panel, [](CountingPanel* p, int /*v*/) { p->notifications++; });
+        &subject, &panel, [](CountingPanel* p, int /*v*/) { p->notifications++; },
+        subject_never_freed());
     REQUIRE(lv_ll_get_len(&subject.subs_ll) == 1);
 
     // Still in the window, the widget rebinds/detaches and resets the guard.
@@ -145,7 +146,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "ObserverGuard skips removal for observers fre
 
     // Created during normal operation (before any teardown).
     ObserverGuard guard = helix::ui::observe_int_sync<CountingPanel>(
-        &subject, &panel, [](CountingPanel* p, int /*v*/) { p->notifications++; });
+        &subject, &panel, [](CountingPanel* p, int /*v*/) { p->notifications++; },
+        subject_never_freed());
     REQUIRE(lv_ll_get_len(&subject.subs_ll) == 1);
 
     // Teardown: invalidate_all() marks the epoch, then deinit frees the

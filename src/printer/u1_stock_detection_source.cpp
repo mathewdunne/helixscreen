@@ -24,7 +24,8 @@ void U1StockSource::start() {
     // defect detection by pausing, so the edge is the printer's own.
     state_observer_ = helix::ui::observe_int_sync<U1StockSource>(
         state_->get_print_state_enum_subject(), this,
-        [](U1StockSource* self, int value) { self->on_print_state(value); });
+        [](U1StockSource* self, int value) { self->on_print_state(value); },
+        state_->get_subjects_lifetime());
 }
 
 void U1StockSource::on_print_state(int state_enum) {

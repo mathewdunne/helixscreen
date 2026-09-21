@@ -274,8 +274,8 @@ translations:
   Backup spool switching state unknown: 'Резервная катушка: состояние неизвестно'
   Barcode Scanner: Сканер штрих-кодов
   Base: Опорный
-  Batch load failed: ''
-  Batch unload failed: ''
+  Batch load failed: Ошибка пакетной загрузки
+  Batch unload failed: Ошибка пакетной выгрузки
   Beacon auto-calibrate sent: Beacon автокалибровка отправлена
   Beacon calibrate sent: Beacon калибровка отправлена
   Bed: Стол
@@ -427,7 +427,7 @@ translations:
     на цели точнее.
   Calibration kept timing out. Your previous settings were kept.: Калибровка постоянно завершалась по тайм-ауту. Прежние настройки сохранены.
   Calibration may still be running — printer connection was interrupted: 'Калибровка может ещё выполняться — соединение с принтером прервано'
-  Calibration may still be running — response timed out: ''
+  Calibration may still be running — response timed out: 'Калибровка может ещё выполняться — время ожидания истекло'
   Calibration move may still be running — printer connection was interrupted: 'Движение калибровки может ещё выполняться — соединение с принтером прервано'
   Calibration saved but cannot apply on SDL display: Калибровка сохранена, но не может
     быть применена на SDL дисплее
@@ -501,7 +501,7 @@ translations:
   Change Printer Host: Изменить хост принтера
   Change Tool: Сменить инструмент
   Change Tool While Paused: Смена инструмента при паузе
-  Change heater control?: ''
+  Change heater control?: Изменить управление нагревателем?
   Change tool: Сменить инструмент
   Changes apply immediately. Adjust during print for tuning.: Изменения применяются
     немедленно. Корректируйте во время печати.
@@ -588,8 +588,8 @@ translations:
   Closer = more squish | Farther = less squish: Ближе = больше сжатие | Дальше = меньше
     сжатие
   Coarse: Грубо
-  Coarse Inner: ''
-  Coarse Outer: ''
+  Coarse Inner: Грубо (внутренний)
+  Coarse Outer: Грубо (внешний)
   Code: Код
   Coil Temperature: Температура катушки
   Collect logs and system info for support: Собрать логи и информацию о системе для
@@ -844,7 +844,7 @@ translations:
   Distance from hub to toolhead: 'Расстояние от хаба до печатающей головки'
   Distance from lane extruder to hub: 'Расстояние от канала экструдера до хаба'
   Distance from toolhead sensor to nozzle tip: 'Расстояние от датчика печатающей головки до кончика сопла'
-  Distance moved per jog button tap: ''
+  Distance moved per jog button tap: Расстояние за одно нажатие кнопки перемещения
   Do not power off your printer.: Не выключайте принтер.
   Do not touch the printer during calibration: Не трогайте принтер во время калибровки
   Dock: Парковать
@@ -855,7 +855,7 @@ translations:
   Documentation: Документация
   Don't Save: Не сохранять
   Don't ask again: Больше не спрашивать
-  Don't show again: ''
+  Don't show again: Больше не показывать
   Done: Готово
   Download update?: Загрузить обновление?
   Download v{}?: Загрузить v{}?
@@ -1205,7 +1205,7 @@ translations:
   Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'Филамент закончился. Автопополнение выключено, поэтому CFS не сменит катушку сам. Загрузите филамент и продолжите печать.'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: Филамент закончился. CFS знает, какие катушки подходят, но эти слоты пусты. Загрузите одну из них, затем продолжите печать.
   Filament reload failed: Не удалось повторно подать филамент
-  Filament remapping is unavailable: ''
+  Filament remapping is unavailable: Переназначение филамента недоступно
   Filament runout: Окончание филамента
   Filament runout and motion detection sensors: Датчики окончания и движения филамента
   Filament saved: Филамент сохранён
@@ -1227,8 +1227,8 @@ translations:
   'Filter Fan: Off': 'Вентилятор фильтра: Выкл'
   'Filter Fan: On': 'Вентилятор фильтра: Вкл'
   Fine: Точно
-  Fine Inner: ''
-  Fine Outer: ''
+  Fine Inner: Точно (внутренний)
+  Fine Outer: Точно (внешний)
   Finish: Завершить
   Finish or cancel the print before loading, unloading, or changing filament: Завершите или отмените печать перед загрузкой, выгрузкой или сменой филамента
   Finishing clean...: Завершение очистки...
@@ -1356,7 +1356,7 @@ translations:
     дисплея
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     интегрируется с вашим сменщиком филамента для многокатушечной/многоцветной печати.
-  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: ''
+  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: HelixScreen записывает это в printer.cfg и перезапускает Klipper. Принтер ненадолго отключится.
   HelixScreen {} is available — tap Update: Доступен HelixScreen {} — нажмите «Обновить»
   Help & About: Помощь и о программе
   Help Improve HelixScreen: Помогите улучшить HelixScreen
@@ -1515,10 +1515,10 @@ translations:
   It's a new spool: Это новая катушка
   Jammed at the Toolhead: Замятие в печатающей головке
   Job Queue: Очередь заданий
-  Jog Speed XY: ''
-  Jog Speed Z: ''
+  Jog Speed XY: Скорость перемещения XY
+  Jog Speed Z: Скорость перемещения Z
   'Jog failed: {}': 'Перемещение не удалось: {}'
-  Jog speeds and step distances: ''
+  Jog speeds and step distances: Скорости и шаги перемещения
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: Присоединяйтесь
     к сообществу HelixScreen в Discord для обсуждений, советов, помощи в устранении
     неполадок и предложений новых функций.
@@ -1613,7 +1613,7 @@ translations:
   Listening: Прослушивание
   Live view from your webcam: Прямая трансляция с веб-камеры
   Load: Загрузить
-  Load / Unload: ''
+  Load / Unload: Загрузить / Выгрузить
   Load Failed: 'Не удалось загрузить'
   Load Filament: Загрузить филамент
   Load a filament first before trying to unload: Сначала загрузите филамент, прежде чем пытаться его выгрузить
@@ -2198,7 +2198,7 @@ translations:
   Print ending...: Завершение печати...
   Print error: Ошибка печати
   Print failed: Печать не удалась
-  Print history will show the rewritten name: ''
+  Print history will show the rewritten name: История печати покажет изменённое имя
   Print issue detected: Обнаружена проблема печати
   Print jobs waiting to run: Задания печати в очереди
   'Print preparation failed: {}': 'Ошибка подготовки печати: {}'
@@ -2338,7 +2338,7 @@ translations:
   'RFCOMM connect failed: ': 'Не удалось подключиться по RFCOMM: '
   RFID reader malfunction (left): Неисправность RFID-считывателя (левый)
   RFID reader malfunction (right): Неисправность RFID-считывателя (правый)
-  RFID, auto-refill, nozzle and link care: ''
+  RFID, auto-refill, nozzle and link care: RFID, автопополнение, уход за соплом и связью
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'Объём рэмминга'
@@ -2398,9 +2398,9 @@ translations:
   Remaining Weight (g): Оставшийся вес (г)
   Remap Tool: Переназначить инструмент
   ? Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  : ''
+  : Переназначение переписывает файл задания перед печатью. Moonraker этого принтера слишком старый, чтобы плагин HelixPrint потом восстановил исходное имя файла, поэтому выполненное задание отображается под изменённым именем. Само переназначение работает нормально.
   ? "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  : ''
+  : "Переназначение переписывает файл задания перед печатью. Без плагина HelixPrint в историю печати попадает изменённая копия, поэтому выполненные задания отображаются под именами вроде modified_1730824_benchy.gcode вместо выбранного файла.\n\nУстановка плагина занимает немного времени и не требует перезапуска."
   Remap…: Переназначить…
   Remember slot spool details across an eject: Запоминать данные катушки слота после извлечения
   Remove: Удалить
@@ -2435,8 +2435,8 @@ translations:
   Reset: Сброс
   Reset Blade Counter: 'Сбросить счётчик лезвия'
   Reset CFS: Сброс CFS
-  Reset Distances: ''
-  Reset Distances?: ''
+  Reset Distances: Сброс расстояний
+  Reset Distances?: Сбросить расстояния?
   Reset Endless Spool: 'Сбросить бесконечную катушку'
   Reset Endless Spool?: 'Сбросить бесконечную катушку?'
   Reset Home Screen?: Сбросить главный экран?
@@ -2648,7 +2648,7 @@ translations:
   Select a valid tool: Выберите корректный инструмент
   Select a valid {}: 'Выберите допустимое значение для {}'
   Select a {}: 'Выберите {}'
-  Select at least one: ''
+  Select at least one: Выберите хотя бы один
   Select fan: Выберите вентилятор
   Select gate: 'Выбор шлюза'
   Select macro for first button: Выберите макрос для первой кнопки
@@ -2895,13 +2895,13 @@ translations:
   Switched to {}: 'Переключено на {}'
   Switches to a backup spool on runout: При обрыве переключится на резервную катушку
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
-  : ''
-  Switching back to PID changes how this heater is controlled.: ''
-  Switching back to PID requires a config change and Klipper restart.: ''
+  : Возврат к PID меняет способ управления этим нагревателем, а затем калибрует его. Это занимает несколько минут при рабочей температуре.
+  Switching back to PID changes how this heater is controlled.: Возврат к PID меняет способ управления этим нагревателем.
+  Switching back to PID requires a config change and Klipper restart.: Возврат к PID требует изменения конфига и перезапуска Klipper.
   Switching heater control to MPC. Klipper will restart.: Переключение управления
     нагревом на MPC. Klipper перезапустится.
-  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: ''
-  Switching to MPC changes how this heater is controlled.: ''
+  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: Переход на MPC меняет способ управления этим нагревателем, а затем калибрует его. Это занимает несколько минут при рабочей температуре.
+  Switching to MPC changes how this heater is controlled.: Переход на MPC меняет способ управления этим нагревателем.
   Switching to MPC requires a config change and Klipper restart.: Переход на MPC требует
     изменения конфига и перезапуска Klipper.
   Sync with Spoolman: Синхронизация со Spoolman
@@ -3119,7 +3119,7 @@ translations:
   This will restart Klipper firmware. Any active operations will be interrupted.: Прошивка
     Klipper будет перезапущена. Активные операции будут прерваны.
   This will restart Klipper.: Это перезапустит Klipper.
-  This will restore the default jog step distances for all three modes.: ''
+  This will restore the default jog step distances for all three modes.: Это восстановит шаги перемещения по умолчанию для всех трёх режимов.
   This will save the Z-offset and restart Klipper to write the configuration. The printer will briefly disconnect.: Z-offset будет сохранён, и Klipper перезапустится для записи конфигурации. Принтер ненадолго отключится.
   ? This writes the tool offsets to the printer's config and restarts Klipper, which takes a few seconds. Until then they apply only to this session.
   : Смещения инструментов будут записаны в конфигурацию принтера, и Klipper перезапустится, это займёт несколько секунд. До этого они действуют только в текущем сеансе.
@@ -3205,8 +3205,8 @@ translations:
   Tuning tower enabled - start a print to test: Башня настройки включена — начните
     печать для теста
   Turbo: Турбо
-  Turbo Inner: ''
-  Turbo Outer: ''
+  Turbo Inner: Турбо (внутренний)
+  Turbo Outer: Турбо (внешний)
   Turn Off: Выключить
   Turn Off WiFi?: Выключить WiFi?
   Turn On: Включить
@@ -3409,7 +3409,7 @@ translations:
   X: X
   X Axis: Ось X
   X Offset: Смещение X
-  X and Y jog feedrate: ''
+  X and Y jog feedrate: Скорость перемещения по осям X и Y
   X axis applied, but Y axis failed: Ось X применена, но ось Y не удалась
   X axis done, starting Y...: 'Ось X готова, запуск Y...'
   X jog blocked at bed edge: Перемещение по X заблокировано на краю стола
@@ -3444,8 +3444,8 @@ translations:
   Z Offset: Z Offset
   Z Range: Диапазон Z
   Z Tilt Adjust...: Регулировка наклона Z...
-  Z jog blocked at axis limit: ''
-  Z jog feedrate: ''
+  Z jog blocked at axis limit: Перемещение по Z заблокировано на пределе оси
+  Z jog feedrate: Скорость перемещения по оси Z
   Z motor calibration failed: Не удалась калибровка двигателя Z
   Z probes for bed leveling and mesh generation: Z-зонды для выравнивания стола и
     создания сетки
@@ -3503,7 +3503,7 @@ translations:
   'off': выкл
   AFC's remember_spool is retaining spool info in firmware; that takes precedence over this toggle: Параметр remember_spool в AFC сохраняет данные катушки в прошивке и имеет приоритет над этим переключателем
   AI detection: AI-детекция
-  Modifying G-code needs the HelixPrint plugin. Printing original file.: ''
+  Modifying G-code needs the HelixPrint plugin. Printing original file.: Для изменения G-code нужен плагин HelixPrint. Печатается исходный файл.
   Monitor for print abnormalities (K2 Plus camera-based): Отслеживание дефектов печати (на основе камеры K2 Plus)
   Monitor for print abnormalities (camera-based): 'Отслеживание дефектов печати (на основе камеры)'
   on unit {}: 'на блоке {}'

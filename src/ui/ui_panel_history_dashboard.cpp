@@ -271,12 +271,14 @@ lv_obj_t* HistoryDashboardPanel::create(lv_obj_t* parent) {
     // This handles the case where the panel is opened before connection is established
     lv_subject_t* conn_subject = get_printer_state().get_printer_connection_state_subject();
     connection_observer_ = helix::ui::observe_int_sync<HistoryDashboardPanel>(
-        conn_subject, this, [](HistoryDashboardPanel* self, int state) {
+        conn_subject, this,
+        [](HistoryDashboardPanel* self, int state) {
             if (state == static_cast<int>(ConnectionState::CONNECTED) && self->is_active_) {
                 spdlog::debug("[{}] Connection established - refreshing data", self->get_name());
                 self->refresh_data();
             }
-        });
+        },
+        get_printer_state().get_subjects_lifetime());
 
     // Initially hidden
     lv_obj_add_flag(overlay_root_, LV_OBJ_FLAG_HIDDEN);

@@ -3,10 +3,15 @@
 
 #pragma once
 
+#include "ui_observer_guard.h"
+
+#include "subject_managed_panel.h" // SubjectManager
+
 #include <lvgl/lvgl.h>
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -102,6 +107,15 @@ class PrinterImageManager {
         return &image_changed_subject_;
     }
 
+    /// Death signal for the subject this singleton owns.
+    ///
+    /// deinit_subjects() frees every observer node on it without bumping the
+    /// ObserverGuard invalidation epoch, so outside observers must pass this to
+    /// observe_*(), or their guards call lv_observer_remove() on a freed node.
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
+
     void deinit_subjects();
 
   private:
@@ -111,6 +125,9 @@ class PrinterImageManager {
     std::string custom_dir_;               // e.g., "config/custom_images/"
     lv_subject_t image_changed_subject_{}; // Version counter bumped on set_active_image()
     bool subjects_initialized_ = false;
+    /// Owns image_changed_subject_ and the death signal
+    /// get_subjects_lifetime() hands out.
+    SubjectManager subjects_;
 
     struct ValidationResult {
         bool valid = false;

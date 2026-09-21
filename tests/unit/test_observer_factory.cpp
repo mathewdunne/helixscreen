@@ -64,8 +64,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_sync stores value", "[fa
 
     TestPanel panel;
 
-    auto guard = observe_int_sync<TestPanel>(&subject, &panel,
-                                             [](TestPanel* p, int value) { p->int_value = value; });
+    auto guard = observe_int_sync<TestPanel>(
+        &subject, &panel, [](TestPanel* p, int value) { p->int_value = value; },
+        subject_never_freed());
 
     // Initial callback fires on subscription (deferred)
     drain();
@@ -94,7 +95,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_sync with transformation
 
     // Use transformation inside lambda
     auto guard = observe_int_sync<TestPanel>(
-        &subject, &panel, [](TestPanel* p, int raw) { p->int_value = deci_to_degrees(raw); });
+        &subject, &panel, [](TestPanel* p, int raw) { p->int_value = deci_to_degrees(raw); },
+        subject_never_freed());
 
     // Set to 210C (decidegrees = 2100)
     lv_subject_set_int(&subject, 2100);
@@ -114,8 +116,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_sync null subject return
                  "[factory][observer][edge]") {
     TestPanel panel;
 
-    auto guard = observe_int_sync<TestPanel>(nullptr, &panel,
-                                             [](TestPanel* p, int value) { p->int_value = value; });
+    auto guard = observe_int_sync<TestPanel>(
+        nullptr, &panel, [](TestPanel* p, int value) { p->int_value = value; },
+        subject_never_freed());
 
     REQUIRE_FALSE(guard); // Guard should be empty
 }
@@ -125,8 +128,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_sync null panel returns 
     lv_subject_t subject;
     lv_subject_init_int(&subject, 42);
 
-    auto guard = observe_int_sync<TestPanel>(&subject, nullptr,
-                                             [](TestPanel* p, int value) { p->int_value = value; });
+    auto guard = observe_int_sync<TestPanel>(
+        &subject, nullptr, [](TestPanel* p, int value) { p->int_value = value; },
+        subject_never_freed());
 
     REQUIRE_FALSE(guard); // Guard should be empty
 
@@ -145,7 +149,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_immediate fires synchron
     TestPanel panel;
 
     auto guard = observe_int_immediate<TestPanel>(
-        &subject, &panel, [](TestPanel* p, int value) { p->int_value = value; });
+        &subject, &panel, [](TestPanel* p, int value) { p->int_value = value; },
+        subject_never_freed());
 
     // No drain needed — immediate fires synchronously
     REQUIRE(panel.int_value == 0);
@@ -170,7 +175,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_async calls value handle
 
     auto guard = observe_int_async<TestPanel>(
         &subject, &panel, [](TestPanel* p, int value) { p->int_value = value; },
-        [](TestPanel* p) { p->on_value_update(); });
+        [](TestPanel* p) { p->on_value_update(); }, subject_never_freed());
 
     // Initial callback fires on subscription
     REQUIRE(panel.int_value == 0);
@@ -196,7 +201,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_async with temperature t
 
     auto guard = observe_int_async<TestPanel>(
         &subject, &panel, [](TestPanel* p, int raw) { p->int_value = deci_to_degrees(raw); },
-        [](TestPanel* p) { p->on_value_update(); });
+        [](TestPanel* p) { p->on_value_update(); }, subject_never_freed());
 
     // Set to 210C (decidegrees = 2100)
     lv_subject_set_int(&subject, 2100);
@@ -233,7 +238,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_string handles string values
     TestPanel panel;
 
     auto guard = observe_string<TestPanel>(
-        &subject, &panel, [](TestPanel* p, const char* str) { p->string_value = str; });
+        &subject, &panel, [](TestPanel* p, const char* str) { p->string_value = str; },
+        subject_never_freed());
 
     // Initial callback fires on subscription (deferred)
     drain();
@@ -264,12 +270,15 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_string parses axes like Cont
         bool all = false;
     } state;
 
-    auto guard = observe_string<AxesState>(&subject, &state, [](AxesState* s, const char* axes) {
-        s->x = strchr(axes, 'x') != nullptr;
-        s->y = strchr(axes, 'y') != nullptr;
-        s->z = strchr(axes, 'z') != nullptr;
-        s->all = s->x && s->y && s->z;
-    });
+    auto guard = observe_string<AxesState>(
+        &subject, &state,
+        [](AxesState* s, const char* axes) {
+            s->x = strchr(axes, 'x') != nullptr;
+            s->y = strchr(axes, 'y') != nullptr;
+            s->z = strchr(axes, 'z') != nullptr;
+            s->all = s->x && s->y && s->z;
+        },
+        subject_never_freed());
 
     // Empty = nothing homed
     drain();
@@ -309,7 +318,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_string_immediate fires synch
     TestPanel panel;
 
     auto guard = observe_string_immediate<TestPanel>(
-        &subject, &panel, [](TestPanel* p, const char* str) { p->string_value = str; });
+        &subject, &panel, [](TestPanel* p, const char* str) { p->string_value = str; },
+        subject_never_freed());
 
     // No drain needed — immediate fires synchronously
     REQUIRE(panel.string_value == "");
@@ -335,7 +345,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_string_async calls update ha
 
     auto guard = observe_string_async<TestPanel>(
         &subject, &panel, [](TestPanel* p, const char* str) { p->string_value = str; },
-        [](TestPanel* p) { p->on_value_update(); });
+        [](TestPanel* p) { p->on_value_update(); }, subject_never_freed());
 
     // Value change triggers callback
     lv_subject_copy_string(&subject, "test");
@@ -363,7 +373,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: ObserverGuard RAII cleanup works",
     {
         TestPanel panel;
         auto guard = observe_int_sync<TestPanel>(
-            &subject, &panel, [&callback_count](TestPanel*, int) { callback_count++; });
+            &subject, &panel, [&callback_count](TestPanel*, int) { callback_count++; },
+            subject_never_freed());
 
         drain();
         REQUIRE(callback_count.load() == 1); // Initial
@@ -398,7 +409,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: LVGL optimizes unchanged values",
     TestPanel panel;
 
     auto guard = observe_int_sync<TestPanel>(
-        &subject, &panel, [&callback_count](TestPanel*, int) { callback_count++; });
+        &subject, &panel, [&callback_count](TestPanel*, int) { callback_count++; },
+        subject_never_freed());
 
     drain();
     callback_count = 0; // Reset after initial
@@ -434,16 +446,20 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe_int_sync safe under observer
     // Outer observer reassigns inner_guard when notified — this is the
     // exact pattern that caused the crash in issue #82.
     inner_guard = observe_int_sync<TestPanel>(
-        &subject_b, &panel, [](TestPanel* p, int value) { p->int_value = value; });
+        &subject_b, &panel, [](TestPanel* p, int value) { p->int_value = value; },
+        subject_never_freed());
     drain();
 
     auto outer_guard = observe_int_sync<TestPanel>(
-        &subject_a, &panel, [&inner_guard, &subject_b](TestPanel* p, int /*value*/) {
+        &subject_a, &panel,
+        [&inner_guard, &subject_b](TestPanel* p, int /*value*/) {
             // Reassign inner observer — old one is destroyed here.
             // With deferred execution, this is safe.
             inner_guard = observe_int_sync<TestPanel>(
-                &subject_b, p, [](TestPanel* pp, int v) { pp->int_value = v * 2; });
-        });
+                &subject_b, p, [](TestPanel* pp, int v) { pp->int_value = v * 2; },
+                subject_never_freed());
+        },
+        subject_never_freed());
     drain();
 
     // Trigger the outer observer — should safely reassign inner

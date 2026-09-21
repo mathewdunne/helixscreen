@@ -185,6 +185,18 @@ class WidthSensorManager : public ISensorManager {
     [[nodiscard]] lv_subject_t* get_diameter_subject();
 
     /**
+     * @brief Death signal for the subjects this WidthSensorManager owns.
+     *
+     * Pass to observe_*() from anything that can outlive this object's
+     * deinit_subjects(): that path frees every observer node without bumping
+     * the ObserverGuard invalidation epoch, so a guard without the token
+     * dereferences a freed observer on its next reset().
+     */
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
+
+    /**
      * @brief Get subject for sensor count (for conditional UI visibility)
      * @return Subject (int: number of discovered sensors)
      */

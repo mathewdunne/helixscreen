@@ -10,6 +10,7 @@
 using helix::SlotInfo;
 using helix::SlotStatus;
 using helix::ams::apply_resolved;
+using helix::ams::copy_resolver_owned_identity;
 using helix::ams::narrow_status;
 using helix::ams::Observation;
 using helix::ams::ObservationSource;
@@ -205,4 +206,46 @@ TEST_CASE("A lane with no presence reading keeps the status its backend stamped"
 
     CHECK(slot.status == SlotStatus::LOADED);
     CHECK(slot.material == "PETG");
+}
+
+TEST_CASE("copy_resolver_owned_identity carries every field a paint can write",
+          "[lane][apply][1672]") {
+    // The set has to track apply_resolved()'s, field for field. A caller
+    // snapshots before a paint and copies back after; one field short and the
+    // paint's answer survives where the caller's value was meant to.
+    SlotInfo src;
+    src.color_rgb = 0x1E5AA8;
+    src.color_name = "Cobalt";
+    src.material = "PETG";
+    src.brand = "Polymaker";
+    src.spool_name = "PolyLite PETG";
+    src.catalog_id = "polymaker-polylite-petg";
+    src.product_name = "PolyLite PETG";
+    src.spoolman_id = 7;
+    src.spoolman_vendor_id = 3;
+    src.remaining_weight_g = 812.5F;
+    src.total_weight_g = 1000.0F;
+
+    SlotInfo dst;
+    dst.status = SlotStatus::LOADED;
+    dst.mapped_tool = 2;
+
+    copy_resolver_owned_identity(dst, src);
+
+    CHECK(dst.color_rgb == 0x1E5AA8u);
+    CHECK(dst.color_name == "Cobalt");
+    CHECK(dst.material == "PETG");
+    CHECK(dst.brand == "Polymaker");
+    CHECK(dst.spool_name == "PolyLite PETG");
+    CHECK(dst.catalog_id == "polymaker-polylite-petg");
+    CHECK(dst.product_name == "PolyLite PETG");
+    CHECK(dst.spoolman_id == 7);
+    CHECK(dst.spoolman_vendor_id == 3);
+    CHECK(dst.remaining_weight_g == Catch::Approx(812.5F));
+    CHECK(dst.total_weight_g == Catch::Approx(1000.0F));
+
+    // Outside the set: the fields apply_resolved() never writes, which a
+    // caller wants the paint's recomputation of, not its own stale copy.
+    CHECK(dst.status == SlotStatus::LOADED);
+    CHECK(dst.mapped_tool == 2);
 }

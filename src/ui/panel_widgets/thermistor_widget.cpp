@@ -242,11 +242,13 @@ void ThermistorWidget::attach_carousel() {
     auto& tsm = helix::sensors::TemperatureSensorManager::instance();
     auto token = lifetime_.token();
     version_observer_ = helix::ui::observe_int_sync<ThermistorWidget>(
-        tsm.get_sensor_count_subject(), this, [token](ThermistorWidget* self, int /*count*/) {
+        tsm.get_sensor_count_subject(), this,
+        [token](ThermistorWidget* self, int /*count*/) {
             if (token.expired())
                 return;
             self->bind_carousel_sensors();
-        });
+        },
+        tsm.get_subjects_lifetime());
 
     // Bind immediately (deferred observer fire may be dropped during populate_widgets freeze)
     bind_carousel_sensors();

@@ -810,7 +810,7 @@ class AmsState {
      * deinit_subjects() freed.
      */
     [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
-        return subjects_lifetime_;
+        return subjects_.get_subjects_lifetime();
     }
 
     lv_subject_t* get_tool_map_version_subject() {
@@ -1766,10 +1766,6 @@ class AmsState {
 
     // Subject manager for automatic cleanup
     SubjectManager subjects_;
-    /// See get_subjects_lifetime(). Created with the object and REPLACED (never
-    /// nulled) by deinit_subjects(): an empty token reads as "dead" and would
-    /// suppress removal for live observers.
-    SubjectLifetime subjects_lifetime_ = std::make_shared<bool>(true);
 
     /// Expires the setters that marshal themselves to the main thread. Declared
     /// after `subjects_` so reverse-order member destruction invalidates it

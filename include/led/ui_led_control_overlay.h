@@ -46,6 +46,18 @@ class LedControlOverlay : public OverlayBase {
     lv_obj_t* create(lv_obj_t* parent) override;
     void register_callbacks() override;
 
+    /**
+     * @brief Death signal for the subjects this LedControlOverlay owns.
+     *
+     * Pass to observe_*() from anything that can outlive this object's
+     * deinit_subjects(): that path frees every observer node without bumping
+     * the ObserverGuard invalidation epoch, so a guard without the token
+     * dereferences a freed observer on its next reset().
+     */
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
+
     [[nodiscard]] const char* get_name() const override {
         return "LED Control";
     }

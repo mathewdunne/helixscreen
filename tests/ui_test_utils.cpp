@@ -1074,6 +1074,11 @@ static lv_subject_t s_test_host_power_supported_subject;
 static lv_subject_t s_test_platform_extras_subject;
 static bool s_test_notification_subject_initialized = false;
 
+// Mirror of app_globals.cpp's g_subjects: the token observers of the stub
+// subjects above fetch, expired by app_globals_deinit_subjects() right before
+// those subjects are freed.
+static SubjectManager s_test_app_globals_subjects;
+
 void app_globals_init_subjects() {
     if (!s_test_notification_subject_initialized) {
         lv_subject_init_pointer(&s_test_notification_subject, nullptr);
@@ -1103,6 +1108,7 @@ void app_globals_init_subjects() {
 
 void app_globals_deinit_subjects() {
     if (s_test_notification_subject_initialized) {
+        s_test_app_globals_subjects.expire_subjects_lifetime();
         lv_subject_deinit(&s_test_notification_subject);
         lv_subject_deinit(&s_test_home_edit_mode_subject);
         lv_subject_deinit(&s_test_wizard_active_subject);
@@ -1134,6 +1140,10 @@ lv_subject_t& get_wizard_active_subject() {
     return s_test_wizard_active_subject;
 }
 
+SubjectLifetime get_app_globals_subjects_lifetime() {
+    return s_test_app_globals_subjects.get_subjects_lifetime();
+}
+
 // Stub for ui_notification_init_subjects (creates test subjects for notification badge)
 static lv_subject_t s_test_notification_count_subject;
 
@@ -1148,6 +1158,7 @@ void helix::ui::notification_init_subjects() {
 
 void helix::ui::notification_deinit_subjects() {
     if (s_test_notification_subjects_initialized) {
+        NotificationManager::instance().deinit_subjects();
         lv_subject_deinit(&s_test_notification_count_subject);
         lv_subject_deinit(&s_test_notification_history_version_subject);
         s_test_notification_subjects_initialized = false;
@@ -1157,6 +1168,19 @@ void helix::ui::notification_deinit_subjects() {
 
 lv_subject_t* helix::ui::notification_history_version_subject() {
     return &s_test_notification_history_version_subject;
+}
+
+// The real NotificationManager object is out of the test link; the singleton
+// itself is real, so panels can fetch its subjects' death signal. Its
+// deinit_subjects() is the production body over an empty SubjectManager:
+// expire_subjects_lifetime() inside deinit_all() is the whole effect.
+NotificationManager& NotificationManager::instance() {
+    static NotificationManager instance;
+    return instance;
+}
+
+void NotificationManager::deinit_subjects() {
+    subjects_.deinit_all();
 }
 
 void helix::ui::notification_register_callbacks() {

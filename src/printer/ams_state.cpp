@@ -908,16 +908,6 @@ void AmsState::deinit_subjects() {
 
     spdlog::trace("[AMS State] Deinitializing subjects");
 
-    // Death signal BEFORE the subjects go away: deinit frees every observer
-    // node on them, so outside ObserverGuards must learn they are gone or their
-    // next reset() calls lv_observer_remove() on freed memory. Replaced, not
-    // cleared — an empty token reads as "dead" and would suppress removal for
-    // observers registered after this teardown.
-    if (subjects_lifetime_) {
-        *subjects_lifetime_ = false;
-    }
-    subjects_lifetime_ = std::make_shared<bool>(true);
-
     // Expire the deferred setters still queued on the UpdateQueue. They capture
     // `this` and write the subjects torn down below, so without this the next
     // drain notifies a freed observer list (#1165, #1146).

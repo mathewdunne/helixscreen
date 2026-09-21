@@ -252,8 +252,8 @@
   <translation tag="Backup spool switching state unknown" ja="バックアップスプール切り替えの状態は不明です"/>
   <translation tag="Barcode Scanner" ja="バーコードスキャナー"/>
   <translation tag="Base" ja="基準"/>
-  <translation tag="Batch load failed"/>
-  <translation tag="Batch unload failed"/>
+  <translation tag="Batch load failed" ja="一括装填に失敗しました"/>
+  <translation tag="Batch unload failed" ja="一括排出に失敗しました"/>
   <translation tag="Beacon auto-calibrate sent" ja="Beacon自動キャリブレーション送信済み"/>
   <translation tag="Beacon calibrate sent" ja="Beaconキャリブレーション送信済み"/>
   <translation tag="Bed" ja="ベッド"/>
@@ -396,7 +396,7 @@
   <translation tag="Calibration failed - touch targets more precisely." ja="キャリブレーション失敗 – ターゲットをより正確にタッチしてください。"/>
   <translation tag="Calibration kept timing out. Your previous settings were kept." ja="キャリブレーションが繰り返しタイムアウトしました。以前の設定を維持しました。"/>
   <translation tag="Calibration may still be running — printer connection was interrupted" ja="キャリブレーションがまだ実行中の可能性があります — プリンター接続が中断されました"/>
-  <translation tag="Calibration may still be running — response timed out"/>
+  <translation tag="Calibration may still be running — response timed out" ja="キャリブレーションがまだ実行中の可能性があります — 応答タイムアウト"/>
   <translation tag="Calibration move may still be running — printer connection was interrupted" ja="キャリブレーション移動がまだ実行中の可能性があります — プリンター接続が中断されました"/>
   <translation tag="Calibration saved but cannot apply on SDL display" ja="キャリブレーションは保存されましたが SDL ディスプレイには適用できません"/>
   <translation tag="Calibration succeeded, but the frequency chart data couldn&apos;t be read." ja="キャリブレーションは成功しましたが、周波数グラフのデータを読み取れませんでした。"/>
@@ -457,7 +457,7 @@
   <translation tag="Change Printer Host" ja="プリンターホスト変更"/>
   <translation tag="Change Tool" ja="ツール交換"/>
   <translation tag="Change Tool While Paused" ja="一時停止中のツール交換"/>
-  <translation tag="Change heater control?"/>
+  <translation tag="Change heater control?" ja="ヒーターの制御を変更しますか？"/>
   <translation tag="Change tool" ja="ツールを交換"/>
   <translation tag="Changes apply immediately. Adjust during print for tuning." ja="変更は即座に適用されます。印刷中に調整して最適化できます。"/>
   <translation tag="Changes are temporary and reset on printer reboot" ja="変更は一時的で、プリンター再起動時にリセットされます"/>
@@ -532,8 +532,8 @@
   <translation tag="Closer" ja="近く"/>
   <translation tag="Closer = more squish | Farther = less squish" ja="近い = より圧縮 | 遠い = 圧縮少なめ"/>
   <translation tag="Coarse" ja="粗動"/>
-  <translation tag="Coarse Inner"/>
-  <translation tag="Coarse Outer"/>
+  <translation tag="Coarse Inner" ja="粗動・内側"/>
+  <translation tag="Coarse Outer" ja="粗動・外側"/>
   <translation tag="Code" ja="コード"/>
   <translation tag="Coil Temperature" ja="コイル温度"/>
   <translation tag="Collect logs and system info for support" ja="サポート用にログとシステム情報を収集"/>
@@ -771,7 +771,7 @@
   <translation tag="Distance from hub to toolhead" ja="ハブからツールヘッドまでの距離"/>
   <translation tag="Distance from lane extruder to hub" ja="レーンのエクストルーダーからハブまでの距離"/>
   <translation tag="Distance from toolhead sensor to nozzle tip" ja="ツールヘッドセンサーからノズル先端までの距離"/>
-  <translation tag="Distance moved per jog button tap"/>
+  <translation tag="Distance moved per jog button tap" ja="ジョグボタン1回あたりの移動距離"/>
   <translation tag="Do not power off your printer." ja="プリンターの電源を切らないでください。"/>
   <translation tag="Do not touch the printer during calibration" ja="キャリブレーション中はプリンターに触れないでください"/>
   <translation tag="Dock" ja="ドック"/>
@@ -782,7 +782,7 @@
   <translation tag="Documentation" ja="ドキュメント"/>
   <translation tag="Don&apos;t Save" ja="保存しない"/>
   <translation tag="Don&apos;t ask again" ja="今後表示しない"/>
-  <translation tag="Don&apos;t show again"/>
+  <translation tag="Don&apos;t show again" ja="次回から表示しない"/>
   <translation tag="Done" ja="完了"/>
   <translation tag="Download update?" ja="アップデートをダウンロードしますか？"/>
   <translation tag="Download v{}?" ja="v{}をダウンロードしますか？"/>
@@ -1108,7 +1108,7 @@
   <translation tag="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume." ja="フィラメントが切れました。自動補充がオフのため、CFSは自動でスプールを切り替えません。フィラメントを装填してから再開してください。"/>
   <translation tag="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume." ja="フィラメントが切れました。CFSは適合するスプールを認識していますが、該当するスロットは空です。いずれかを装填してから再開してください。"/>
   <translation tag="Filament reload failed" ja="フィラメントの再装填に失敗しました"/>
-  <translation tag="Filament remapping is unavailable"/>
+  <translation tag="Filament remapping is unavailable" ja="フィラメントのリマップは利用できません"/>
   <translation tag="Filament runout" ja="フィラメント切れ"/>
   <translation tag="Filament runout and motion detection sensors" ja="フィラメント切れとモーション検出センサー"/>
   <translation tag="Filament saved" ja="フィラメントを保存しました"/>
@@ -1129,8 +1129,8 @@
   <translation tag="Filter Fan: Off" ja="フィルターファン: オフ"/>
   <translation tag="Filter Fan: On" ja="フィルターファン: オン"/>
   <translation tag="Fine" ja="微動"/>
-  <translation tag="Fine Inner"/>
-  <translation tag="Fine Outer"/>
+  <translation tag="Fine Inner" ja="微動・内側"/>
+  <translation tag="Fine Outer" ja="微動・外側"/>
   <translation tag="Finish" ja="完了"/>
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" ja="フィラメントの装填・排出・交換の前に、印刷を完了またはキャンセルしてください"/>
   <translation tag="Finishing clean..." ja="清掃の仕上げ中..."/>
@@ -1247,7 +1247,7 @@
   <translation tag="HelixScreen Crashed" ja="HelixScreen がクラッシュしました"/>
   <translation tag="HelixScreen is detecting your display orientation" ja="HelixScreenがディスプレイの向きを検出しています"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." ja="HelixScreen はマルチスプール/カラー印刷操作のためにフィラメントチェンジャーと連携します。"/>
-  <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect."/>
+  <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." ja="HelixScreenがこれをprinter.cfgに書き込み、Klipperを再起動します。プリンターは一時的に切断されます。"/>
   <translation tag="HelixScreen {} is available — tap Update" ja="HelixScreen {} が利用可能です — 「更新」をタップ"/>
   <translation tag="Help &amp; About" ja="ヘルプと情報"/>
   <translation tag="Help Improve HelixScreen" ja="HelixScreen の改善にご協力ください"/>
@@ -1386,10 +1386,10 @@
   <translation tag="It&apos;s a new spool" ja="新しいスプールです"/>
   <translation tag="Jammed at the Toolhead" ja="ツールヘッドで詰まり"/>
   <translation tag="Job Queue" ja="ジョブキュー"/>
-  <translation tag="Jog Speed XY"/>
-  <translation tag="Jog Speed Z"/>
+  <translation tag="Jog Speed XY" ja="XY ジョグ速度"/>
+  <translation tag="Jog Speed Z" ja="Z ジョグ速度"/>
   <translation tag="Jog failed: {}" ja="ジョグに失敗しました: {}"/>
-  <translation tag="Jog speeds and step distances"/>
+  <translation tag="Jog speeds and step distances" ja="ジョグ速度とステップ距離"/>
   <translation tag="Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests." ja="Discord で HelixScreen コミュニティに参加して、ディスカッション、ヒント、トラブルシューティング支援、機能リクエストを共有しましょう。"/>
   <translation tag="Joining Wi-Fi disconnects the wired network." ja="WiFi に接続すると、有線ネットワークが切断されます。"/>
   <translation tag="Just now" ja="たった今"/>
@@ -1468,7 +1468,7 @@
   <translation tag="Listening" ja="聞き取り中"/>
   <translation tag="Live view from your webcam" ja="ウェブカメラのライブ表示"/>
   <translation tag="Load" ja="装填"/>
-  <translation tag="Load / Unload"/>
+  <translation tag="Load / Unload" ja="装填 / 排出"/>
   <translation tag="Load Failed" ja="装填に失敗しました"/>
   <translation tag="Load Filament" ja="フィラメントを装填"/>
   <translation tag="Load a filament first before trying to unload" ja="排出する前にまずフィラメントを装填してください"/>
@@ -1619,7 +1619,7 @@
   <translation tag="Missing value" ja="値が入力されていません"/>
   <translation tag="Mode" ja="モード"/>
   <translation tag="Modified" ja="変更日時"/>
-  <translation tag="Modifying G-code needs the HelixPrint plugin. Printing original file."/>
+  <translation tag="Modifying G-code needs the HelixPrint plugin. Printing original file." ja="G-codeの変更にはHelixPrintプラグインが必要です。元のファイルを印刷します。"/>
   <translation tag="Monitor for print abnormalities (K2 Plus camera-based)" ja="印刷異常を監視 (K2 Plus カメラベース)"/>
   <translation tag="Monitor for print abnormalities (camera-based)" ja="印刷異常を監視 (カメラベース)"/>
   <translation tag="Monitor prints in progress — time remaining, current layer, and progress. Tap to pause, resume, or cancel the active job." ja="印刷の進行状況を監視します — 残り時間、現在のレイヤー、進捗。タップすれば進行中のジョブを一時停止、再開、キャンセルできます。"/>
@@ -2019,7 +2019,7 @@
   <translation tag="Print ending..." ja="印刷終了中..."/>
   <translation tag="Print error" ja="印刷エラー"/>
   <translation tag="Print failed" ja="印刷失敗"/>
-  <translation tag="Print history will show the rewritten name"/>
+  <translation tag="Print history will show the rewritten name" ja="印刷履歴には書き換え後の名前が表示されます"/>
   <translation tag="Print issue detected" ja="印刷の問題を検出しました"/>
   <translation tag="Print jobs waiting to run" ja="実行待ちの印刷ジョブ"/>
   <translation tag="Print preparation failed: {}" ja="印刷準備に失敗しました: {}"/>
@@ -2145,7 +2145,7 @@
   <translation tag="RFCOMM connect failed: " ja="RFCOMM 接続に失敗しました: "/>
   <translation tag="RFID reader malfunction (left)" ja="RFID リーダーの異常（左）"/>
   <translation tag="RFID reader malfunction (right)" ja="RFID リーダーの異常（右）"/>
-  <translation tag="RFID, auto-refill, nozzle and link care"/>
+  <translation tag="RFID, auto-refill, nozzle and link care" ja="RFID、自動補充、ノズルと接続のメンテナンス"/>
   <translation tag="RSS" ja="RSS"/>
   <translation tag="RSS:" ja="RSS:"/>
   <translation tag="Ramming Volume" ja="ラミング量"/>
@@ -2198,8 +2198,8 @@
   <translation tag="Remaining (g)" ja="残量 (g)"/>
   <translation tag="Remaining Weight (g)" ja="残量（g）"/>
   <translation tag="Remap Tool" ja="ツールを再割当"/>
-  <translation tag="Remapping rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally."/>
-  <translation tag="Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart."/>
+  <translation tag="Remapping rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally." ja="リマップは印刷前にジョブファイルを書き換えます。このプリンターのMoonrakerは旧バージョンのため、HelixPrintプラグインが後から元のファイル名を復元できず、完了したジョブは書き換え後の名前で表示されます。リマップ自体は正常に動作します。"/>
+  <translation tag="Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." ja="リマップは印刷前にジョブファイルを書き換えます。HelixPrintプラグインがない場合、書き換えられたコピーが印刷履歴に残るため、完了したジョブは選んだファイルではなくmodified_1730824_benchy.gcodeのような名前で表示されます。&#10;&#10;プラグインのインストールはすぐに完了し、再起動は必要ありません。"/>
   <translation tag="Remap…" ja="リマップ…"/>
   <translation tag="Remember slot spool details across an eject" ja="取り出し後もスロットのスプール情報を記憶します"/>
   <translation tag="Remove" ja="削除"/>
@@ -2233,8 +2233,8 @@
   <translation tag="Reset" ja="リセット"/>
   <translation tag="Reset Blade Counter" ja="ブレードカウンターをリセット"/>
   <translation tag="Reset CFS" ja="CFSをリセット"/>
-  <translation tag="Reset Distances"/>
-  <translation tag="Reset Distances?"/>
+  <translation tag="Reset Distances" ja="距離をリセット"/>
+  <translation tag="Reset Distances?" ja="距離をリセットしますか？"/>
   <translation tag="Reset Endless Spool" ja="エンドレススプールをリセット"/>
   <translation tag="Reset Endless Spool?" ja="エンドレススプールをリセットしますか？"/>
   <translation tag="Reset Home Screen?" ja="ホーム画面をリセットしますか？"/>
@@ -2424,7 +2424,7 @@
   <translation tag="Select a valid tool" ja="有効なツールを選択してください"/>
   <translation tag="Select a valid {}" ja="有効な{}を選択してください"/>
   <translation tag="Select a {}" ja="{}を選択してください"/>
-  <translation tag="Select at least one"/>
+  <translation tag="Select at least one" ja="1つ以上選択してください"/>
   <translation tag="Select fan" ja="ファンを選択"/>
   <translation tag="Select gate" ja="ゲートを選択"/>
   <translation tag="Select macro for first button" ja="最初のボタンのマクロを選択"/>
@@ -2643,12 +2643,12 @@
   <translation tag="Switch to v%s" ja="v%s に切り替え"/>
   <translation tag="Switched to {}" ja="{} に切替えました"/>
   <translation tag="Switches to a backup spool on runout" ja="フィラメント切れ時にバックアップスプールへ切り替えます"/>
-  <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature."/>
-  <translation tag="Switching back to PID changes how this heater is controlled."/>
-  <translation tag="Switching back to PID requires a config change and Klipper restart."/>
+  <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." ja="PIDに戻すと、このヒーターの制御方法が変わり、その後キャリブレーションが行われます。温度に達した状態で数分かかります。"/>
+  <translation tag="Switching back to PID changes how this heater is controlled." ja="PIDに戻すと、このヒーターの制御方法が変わります。"/>
+  <translation tag="Switching back to PID requires a config change and Klipper restart." ja="PIDに戻すには設定変更とKlipperの再起動が必要です。"/>
   <translation tag="Switching heater control to MPC. Klipper will restart." ja="ヒーター制御をMPCに切り替えます。Klipperが再起動します。"/>
-  <translation tag="Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature."/>
-  <translation tag="Switching to MPC changes how this heater is controlled."/>
+  <translation tag="Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." ja="MPCに切り替えると、このヒーターの制御方法が変わり、その後キャリブレーションが行われます。温度に達した状態で数分かかります。"/>
+  <translation tag="Switching to MPC changes how this heater is controlled." ja="MPCに切り替えると、このヒーターの制御方法が変わります。"/>
   <translation tag="Switching to MPC requires a config change and Klipper restart." ja="MPCへの切り替えには設定変更とKlipperの再起動が必要です。"/>
   <translation tag="Sync with Spoolman" ja="Spoolman と同期"/>
   <translation tag="Sysfs" ja="Sysfs"/>
@@ -2809,7 +2809,7 @@
   <translation tag="This will reset all settings to defaults. This action cannot be undone." ja="これはすべての設定をデフォルトにリセットします。この操作は元に戻せません。"/>
   <translation tag="This will restart Klipper firmware. Any active operations will be interrupted." ja="Klipperファームウェアを再起動します。実行中の操作は中断されます。"/>
   <translation tag="This will restart Klipper." ja="これにより Klipper が再起動します。"/>
-  <translation tag="This will restore the default jog step distances for all three modes."/>
+  <translation tag="This will restore the default jog step distances for all three modes." ja="3つのモードすべてのジョグステップ距離がデフォルトに戻ります。"/>
   <translation tag="This will save the Z-offset and restart Klipper to write the configuration. The printer will briefly disconnect." ja="Z-offset を保存し、設定を書き込むために Klipper を再起動します。プリンターは一時的に切断されます。"/>
   <translation tag="This writes the tool offsets to the printer&apos;s config and restarts Klipper, which takes a few seconds. Until then they apply only to this session." ja="ツールオフセットをプリンターの設定に書き込み、Klipper を再起動します。数秒かかります。それまでは、このセッションにのみ適用されます。"/>
   <translation tag="Thorough" ja="徹底的"/>
@@ -2891,8 +2891,8 @@
   <translation tag="Tune" ja="チューニング"/>
   <translation tag="Tuning tower enabled - start a print to test" ja="チューニングタワー有効 - 印刷を開始してテストしてください"/>
   <translation tag="Turbo" ja="ターボ"/>
-  <translation tag="Turbo Inner"/>
-  <translation tag="Turbo Outer"/>
+  <translation tag="Turbo Inner" ja="ターボ・内側"/>
+  <translation tag="Turbo Outer" ja="ターボ・外側"/>
   <translation tag="Turn Off" ja="オフにする"/>
   <translation tag="Turn Off WiFi?" ja="WiFiをオフにしますか？"/>
   <translation tag="Turn On" ja="オンにする"/>
@@ -3079,7 +3079,7 @@
   <translation tag="X" ja="X"/>
   <translation tag="X Axis" ja="X軸"/>
   <translation tag="X Offset" ja="Xオフセット"/>
-  <translation tag="X and Y jog feedrate"/>
+  <translation tag="X and Y jog feedrate" ja="X/Y軸のジョグ移動速度"/>
   <translation tag="X axis applied, but Y axis failed" ja="X軸は適用されましたが、Y軸は失敗しました"/>
   <translation tag="X axis done, starting Y..." ja="X軸が完了しました。Y軸を開始します..."/>
   <translation tag="X jog blocked at bed edge" ja="X軸移動はベッド端でブロックされました"/>
@@ -3108,8 +3108,8 @@
   <translation tag="Z Offset" ja="Zオフセット"/>
   <translation tag="Z Range" ja="Z 範囲"/>
   <translation tag="Z Tilt Adjust..." ja="Zチルト調整中..."/>
-  <translation tag="Z jog blocked at axis limit"/>
-  <translation tag="Z jog feedrate"/>
+  <translation tag="Z jog blocked at axis limit" ja="Z軸移動は軸の限界でブロックされました"/>
+  <translation tag="Z jog feedrate" ja="Z軸のジョグ移動速度"/>
   <translation tag="Z motor calibration failed" ja="Z モーターの校正に失敗しました"/>
   <translation tag="Z probes for bed leveling and mesh generation" ja="ベッドレベリングとメッシュ生成用 Z プローブ"/>
   <translation tag="Z-Off:" ja="Z-Off:"/>

@@ -129,7 +129,7 @@ class BeltTensionPanel : public OverlayBase {
     /// re-registration, the same contract PrinterState::get_subjects_lifetime()
     /// gives observers of its subjects (#705).
     [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
-        return subjects_lifetime_;
+        return subjects_.get_subjects_lifetime();
     }
 
     /// Read a HELIX_BELT_CAPTURE_DIR-style file and feed its ring-down and
@@ -305,16 +305,9 @@ class BeltTensionPanel : public OverlayBase {
     bool gate_observers_wired_ = false;
 
     /// Watches replay_path_subject_ and calls replay_capture(). Registered in
-    /// init_subjects() against this panel's own subjects_lifetime_, exactly
+    /// init_subjects() against this panel's own subject lifetime, exactly
     /// like the gate observers above watch PrinterState's.
     ObserverGuard replay_observer_;
-
-    /// Handed to BeltTrace's tick observer via get_subjects_lifetime().
-    /// Flipped false and replaced on every deinit_subjects()/init_subjects()
-    /// cycle, exactly like PrinterState::subjects_lifetime_ (#705) - a trace
-    /// widget that outlives one cycle must not call lv_observer_remove() on a
-    /// subject that has already been deinited.
-    SubjectLifetime subjects_lifetime_ = std::make_shared<bool>(true);
 
     // Klippy's UDS path, from Moonraker's /server/config. Reachability is
     // probed once per activation, not per gate refresh: the gate recomputes on

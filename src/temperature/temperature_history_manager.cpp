@@ -463,6 +463,7 @@ void TemperatureHistoryManager::subscribe_to_subjects() {
                 }
             },
             this);
+        extruder_version_observer_.set_alive_token(printer_state_.get_subjects_lifetime());
     }
 
     auto& sensor_mgr = helix::sensors::TemperatureSensorManager::instance();
@@ -477,6 +478,7 @@ void TemperatureHistoryManager::subscribe_to_subjects() {
                 }
             },
             this);
+        sensor_count_observer_.set_alive_token(sensor_mgr.get_subjects_lifetime());
     }
 
     resubscribe();

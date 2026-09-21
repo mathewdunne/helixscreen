@@ -333,6 +333,16 @@ class AmsSubscriptionBackend : public AmsBackend {
     ///
     /// Defaults to true, so a backend that forgets to answer loses a re-read
     /// rather than gaining a race.
+    ///
+    /// @warning Answering false is what turns request_resync()'s reload path
+    ///          on, and that path refreshes the LANE only. A backend's own
+    ///          `overrides_` map keeps whatever it loaded at start. Today that
+    ///          is harmless because ToolChanger is the only backend answering
+    ///          false and it reads `overrides_` for nothing but persistence.
+    ///          A backend that reads `overrides_` to DECIDE something, as CFS
+    ///          does in three places, would start deciding from a map the
+    ///          resync did not refresh. Check that before changing this answer
+    ///          (prestonbrown/helixscreen#1629).
     [[nodiscard]] virtual bool firmware_publishes_lane_identity() const {
         return true;
     }

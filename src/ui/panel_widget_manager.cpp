@@ -7,11 +7,16 @@
 #include "ui_notification.h"
 #include "ui_utils.h"
 
+#include "ams_state.h"
+#include "app_globals.h"
 #include "config.h"
+#include "filament_sensor_manager.h"
 #include "grid_edit_mode.h"
 #include "grid_layout.h"
+#include "humidity_sensor_manager.h"
 #include "layout_manager.h"
 #include "layout_port.h"
+#include "led/led_controller.h"
 #include "observer_factory.h"
 #include "panel_widget.h"
 #include "panel_widget_config.h"
@@ -20,7 +25,9 @@
 #include "src/ui/panel_widgets/tile_sizing.h"
 #include "system/crash_handler.h"
 #include "system/telemetry_manager.h"
+#include "temperature_sensor_manager.h"
 #include "theme_manager.h"
+#include "width_sensor_manager.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -1286,6 +1293,43 @@ std::vector<std::string> PanelWidgetManager::compute_visible_widget_ids(const st
     return ids;
 }
 
+namespace {
+// Hardware-gate subjects live in several owners, so the death signal is
+// resolved per gate name. A def whose subject has no entry here is left
+// unobserved with a warning: handing observe_*() a token from the wrong
+// owner would read as defended while defending nothing. Map the owner here
+// when adding a gated widget.
+SubjectLifetime gate_subject_lifetime(const char* name) {
+    if (std::strcmp(name, "ams_slot_count") == 0 || std::strcmp(name, "ams_supports_bypass") == 0 ||
+        std::strcmp(name, "clog_meter_mode") == 0) {
+        return AmsState::instance().get_subjects_lifetime();
+    }
+    if (std::strcmp(name, "filament_sensor_count") == 0) {
+        return FilamentSensorManager::instance().get_subjects_lifetime();
+    }
+    if (std::strcmp(name, "humidity_sensor_count") == 0) {
+        return sensors::HumiditySensorManager::instance().get_subjects_lifetime();
+    }
+    if (std::strcmp(name, "temp_sensor_count") == 0) {
+        return sensors::TemperatureSensorManager::instance().get_subjects_lifetime();
+    }
+    if (std::strcmp(name, "width_sensor_count") == 0) {
+        return sensors::WidthSensorManager::instance().get_subjects_lifetime();
+    }
+    if (std::strcmp(name, "led_controllable") == 0) {
+        return led::LedController::instance().get_subjects_lifetime();
+    }
+    if (std::strcmp(name, "platform_host_power_supported") == 0) {
+        return get_app_globals_subjects_lifetime();
+    }
+    if (std::strcmp(name, "power_device_count") == 0 ||
+        std::strcmp(name, "printer_has_chamber") == 0) {
+        return get_printer_state().get_subjects_lifetime();
+    }
+    return nullptr;
+}
+} // namespace
+
 void PanelWidgetManager::setup_gate_observers(const std::string& panel_id,
                                               RebuildCallback rebuild_cb) {
     using helix::ui::observe_int_sync;
@@ -1356,11 +1400,22 @@ void PanelWidgetManager::setup_gate_observers(const std::string& panel_id,
             spdlog::trace("[PanelWidgetManager] Gate subject '{}' not registered yet", name);
             continue;
         }
+        // ponytail: a hand-maintained name->owner table, replace with a lifetime
+        // carried by the subject registry if gate names start churning
+        SubjectLifetime gate_lifetime = gate_subject_lifetime(name);
+        if (!gate_lifetime) {
+            spdlog::warn(
+                "[PanelWidgetManager] Gate subject '{}' has no owner lifetime mapped; "
+                "gate changes will not rebuild until it is added to gate_subject_lifetime()",
+                name);
+            continue;
+        }
         // Capture panel_id by value into the lambda so the async rebuild
         // can find the right rebuild_pending_ entry even if `this` outlives
         // a particular panel registration.
         observers.push_back(observe_int_sync<PanelWidgetManager>(
-            subject, this, [name, panel_id](PanelWidgetManager* self, int value) {
+            subject, this,
+            [name, panel_id](PanelWidgetManager* self, int value) {
                 spdlog::debug("[PanelWidgetManager] gate '{}' -> {} (rebuild)", name, value);
                 crash_handler::breadcrumb::note("gate", name, value);
 
@@ -1384,7 +1439,8 @@ void PanelWidgetManager::setup_gate_observers(const std::string& panel_id,
                 // ([L083] family). lv_async_call escapes the UpdateQueue
                 // batch per CLAUDE.md "safe escape routes".
                 lv_async_call(&PanelWidgetManager::gate_rebuild_trampoline, &s);
-            }));
+            },
+            gate_lifetime));
         spdlog::trace("[PanelWidgetManager] Observing gate subject '{}' for panel '{}'", name,
                       panel_id);
     }

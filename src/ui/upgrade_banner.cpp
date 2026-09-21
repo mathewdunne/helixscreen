@@ -72,23 +72,25 @@ void UpgradeBanner::init() {
     // a new version is detected. lifetime token keeps deferred callbacks
     // safe if init() is somehow called late (shouldn't happen, but defensive).
     auto tok = lifetime_.token();
-    status_observer_ =
-        helix::ui::observe_int_sync<UpgradeBanner>(UpdateChecker::instance().status_subject(), this,
-                                                   [tok](UpgradeBanner* self, int /*status*/) {
-                                                       if (tok.expired())
-                                                           return;
-                                                       self->refresh();
-                                                   });
+    status_observer_ = helix::ui::observe_int_sync<UpgradeBanner>(
+        UpdateChecker::instance().status_subject(), this,
+        [tok](UpgradeBanner* self, int /*status*/) {
+            if (tok.expired())
+                return;
+            self->refresh();
+        },
+        UpdateChecker::instance().get_subjects_lifetime());
 
     // Also re-render when the available version string changes — the text
     // shown in the banner comes from UpdateChecker::get_cached_update().
-    version_observer_ =
-        helix::ui::observe_string(UpdateChecker::instance().new_version_subject(), this,
-                                  [tok](UpgradeBanner* self, const char* /*version*/) {
-                                      if (tok.expired())
-                                          return;
-                                      self->refresh();
-                                  });
+    version_observer_ = helix::ui::observe_string(
+        UpdateChecker::instance().new_version_subject(), this,
+        [tok](UpgradeBanner* self, const char* /*version*/) {
+            if (tok.expired())
+                return;
+            self->refresh();
+        },
+        UpdateChecker::instance().get_subjects_lifetime());
 
     refresh();
     spdlog::info("[UpgradeBanner] Initialized (hidden)");

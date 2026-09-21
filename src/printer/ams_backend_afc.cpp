@@ -278,17 +278,17 @@ void AmsBackendAfc::on_started() {
     // namespace on every boot), so sharing it would both lose our records and
     // ingest AFC's as if the user had authored them.
     if (api_) {
-        override_store_ = std::make_unique<helix::ams::FilamentSlotOverrideStore>(
-            api_, "afc", helix::ams::lane_key_style_for(get_type()), OVERRIDE_NAMESPACE);
-        auto loaded = override_store_->load_blocking();
-        helix::ams::ingest_legacy_records(*override_store_, helix::ams::LegacyLockKeys::LaneData,
-                                          backend_index());
-        const auto loaded_count = loaded.size();
+        auto loaded = helix::ams::make_loaded_override_store(api_, "afc", get_type(),
+                                                             backend_log_tag(), OVERRIDE_NAMESPACE);
+        if (loaded.store) {
+            helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
+                                              backend_index());
+        }
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            overrides_ = std::move(loaded);
+            override_store_ = std::move(loaded.store);
+            overrides_ = std::move(loaded.overrides);
         }
-        spdlog::info("[AMS AFC] Loaded {} slot overrides", loaded_count);
     }
 
     detect_afc_version();

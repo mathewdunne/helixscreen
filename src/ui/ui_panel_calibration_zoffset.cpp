@@ -218,7 +218,8 @@ void ZOffsetCalibrationPanel::setup_widgets() {
 
             spdlog::trace("[ZOffsetCal] Z position from Klipper: {:.3f}mm", z_mm);
             self->update_z_position(z_mm);
-        });
+        },
+        ps.get_subjects_lifetime());
 
     spdlog::debug("[ZOffsetCal] Widget setup complete");
 }
@@ -415,7 +416,8 @@ void ZOffsetCalibrationPanel::begin_saving_restart_watch() {
                     }
                 });
             }
-        });
+        },
+        get_printer_state().get_subjects_lifetime());
 }
 
 void ZOffsetCalibrationPanel::end_saving_restart_watch() {

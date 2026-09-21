@@ -818,7 +818,8 @@ void PrintStartController::observe_lifecycle_for_restore() {
     // job's end (#1386).
     print_active_since_remap_ = false;
     print_state_observer_ = observe_print_lifecycle<PrintStartController>(
-        subject, this, [](PrintStartController* self, PrintState state) {
+        subject, this,
+        [](PrintStartController* self, PrintState state) {
             if (job_holds_machine(state)) {
                 self->print_active_since_remap_ = true;
                 return;
@@ -830,7 +831,8 @@ void PrintStartController::observe_lifecycle_for_restore() {
                 self->restore_filament_mapping();
                 self->print_state_observer_.reset();
             }
-        });
+        },
+        printer_state_.get_subjects_lifetime());
 
     spdlog::debug("[PrintStartController] Observing print lifecycle for mapping restore");
 }
@@ -852,7 +854,8 @@ void PrintStartController::observe_klippy_state_for_restore() {
     // no-op. Without this the snapshot would sit until a full app restart, which
     // is the only other thing that replays pending_remap.json.
     klippy_state_observer_ = observe_int_sync<PrintStartController>(
-        subject, this, [](PrintStartController* self, int state_val) {
+        subject, this,
+        [](PrintStartController* self, int state_val) {
             if (static_cast<KlippyState>(state_val) != KlippyState::READY) {
                 return;
             }
@@ -860,7 +863,8 @@ void PrintStartController::observe_klippy_state_for_restore() {
                 "[PrintStartController] Klipper ready — retrying deferred mapping restore");
             self->klippy_state_observer_.reset();
             self->restore_filament_mapping();
-        });
+        },
+        printer_state_.get_subjects_lifetime());
 
     spdlog::debug("[PrintStartController] Observing klippy state for deferred mapping restore");
 }

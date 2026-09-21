@@ -63,6 +63,8 @@
 
 #pragma once
 
+#include "ui_observer_guard.h" // SubjectLifetime
+
 #include "helix/xml/scoped_subject_registry.h"
 #include "helix_lvgl_anomaly.h"
 #include "lvgl/lvgl.h"
@@ -103,11 +105,15 @@ class SubjectManager {
     SubjectManager(const SubjectManager&) = delete;
     SubjectManager& operator=(const SubjectManager&) = delete;
 
-    // Movable (transfers subject ownership)
+    // Movable (transfers subject ownership). The moved-from manager gets a
+    // fresh live token: get_subjects_lifetime() must never hand out an empty
+    // one, which observe_*() reads as no defence at all.
     SubjectManager(SubjectManager&& other) noexcept
-        : subjects_(std::move(other.subjects_)), subject_names_(std::move(other.subject_names_)) {
+        : subjects_(std::move(other.subjects_)), subject_names_(std::move(other.subject_names_)),
+          subjects_lifetime_(std::move(other.subjects_lifetime_)) {
         other.subjects_.clear();
         other.subject_names_.clear();
+        other.subjects_lifetime_ = std::make_shared<bool>(true);
     }
 
     SubjectManager& operator=(SubjectManager&& other) noexcept {
@@ -115,10 +121,55 @@ class SubjectManager {
             deinit_all();
             subjects_ = std::move(other.subjects_);
             subject_names_ = std::move(other.subject_names_);
+            subjects_lifetime_ = std::move(other.subjects_lifetime_);
             other.subjects_.clear();
             other.subject_names_.clear();
+            other.subjects_lifetime_ = std::make_shared<bool>(true);
         }
         return *this;
+    }
+
+    /**
+     * @brief Death signal for the subjects this manager owns
+     *
+     * Hand to observe_*() by anything that can outlive a deinit_all(): the
+     * subjects' observer nodes are freed there without bumping the
+     * ObserverGuard invalidation epoch, so a guard without this token calls
+     * lv_observer_remove() on a freed node. Always live — flipped and renewed
+     * by deinit_all() / expire_subjects_lifetime(), never left empty.
+     */
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_lifetime_;
+    }
+
+    /**
+     * @brief Flip the death signal false and mint a fresh live token
+     *
+     * For owners whose token must expire BEFORE teardown proper begins — an
+     * umbrella token covering sub-components torn down ahead of this manager's
+     * own subjects (PrinterState::deinit_subjects()). deinit_all() runs this
+     * at its top; calling it separately just moves the flip earlier, and the
+     * flip deinit_all() performs later lands on the renewed token nobody
+     * fetched in between.
+     */
+    void expire_subjects_lifetime() {
+        if (subjects_lifetime_) {
+            *subjects_lifetime_ = false;
+        }
+        subjects_lifetime_ = std::make_shared<bool>(true);
+    }
+
+    /**
+     * @brief Flip the death signal false and leave it dead
+     *
+     * Destructor backstops only: a dying object has no successor generation,
+     * so a renewed token could never be fetched and the flip is the whole
+     * message.
+     */
+    void mark_subjects_dead() {
+        if (subjects_lifetime_) {
+            *subjects_lifetime_ = false;
+        }
     }
 
     /**
@@ -181,6 +232,13 @@ class SubjectManager {
      *       StaticPanelRegistry BEFORE lv_deinit(); do not destroy them after.
      */
     void deinit_all() {
+        // Death signal before BOTH early returns below. An empty list still
+        // means this generation's subjects are gone, and when LVGL is down the
+        // subjects are not freed but the bookkeeping is dropped — a guard
+        // holding a copy with a live refcount must read them as dead either
+        // way, and it reads the VALUE, not the refcount.
+        expire_subjects_lifetime();
+
         if (subjects_.empty()) {
             return;
         }
@@ -271,6 +329,8 @@ class SubjectManager {
     /// XML-scope name per entry in subjects_, same index. Empty when a subject was
     /// registered without one (register_subject() called directly, not via a macro).
     std::vector<std::string> subject_names_;
+    /// Death signal handed out by get_subjects_lifetime().
+    SubjectLifetime subjects_lifetime_ = std::make_shared<bool>(true);
 };
 
 /**

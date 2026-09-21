@@ -452,7 +452,8 @@ void TempGraphController::setup_observers() {
                         if (token.expired() || gen != self->generation_)
                             return;
                         self->resolve_pending_series();
-                    });
+                    },
+                    ps.get_subjects_lifetime());
             }
         }
 
@@ -465,7 +466,8 @@ void TempGraphController::setup_observers() {
                         if (token.expired() || gen != self->generation_)
                             return;
                         self->resolve_pending_series();
-                    });
+                    },
+                    sensor_mgr.get_subjects_lifetime());
             }
         }
     }
@@ -674,7 +676,8 @@ void TempGraphController::setup_connection_observer() {
                         "[TempGraphController] Connection restored — re-attaching observers");
                     self->reattach_observers();
                 }
-            });
+            },
+            ps.get_subjects_lifetime());
     }
 }
 

@@ -38,7 +38,8 @@ static void humidity_widget_init_subjects() {
         helix::sensors::HumiditySensorManager::instance().get_chamber_humidity_subject();
     if (raw_subj) {
         s_humidity_observer = helix::ui::observe_int_sync<lv_subject_t>(
-            raw_subj, &s_chamber_humidity_text, [](lv_subject_t* target, int humidity_x10) {
+            raw_subj, &s_chamber_humidity_text,
+            [](lv_subject_t* target, int humidity_x10) {
                 char buf[8];
                 if (humidity_x10 >= 0) {
                     helix::format::format_humidity(humidity_x10, buf, sizeof(buf));
@@ -48,7 +49,8 @@ static void humidity_widget_init_subjects() {
                 if (strcmp(lv_subject_get_string(target), buf) != 0) {
                     lv_subject_copy_string(target, buf);
                 }
-            });
+            },
+            helix::sensors::HumiditySensorManager::instance().get_subjects_lifetime());
     }
 
     s_subjects_initialized = true;

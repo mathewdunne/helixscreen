@@ -18,6 +18,6 @@
          picker can be closed without dispatching anything. -->
     <modal_button_row tertiary_text="Cancel"
                       tertiary_tag="Cancel" hide_tertiary="false" secondary_text="Unload" secondary_tag="Unload"
-                      secondary_variant="warning" primary_text="Load" primary_tag="Load"/>
+                      secondary_variant="secondary" primary_text="Load" primary_tag="Load"/>
   </view>
 </component>

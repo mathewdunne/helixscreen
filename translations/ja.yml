@@ -254,8 +254,8 @@ translations:
   Backup spool switching state unknown: バックアップスプール切り替えの状態は不明です
   Barcode Scanner: バーコードスキャナー
   Base: 基準
-  Batch load failed: ''
-  Batch unload failed: ''
+  Batch load failed: 一括装填に失敗しました
+  Batch unload failed: 一括排出に失敗しました
   Beacon auto-calibrate sent: Beacon自動キャリブレーション送信済み
   Beacon calibrate sent: Beaconキャリブレーション送信済み
   Bed: ベッド
@@ -400,7 +400,7 @@ translations:
   Calibration failed - touch targets more precisely.: キャリブレーション失敗 – ターゲットをより正確にタッチしてください。
   Calibration kept timing out. Your previous settings were kept.: キャリブレーションが繰り返しタイムアウトしました。以前の設定を維持しました。
   Calibration may still be running — printer connection was interrupted: 'キャリブレーションがまだ実行中の可能性があります — プリンター接続が中断されました'
-  Calibration may still be running — response timed out: ''
+  Calibration may still be running — response timed out: 'キャリブレーションがまだ実行中の可能性があります — 応答タイムアウト'
   Calibration move may still be running — printer connection was interrupted: 'キャリブレーション移動がまだ実行中の可能性があります — プリンター接続が中断されました'
   Calibration saved but cannot apply on SDL display: キャリブレーションは保存されましたが SDL ディスプレイには適用できません
   Calibration succeeded, but the frequency chart data couldn't be read.: キャリブレーションは成功しましたが、周波数グラフのデータを読み取れませんでした。
@@ -462,7 +462,7 @@ translations:
   Change Printer Host: プリンターホスト変更
   Change Tool: ツール交換
   Change Tool While Paused: 一時停止中のツール交換
-  Change heater control?: ''
+  Change heater control?: ヒーターの制御を変更しますか？
   Change tool: ツールを交換
   Changes apply immediately. Adjust during print for tuning.: 変更は即座に適用されます。印刷中に調整して最適化できます。
   Changes are temporary and reset on printer reboot: 変更は一時的で、プリンター再起動時にリセットされます
@@ -539,8 +539,8 @@ translations:
   Closer: 近く
   Closer = more squish | Farther = less squish: 近い = より圧縮 | 遠い = 圧縮少なめ
   Coarse: 粗動
-  Coarse Inner: ''
-  Coarse Outer: ''
+  Coarse Inner: 粗動・内側
+  Coarse Outer: 粗動・外側
   Code: コード
   Coil Temperature: コイル温度
   Collect logs and system info for support: サポート用にログとシステム情報を収集
@@ -786,7 +786,7 @@ translations:
   Distance from hub to toolhead: 'ハブからツールヘッドまでの距離'
   Distance from lane extruder to hub: 'レーンのエクストルーダーからハブまでの距離'
   Distance from toolhead sensor to nozzle tip: 'ツールヘッドセンサーからノズル先端までの距離'
-  Distance moved per jog button tap: ''
+  Distance moved per jog button tap: ジョグボタン1回あたりの移動距離
   Do not power off your printer.: プリンターの電源を切らないでください。
   Do not touch the printer during calibration: キャリブレーション中はプリンターに触れないでください
   Dock: ドック
@@ -797,7 +797,7 @@ translations:
   Documentation: ドキュメント
   Don't Save: 保存しない
   Don't ask again: 今後表示しない
-  Don't show again: ''
+  Don't show again: 次回から表示しない
   Done: 完了
   Download update?: アップデートをダウンロードしますか？
   Download v{}?: v{}をダウンロードしますか？
@@ -1131,7 +1131,7 @@ translations:
   Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'フィラメントが切れました。自動補充がオフのため、CFSは自動でスプールを切り替えません。フィラメントを装填してから再開してください。'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: フィラメントが切れました。CFSは適合するスプールを認識していますが、該当するスロットは空です。いずれかを装填してから再開してください。
   Filament reload failed: フィラメントの再装填に失敗しました
-  Filament remapping is unavailable: ''
+  Filament remapping is unavailable: フィラメントのリマップは利用できません
   Filament runout: フィラメント切れ
   Filament runout and motion detection sensors: フィラメント切れとモーション検出センサー
   Filament saved: フィラメントを保存しました
@@ -1152,8 +1152,8 @@ translations:
   'Filter Fan: Off': 'フィルターファン: オフ'
   'Filter Fan: On': 'フィルターファン: オン'
   Fine: 微動
-  Fine Inner: ''
-  Fine Outer: ''
+  Fine Inner: 微動・内側
+  Fine Outer: 微動・外側
   Finish: 完了
   Finish or cancel the print before loading, unloading, or changing filament: フィラメントの装填・排出・交換の前に、印刷を完了またはキャンセルしてください
   Finishing clean...: 清掃の仕上げ中...
@@ -1276,7 +1276,7 @@ translations:
   HelixScreen is detecting your display orientation: HelixScreenがディスプレイの向きを検出しています
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     はマルチスプール/カラー印刷操作のためにフィラメントチェンジャーと連携します。
-  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: ''
+  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: HelixScreenがこれをprinter.cfgに書き込み、Klipperを再起動します。プリンターは一時的に切断されます。
   HelixScreen {} is available — tap Update: HelixScreen {} が利用可能です — 「更新」をタップ
   Help & About: ヘルプと情報
   Help Improve HelixScreen: HelixScreen の改善にご協力ください
@@ -1420,10 +1420,10 @@ translations:
   It's a new spool: 新しいスプールです
   Jammed at the Toolhead: ツールヘッドで詰まり
   Job Queue: ジョブキュー
-  Jog Speed XY: ''
-  Jog Speed Z: ''
+  Jog Speed XY: XY ジョグ速度
+  Jog Speed Z: Z ジョグ速度
   'Jog failed: {}': 'ジョグに失敗しました: {}'
-  Jog speeds and step distances: ''
+  Jog speeds and step distances: ジョグ速度とステップ距離
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: Discord
     で HelixScreen コミュニティに参加して、ディスカッション、ヒント、トラブルシューティング支援、機能リクエストを共有しましょう。
   Joining Wi-Fi disconnects the wired network.: WiFi に接続すると、有線ネットワークが切断されます。
@@ -1509,7 +1509,7 @@ translations:
   Listening: 聞き取り中
   Live view from your webcam: ウェブカメラのライブ表示
   Load: 装填
-  Load / Unload: ''
+  Load / Unload: 装填 / 排出
   Load Failed: '装填に失敗しました'
   Load Filament: フィラメントを装填
   Load a filament first before trying to unload: 排出する前にまずフィラメントを装填してください
@@ -2074,7 +2074,7 @@ translations:
   Print ending...: 印刷終了中...
   Print error: 印刷エラー
   Print failed: 印刷失敗
-  Print history will show the rewritten name: ''
+  Print history will show the rewritten name: 印刷履歴には書き換え後の名前が表示されます
   Print issue detected: 印刷の問題を検出しました
   Print jobs waiting to run: 実行待ちの印刷ジョブ
   'Print preparation failed: {}': '印刷準備に失敗しました: {}'
@@ -2204,7 +2204,7 @@ translations:
   'RFCOMM connect failed: ': 'RFCOMM 接続に失敗しました: '
   RFID reader malfunction (left): RFID リーダーの異常（左）
   RFID reader malfunction (right): RFID リーダーの異常（右）
-  RFID, auto-refill, nozzle and link care: ''
+  RFID, auto-refill, nozzle and link care: RFID、自動補充、ノズルと接続のメンテナンス
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'ラミング量'
@@ -2259,9 +2259,9 @@ translations:
   Remaining Weight (g): 残量（g）
   Remap Tool: ツールを再割当
   ? Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  : ''
+  : リマップは印刷前にジョブファイルを書き換えます。このプリンターのMoonrakerは旧バージョンのため、HelixPrintプラグインが後から元のファイル名を復元できず、完了したジョブは書き換え後の名前で表示されます。リマップ自体は正常に動作します。
   ? "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  : ''
+  : "リマップは印刷前にジョブファイルを書き換えます。HelixPrintプラグインがない場合、書き換えられたコピーが印刷履歴に残るため、完了したジョブは選んだファイルではなくmodified_1730824_benchy.gcodeのような名前で表示されます。\n\nプラグインのインストールはすぐに完了し、再起動は必要ありません。"
   Remap…: リマップ…
   Remember slot spool details across an eject: 取り出し後もスロットのスプール情報を記憶します
   Remove: 削除
@@ -2295,8 +2295,8 @@ translations:
   Reset: リセット
   Reset Blade Counter: 'ブレードカウンターをリセット'
   Reset CFS: CFSをリセット
-  Reset Distances: ''
-  Reset Distances?: ''
+  Reset Distances: 距離をリセット
+  Reset Distances?: 距離をリセットしますか？
   Reset Endless Spool: 'エンドレススプールをリセット'
   Reset Endless Spool?: 'エンドレススプールをリセットしますか？'
   Reset Home Screen?: ホーム画面をリセットしますか？
@@ -2493,7 +2493,7 @@ translations:
   Select a valid tool: 有効なツールを選択してください
   Select a valid {}: '有効な{}を選択してください'
   Select a {}: '{}を選択してください'
-  Select at least one: ''
+  Select at least one: 1つ以上選択してください
   Select fan: ファンを選択
   Select gate: 'ゲートを選択'
   Select macro for first button: 最初のボタンのマクロを選択
@@ -2717,12 +2717,12 @@ translations:
   Switched to {}: '{} に切替えました'
   Switches to a backup spool on runout: フィラメント切れ時にバックアップスプールへ切り替えます
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
-  : ''
-  Switching back to PID changes how this heater is controlled.: ''
-  Switching back to PID requires a config change and Klipper restart.: ''
+  : PIDに戻すと、このヒーターの制御方法が変わり、その後キャリブレーションが行われます。温度に達した状態で数分かかります。
+  Switching back to PID changes how this heater is controlled.: PIDに戻すと、このヒーターの制御方法が変わります。
+  Switching back to PID requires a config change and Klipper restart.: PIDに戻すには設定変更とKlipperの再起動が必要です。
   Switching heater control to MPC. Klipper will restart.: ヒーター制御をMPCに切り替えます。Klipperが再起動します。
-  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: ''
-  Switching to MPC changes how this heater is controlled.: ''
+  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: MPCに切り替えると、このヒーターの制御方法が変わり、その後キャリブレーションが行われます。温度に達した状態で数分かかります。
+  Switching to MPC changes how this heater is controlled.: MPCに切り替えると、このヒーターの制御方法が変わります。
   Switching to MPC requires a config change and Klipper restart.: MPCへの切り替えには設定変更とKlipperの再起動が必要です。
   Sync with Spoolman: Spoolman と同期
   Sysfs: Sysfs
@@ -2914,7 +2914,7 @@ translations:
   This will reset all settings to defaults. This action cannot be undone.: これはすべての設定をデフォルトにリセットします。この操作は元に戻せません。
   This will restart Klipper firmware. Any active operations will be interrupted.: Klipperファームウェアを再起動します。実行中の操作は中断されます。
   This will restart Klipper.: これにより Klipper が再起動します。
-  This will restore the default jog step distances for all three modes.: ''
+  This will restore the default jog step distances for all three modes.: 3つのモードすべてのジョグステップ距離がデフォルトに戻ります。
   This will save the Z-offset and restart Klipper to write the configuration. The printer will briefly disconnect.: Z-offset を保存し、設定を書き込むために Klipper を再起動します。プリンターは一時的に切断されます。
   ? This writes the tool offsets to the printer's config and restarts Klipper, which takes a few seconds. Until then they apply only to this session.
   : ツールオフセットをプリンターの設定に書き込み、Klipper を再起動します。数秒かかります。それまでは、このセッションにのみ適用されます。
@@ -2998,8 +2998,8 @@ translations:
   Tune: チューニング
   Tuning tower enabled - start a print to test: チューニングタワー有効 - 印刷を開始してテストしてください
   Turbo: ターボ
-  Turbo Inner: ''
-  Turbo Outer: ''
+  Turbo Inner: ターボ・内側
+  Turbo Outer: ターボ・外側
   Turn Off: オフにする
   Turn Off WiFi?: WiFiをオフにしますか？
   Turn On: オンにする
@@ -3193,7 +3193,7 @@ translations:
   X: X
   X Axis: X軸
   X Offset: Xオフセット
-  X and Y jog feedrate: ''
+  X and Y jog feedrate: X/Y軸のジョグ移動速度
   X axis applied, but Y axis failed: X軸は適用されましたが、Y軸は失敗しました
   X axis done, starting Y...: 'X軸が完了しました。Y軸を開始します...'
   X jog blocked at bed edge: X軸移動はベッド端でブロックされました
@@ -3225,8 +3225,8 @@ translations:
   Z Offset: Zオフセット
   Z Range: Z 範囲
   Z Tilt Adjust...: Zチルト調整中...
-  Z jog blocked at axis limit: ''
-  Z jog feedrate: ''
+  Z jog blocked at axis limit: Z軸移動は軸の限界でブロックされました
+  Z jog feedrate: Z軸のジョグ移動速度
   Z motor calibration failed: Z モーターの校正に失敗しました
   Z probes for bed leveling and mesh generation: ベッドレベリングとメッシュ生成用 Z プローブ
   'Z-Off:': 'Z-Off:'
@@ -3282,7 +3282,7 @@ translations:
   'off': オフ
   AFC's remember_spool is retaining spool info in firmware; that takes precedence over this toggle: AFC の remember_spool がファームウェア側でスプール情報を保持しているため、このトグル設定より優先されます
   AI detection: AI 検出
-  Modifying G-code needs the HelixPrint plugin. Printing original file.: ''
+  Modifying G-code needs the HelixPrint plugin. Printing original file.: G-codeの変更にはHelixPrintプラグインが必要です。元のファイルを印刷します。
   Monitor for print abnormalities (K2 Plus camera-based): 印刷異常を監視 (K2 Plus カメラベース)
   Monitor for print abnormalities (camera-based): '印刷異常を監視 (カメラベース)'
   on unit {}: 'ユニット {}'

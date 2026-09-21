@@ -139,8 +139,9 @@ void CameraWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     // transitions to 1, try starting the stream if we're active.
     lv_subject_t* gate = lv_xml_get_subject(nullptr, "printer_has_webcam");
     if (gate) {
-        webcam_observer_ =
-            helix::ui::observe_int_sync<CameraWidget>(gate, this, [](CameraWidget* self, int val) {
+        webcam_observer_ = helix::ui::observe_int_sync<CameraWidget>(
+            gate, this,
+            [](CameraWidget* self, int val) {
                 if (val > 0) {
                     if (self->compact_) {
                         // Compact mode: icon only, status text already hidden
@@ -161,7 +162,8 @@ void CameraWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
                         self->set_status_text(lv_tr("No Camera"));
                     }
                 }
-            });
+            },
+            get_printer_state().get_subjects_lifetime());
     }
 
     // A change in the list itself — has_webcam may stay 1 while the camera
@@ -169,7 +171,8 @@ void CameraWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     lv_subject_t* list = lv_xml_get_subject(nullptr, "webcam_count");
     if (list) {
         webcam_list_observer_ = helix::ui::observe_int_sync<CameraWidget>(
-            list, this, [](CameraWidget* self, int /*count*/) { self->resync_source(); });
+            list, this, [](CameraWidget* self, int /*count*/) { self->resync_source(); },
+            get_printer_state().get_subjects_lifetime());
     }
 
     spdlog::debug("[CameraWidget] Attached");
@@ -279,7 +282,8 @@ void CameraWidget::on_activate() {
     if (!edit_mode_observer_) {
         lv_subject_t* edit_subj = &get_home_edit_mode_subject();
         edit_mode_observer_ = helix::ui::observe_int_sync<CameraWidget>(
-            edit_subj, this, [](CameraWidget* self, int /*val*/) { self->update_stream_fps(); });
+            edit_subj, this, [](CameraWidget* self, int /*val*/) { self->update_stream_fps(); },
+            get_app_globals_subjects_lifetime());
     }
 
     if (!compact_) {

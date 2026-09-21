@@ -32,24 +32,28 @@ PlrOfferController::PlrOfferController() {
     // on_connection_state_changed for how reconnect manufactures that edge.
     pl_valid_observer_ = observe_int_sync(
         ps.get_pl_env_valid_subject(), this,
-        [](PlrOfferController* self, int value) { self->on_pl_env_valid_changed(value); });
+        [](PlrOfferController* self, int value) { self->on_pl_env_valid_changed(value); },
+        ps.get_subjects_lifetime());
 
     // creality_plr_capable is the PRIMARY Creality trigger. Unlike Snapmaker's
     // flag this only says the FIRMWARE supports recovery — whether a snapshot
     // exists takes a separate, side-effectful probe.
     creality_capable_observer_ = observe_int_sync(
         ps.get_creality_plr_capable_subject(), this,
-        [](PlrOfferController* self, int value) { self->on_creality_capable_changed(value); });
+        [](PlrOfferController* self, int value) { self->on_creality_capable_changed(value); },
+        ps.get_subjects_lifetime());
 
     conn_observer_ = observe_int_sync(
         ps.get_printer_connection_state_subject(), this,
-        [](PlrOfferController* self, int value) { self->on_connection_state_changed(value); });
+        [](PlrOfferController* self, int value) { self->on_connection_state_changed(value); },
+        ps.get_subjects_lifetime());
 
     // Wizard-active edge: re-evaluate when the wizard closes so a
     // wizard-suppressed offer fires. See evaluate_offer for the full rationale.
     wizard_observer_ = observe_int_sync(
         &get_wizard_active_subject(), this,
-        [](PlrOfferController* self, int value) { self->on_wizard_active_changed(value); });
+        [](PlrOfferController* self, int value) { self->on_wizard_active_changed(value); },
+        get_app_globals_subjects_lifetime());
 }
 
 void PlrOfferController::evaluate_offer() {

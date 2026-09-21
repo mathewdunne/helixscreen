@@ -610,11 +610,13 @@ void PrintStatusPanel::init_subjects() {
         update_camera_button_label(lv_subject_get_int(bp));
         auto token = lifetime_.token();
         camera_label_observer_ = observe_int_sync<PrintStatusPanel>(
-            bp, this, [token](PrintStatusPanel* self, int value) {
+            bp, this,
+            [token](PrintStatusPanel* self, int value) {
                 if (token.expired())
                     return;
                 self->update_camera_button_label(value);
-            });
+            },
+            subject_never_freed());
     }
 
     // Initialize light/timelapse controls (extracted Phase 2)
@@ -684,13 +686,15 @@ void PrintStatusPanel::init_subjects() {
         lv_subject_t* bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
         if (bp) {
             auto token = lifetime_.token();
-            breakpoint_observer_ =
-                observe_int_sync<PrintStatusPanel>(bp, this, [token](PrintStatusPanel* self, int) {
+            breakpoint_observer_ = observe_int_sync<PrintStatusPanel>(
+                bp, this,
+                [token](PrintStatusPanel* self, int) {
                     if (token.expired())
                         return;
                     self->recompute_fans_density();
                     self->recompute_fans_fit();
-                });
+                },
+                subject_never_freed());
         }
     }
 
@@ -807,7 +811,8 @@ void PrintStatusPanel::init_subjects() {
 
     end_overlay_dismissed_observer_ = observe_int_sync<PrintStatusPanel>(
         &end_overlay_dismissed_subject_, this,
-        [](PrintStatusPanel* self, int) { self->recompute_end_overlay_visibility(); });
+        [](PrintStatusPanel* self, int) { self->recompute_end_overlay_visibility(); },
+        get_subjects_lifetime());
 
     // Derived show flags — computed in recompute_end_overlay_visibility() from
     // print_outcome + end_overlay_dismissed. Replaces the racy pair of XML

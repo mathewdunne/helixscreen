@@ -33,6 +33,18 @@ class HomePanel : public PanelBase {
 
     void init_subjects() override;
     void deinit_subjects();
+
+    /**
+     * @brief Death signal for the subjects this HomePanel owns.
+     *
+     * Pass to observe_*() from anything that can outlive this object's
+     * deinit_subjects(): that path frees every observer node without bumping
+     * the ObserverGuard invalidation epoch, so a guard without the token
+     * dereferences a freed observer on its next reset().
+     */
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
     void setup(lv_obj_t* panel, lv_obj_t* parent_screen) override;
     /// Complete the parts of setup that depend on the widget config / AMS
     /// detection state. Called after the first-run wizard finishes (so Moonraker

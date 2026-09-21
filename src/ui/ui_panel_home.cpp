@@ -71,7 +71,8 @@ HomePanel::HomePanel(PrinterState& printer_state, IMoonrakerAPI* api)
             // Clear cache so refresh_printer_image() actually applies the new image
             self->last_printer_image_path_.clear();
             self->refresh_printer_image();
-        });
+        },
+        helix::PrinterImageManager::instance().get_subjects_lifetime());
 
     // Wired at construction: edit mode's gesture transitions can fire before
     // finalize_setup() runs, and every one of them must reach the swipe policy.
@@ -448,7 +449,8 @@ void HomePanel::build_carousel(int initial_page) {
     // observe_int_sync drops the callback (weak_alive expires before the
     // queued lambda executes, causing active_page_index_ desync).
     page_observer_ = helix::ui::observe_int_immediate<HomePanel>(
-        &page_subject_, this, [](HomePanel* self, int page) { self->on_page_changed(page); });
+        &page_subject_, this, [](HomePanel* self, int page) { self->on_page_changed(page); },
+        get_subjects_lifetime());
 
     spdlog::debug("[{}] Carousel built with {} pages", get_name(), num_pages);
 }

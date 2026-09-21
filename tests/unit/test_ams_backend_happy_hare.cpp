@@ -10,6 +10,7 @@
 #include "hh_defaults.h"
 #include "lane_translation.h"
 #include "moonraker_api.h"
+#include "spoolman_types.h"
 #include "test_helpers/backend_user_edit.h"
 #include "test_helpers/happy_hare_test_access.h"
 #include "test_helpers/registered_backend.h"
@@ -3957,6 +3958,51 @@ TEST_CASE_METHOD(LVGLTestFixture,
 //
 // NOTE: written blind — there is no Happy Hare hardware on hand. It deliberately
 // mirrors the AFC integration rather than inventing anything.
+
+TEST_CASE("an outside re-bind takes the old spool's brand off a Happy Hare gate",
+          "[ams][happyhare][lane][1672]") {
+    // Something outside HelixScreen - Mainsail, the MMU's own screen, a macro -
+    // points a gate at a different spool. The gate map is the only thing Happy
+    // Hare states about a binding, so that reading retires the records
+    // describing the old spool, and parse_mmu_state paints the gate from what
+    // is left before the frame ends. A brand only the old spool's record ever
+    // carried has nothing to restate it, and apply_resolved() leaves a field no
+    // source observed alone, so without the retire the incoming spool wears the
+    // outgoing one's brand.
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg;
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+    helper.initialize_test_gates(4);
+
+    SpoolInfo spool;
+    spool.id = 42;
+    spool.vendor = "Polymaker";
+    spool.filament_name = "PolyLite PETG";
+    spool.material = "PETG";
+    spool.color_hex = "FF00FF";
+    helix::test::spool_states(helper, 1, spool);
+    helper.repaint_slot_from_lane(1);
+    REQUIRE(helper.get_slot_info(1).brand == "Polymaker");
+
+    // Gate 2 is the control: same shape, and the frame below reports the spool
+    // its lane already names, so its binding holds and nothing is retired.
+    SpoolInfo held;
+    held.id = 7;
+    held.vendor = "Sunlu";
+    held.filament_name = "PLA Meta";
+    held.material = "PLA";
+    held.color_hex = "00FF00";
+    helix::test::spool_states(helper, 2, held);
+    helper.repaint_slot_from_lane(2);
+    REQUIRE(helper.get_slot_info(2).brand == "Sunlu");
+
+    // Gate 1 now reports a spool its lane does not describe: a re-bind, which
+    // needs no setting turned on, unlike the eject verdict. Gate 2 reports the
+    // spool it already had.
+    helper.feed_mmu_gate_spool_ids({0, 99, 7, 0});
+
+    CHECK(helper.get_slot_info(1).brand.empty());
+    CHECK(helper.get_slot_info(2).brand == "Sunlu");
+}
 
 TEST_CASE("HappyHare override survives a gate-map update that omits identity",
           "[ams][happyhare][override]") {

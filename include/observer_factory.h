@@ -327,11 +327,14 @@ struct AsyncLambdaObserverContext {
  * @param subject LVGL subject to observe
  * @param panel Panel instance
  * @param handler Lambda called with panel and int value
+ * @param lifetime Death signal for @p subject. Required: pass the subject
+ *        owner's get_subjects_lifetime(), or subject_never_freed() only when
+ *        the subject genuinely cannot be freed before process exit.
  * @return ObserverGuard for RAII cleanup
  */
 template <typename Panel, typename Handler>
 ObserverGuard observe_int_sync(lv_subject_t* subject, Panel* panel, Handler&& handler,
-                               const SubjectLifetime& lifetime = {}) {
+                               const SubjectLifetime& lifetime) {
     if (!subject || !panel) {
         return ObserverGuard();
     }
@@ -397,7 +400,7 @@ ObserverGuard observe_int_sync(lv_subject_t* subject, Panel* panel, Handler&& ha
  */
 template <typename Panel, typename Handler>
 ObserverGuard observe_int_immediate(lv_subject_t* subject, Panel* panel, Handler&& handler,
-                                    const SubjectLifetime& lifetime = {}) {
+                                    const SubjectLifetime& lifetime) {
     if (!subject || !panel) {
         return ObserverGuard();
     }
@@ -434,8 +437,7 @@ ObserverGuard observe_int_immediate(lv_subject_t* subject, Panel* panel, Handler
  */
 template <typename Panel, typename ValueHandler, typename UpdateHandler>
 ObserverGuard observe_int_async(lv_subject_t* subject, Panel* panel, ValueHandler&& value_handler,
-                                UpdateHandler&& update_handler,
-                                const SubjectLifetime& lifetime = {}) {
+                                UpdateHandler&& update_handler, const SubjectLifetime& lifetime) {
     if (!subject || !panel) {
         return ObserverGuard();
     }
@@ -487,7 +489,7 @@ ObserverGuard observe_int_async(lv_subject_t* subject, Panel* panel, ValueHandle
  */
 template <typename Panel, typename Handler>
 ObserverGuard observe_string(lv_subject_t* subject, Panel* panel, Handler&& handler,
-                             const SubjectLifetime& lifetime = {}) {
+                             const SubjectLifetime& lifetime) {
     if (!subject || !panel) {
         return ObserverGuard();
     }
@@ -533,7 +535,7 @@ ObserverGuard observe_string(lv_subject_t* subject, Panel* panel, Handler&& hand
  */
 template <typename Panel, typename Handler>
 ObserverGuard observe_string_immediate(lv_subject_t* subject, Panel* panel, Handler&& handler,
-                                       const SubjectLifetime& lifetime = {}) {
+                                       const SubjectLifetime& lifetime) {
     if (!subject || !panel) {
         return ObserverGuard();
     }
@@ -571,7 +573,7 @@ ObserverGuard observe_string_immediate(lv_subject_t* subject, Panel* panel, Hand
 template <typename Panel, typename ValueHandler, typename UpdateHandler>
 ObserverGuard observe_string_async(lv_subject_t* subject, Panel* panel,
                                    ValueHandler&& value_handler, UpdateHandler&& update_handler,
-                                   const SubjectLifetime& lifetime = {}) {
+                                   const SubjectLifetime& lifetime) {
     if (!subject || !panel) {
         return ObserverGuard();
     }
@@ -629,18 +631,23 @@ ObserverGuard observe_string_async(lv_subject_t* subject, Panel* panel,
  * @param subject Connection state subject (printer_connection_state)
  * @param panel Panel instance
  * @param on_connected Lambda called when state becomes CONNECTED
+ * @param lifetime Death signal for @p subject — see observe_int_sync().
+ *        printer_connection_state belongs to PrinterState, so every caller
+ *        that is not itself owned by PrinterState wants one.
  * @return ObserverGuard for RAII cleanup
  */
 template <typename Panel, typename OnConnected>
 ObserverGuard observe_connection_state(lv_subject_t* subject, Panel* panel,
-                                       OnConnected&& on_connected) {
+                                       OnConnected&& on_connected,
+                                       const SubjectLifetime& lifetime) {
     return observe_int_sync<Panel>(
         subject, panel,
         [on_connected = std::forward<OnConnected>(on_connected)](Panel* p, int state) {
             if (state == static_cast<int>(ConnectionState::CONNECTED)) {
                 on_connected(p);
             }
-        });
+        },
+        lifetime);
 }
 
 /**
@@ -666,7 +673,7 @@ ObserverGuard observe_connection_state(lv_subject_t* subject, Panel* panel,
  */
 template <typename Panel, typename Handler>
 ObserverGuard observe_print_state(lv_subject_t* subject, Panel* panel, Handler&& handler,
-                                  const SubjectLifetime& lifetime = {}) {
+                                  const SubjectLifetime& lifetime) {
     return observe_int_sync<Panel>(
         subject, panel,
         [handler = std::forward<Handler>(handler)](Panel* p, int state_int) {
@@ -689,7 +696,7 @@ ObserverGuard observe_print_state(lv_subject_t* subject, Panel* panel, Handler&&
  */
 template <typename Panel, typename Handler>
 ObserverGuard observe_print_state_immediate(lv_subject_t* subject, Panel* panel, Handler&& handler,
-                                            const SubjectLifetime& lifetime = {}) {
+                                            const SubjectLifetime& lifetime) {
     return observe_int_immediate<Panel>(
         subject, panel,
         [handler = std::forward<Handler>(handler)](Panel* p, int state_int) {
@@ -720,7 +727,7 @@ ObserverGuard observe_print_state_immediate(lv_subject_t* subject, Panel* panel,
  */
 template <typename Panel, typename Handler>
 ObserverGuard observe_print_lifecycle(lv_subject_t* subject, Panel* panel, Handler&& handler,
-                                      const SubjectLifetime& lifetime = {}) {
+                                      const SubjectLifetime& lifetime) {
     return observe_int_sync<Panel>(
         subject, panel,
         [handler = std::forward<Handler>(handler)](Panel* p, int state_int) {

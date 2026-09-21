@@ -253,8 +253,8 @@ translations:
   Backup spool switching state unknown: 备用料盘切换状态未知
   Barcode Scanner: 条码扫描器
   Base: 基准
-  Batch load failed: ''
-  Batch unload failed: ''
+  Batch load failed: 批量加载失败
+  Batch unload failed: 批量卸载失败
   Beacon auto-calibrate sent: Beacon自动校准已发送
   Beacon calibrate sent: Beacon校准已发送
   Bed: 热床
@@ -399,7 +399,7 @@ translations:
   Calibration failed - touch targets more precisely.: 校准失败 – 请更精确地触摸目标。
   Calibration kept timing out. Your previous settings were kept.: 校准反复超时，已保留您之前的设置。
   Calibration may still be running — printer connection was interrupted: '校准可能仍在运行 — 打印机连接已中断'
-  Calibration may still be running — response timed out: ''
+  Calibration may still be running — response timed out: '校准可能仍在运行 — 响应超时'
   Calibration move may still be running — printer connection was interrupted: '校准移动可能仍在运行 — 打印机连接已中断'
   Calibration saved but cannot apply on SDL display: 校准已保存，但无法在 SDL 显示上应用
   Calibration succeeded, but the frequency chart data couldn't be read.: 校准成功，但无法读取频率图表数据。
@@ -461,7 +461,7 @@ translations:
   Change Printer Host: 更改打印机主机
   Change Tool: 切换工具
   Change Tool While Paused: 暂停时切换工具
-  Change heater control?: ''
+  Change heater control?: 更改加热器控制？
   Change tool: 切换工具
   Changes apply immediately. Adjust during print for tuning.: 更改立即生效。可在打印时调整进行调优。
   Changes are temporary and reset on printer reboot: 更改是临时的，打印机重启后会重置
@@ -537,8 +537,8 @@ translations:
   Closer: 更近
   Closer = more squish | Farther = less squish: 更近 = 更多挤压 | 更远 = 更少挤压
   Coarse: 粗调
-  Coarse Inner: ''
-  Coarse Outer: ''
+  Coarse Inner: 粗调内圈
+  Coarse Outer: 粗调外圈
   Code: 代码
   Coil Temperature: 线圈温度
   Collect logs and system info for support: 收集日志和系统信息以供支持
@@ -783,7 +783,7 @@ translations:
   Distance from hub to toolhead: '从集线器到工具头的距离'
   Distance from lane extruder to hub: '从耗材通道挤出机到集线器的距离'
   Distance from toolhead sensor to nozzle tip: '从工具头传感器到喷嘴尖端的距离'
-  Distance moved per jog button tap: ''
+  Distance moved per jog button tap: 每按一次移动按钮移动的距离
   Do not power off your printer.: 请勿关闭打印机电源。
   Do not touch the printer during calibration: 校准期间请勿触碰打印机
   Dock: 归位
@@ -794,7 +794,7 @@ translations:
   Documentation: 文档
   Don't Save: 不保存
   Don't ask again: 不再询问
-  Don't show again: ''
+  Don't show again: 不再显示
   Done: 完成
   Download update?: 下载更新？
   Download v{}?: 下载 v{}？
@@ -1127,7 +1127,7 @@ translations:
   Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: '耗材已用尽。自动续料已关闭，CFS 不会自行更换料盘。请装入耗材后恢复打印。'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: 耗材已用尽。CFS 知道哪些料盘匹配，但这些槽位都是空的。请装载其中一个，然后恢复打印。
   Filament reload failed: 耗材重新装载失败
-  Filament remapping is unavailable: ''
+  Filament remapping is unavailable: 耗材重新映射不可用
   Filament runout: 耗材用尽
   Filament runout and motion detection sensors: 耗材用尽和运动检测传感器
   Filament saved: 耗材已保存
@@ -1148,8 +1148,8 @@ translations:
   'Filter Fan: Off': '滤网风扇: 关'
   'Filter Fan: On': '滤网风扇: 开'
   Fine: 细调
-  Fine Inner: ''
-  Fine Outer: ''
+  Fine Inner: 细调内圈
+  Fine Outer: 细调外圈
   Finish: 完成
   Finish or cancel the print before loading, unloading, or changing filament: 在装载、卸载或更换耗材之前，请先完成或取消打印
   Finishing clean...: 即将完成清洁...
@@ -1272,7 +1272,7 @@ translations:
   HelixScreen is detecting your display orientation: HelixScreen正在检测显示屏方向
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     将与您的耗材更换器集成，用于多料盘/多色打印操作。
-  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: ''
+  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: HelixScreen 会将此写入 printer.cfg 并重启 Klipper。打印机将短暂断开连接。
   HelixScreen {} is available — tap Update: HelixScreen {} 已发布 — 点击更新
   Help & About: 帮助与关于
   Help Improve HelixScreen: 帮助改进 HelixScreen
@@ -1415,10 +1415,10 @@ translations:
   It's a new spool: 这是新料盘
   Jammed at the Toolhead: 工具头处堵塞
   Job Queue: 任务队列
-  Jog Speed XY: ''
-  Jog Speed Z: ''
+  Jog Speed XY: XY 移动速度
+  Jog Speed Z: Z 移动速度
   'Jog failed: {}': '移动失败: {}'
-  Jog speeds and step distances: ''
+  Jog speeds and step distances: 移动速度与步进距离
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: 加入
     HelixScreen 的 Discord 社区，参与讨论、获取技巧、故障排除帮助和功能请求。
   Joining Wi-Fi disconnects the wired network.: 加入 WiFi 会断开有线网络连接。
@@ -1503,7 +1503,7 @@ translations:
   Listening: 正在监听
   Live view from your webcam: 摄像头实时画面
   Load: 加载
-  Load / Unload: ''
+  Load / Unload: 加载 / 卸载
   Load Failed: '装载失败'
   Load Filament: 加载耗材
   Load a filament first before trying to unload: 请先装载耗材，再尝试卸载
@@ -2066,7 +2066,7 @@ translations:
   Print ending...: 正在结束打印...
   Print error: 打印错误
   Print failed: 打印失败
-  Print history will show the rewritten name: ''
+  Print history will show the rewritten name: 打印历史将显示改写后的名称
   Print issue detected: 检测到打印问题
   Print jobs waiting to run: 等待执行的打印任务
   'Print preparation failed: {}': '打印准备失败: {}'
@@ -2195,7 +2195,7 @@ translations:
   'RFCOMM connect failed: ': 'RFCOMM 连接失败: '
   RFID reader malfunction (left): RFID 读取器故障（左）
   RFID reader malfunction (right): RFID 读取器故障（右）
-  RFID, auto-refill, nozzle and link care: ''
+  RFID, auto-refill, nozzle and link care: RFID、自动续料、喷嘴与链路维护
   RSS: RSS
   'RSS:': RSS：
   Ramming Volume: '填充体积'
@@ -2250,9 +2250,9 @@ translations:
   Remaining Weight (g): 剩余重量（克）
   Remap Tool: 重映射工具
   ? Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  : ''
+  : 重新映射会在打印前改写任务文件。此打印机的 Moonraker 版本过旧，HelixPrint 插件无法在之后恢复原始文件名，因此完成的任务将以改写后的名称显示。重新映射本身可正常工作。
   ? "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  : ''
+  : "重新映射会在打印前改写任务文件。如果没有 HelixPrint 插件，进入打印历史的就是改写后的副本，因此完成的任务会以类似 modified_1730824_benchy.gcode 的名称显示，而不是您选择的文件。\n\n安装插件很快，无需重启。"
   Remap…: 重新映射……
   Remember slot spool details across an eject: 弹出后记住槽位的料盘详情
   Remove: 移除
@@ -2286,8 +2286,8 @@ translations:
   Reset: 重置
   Reset Blade Counter: '重置刀片计数器'
   Reset CFS: 重置 CFS
-  Reset Distances: ''
-  Reset Distances?: ''
+  Reset Distances: 重置距离
+  Reset Distances?: 重置距离？
   Reset Endless Spool: '重置无限料盘'
   Reset Endless Spool?: '要重置无限料盘吗？'
   Reset Home Screen?: 重置主屏幕？
@@ -2484,7 +2484,7 @@ translations:
   Select a valid tool: 请选择有效工具
   Select a valid {}: '请选择有效的 {}'
   Select a {}: '请选择 {}'
-  Select at least one: ''
+  Select at least one: 请至少选择一个
   Select fan: 选择风扇
   Select gate: '选择通道'
   Select macro for first button: 为第一个按钮选择宏
@@ -2708,12 +2708,12 @@ translations:
   Switched to {}: '已切换到 {}'
   Switches to a backup spool on runout: 耗材用尽时切换到备用料盘
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
-  : ''
-  Switching back to PID changes how this heater is controlled.: ''
-  Switching back to PID requires a config change and Klipper restart.: ''
+  : 切回 PID 会改变此加热器的控制方式，随后会进行校准。这需要在工作温度下耗时数分钟。
+  Switching back to PID changes how this heater is controlled.: 切回 PID 会改变此加热器的控制方式。
+  Switching back to PID requires a config change and Klipper restart.: 切回 PID 需要修改配置并重启 Klipper。
   Switching heater control to MPC. Klipper will restart.: 正在将加热控制切换为 MPC。Klipper 将重启。
-  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: ''
-  Switching to MPC changes how this heater is controlled.: ''
+  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: 切换到 MPC 会改变此加热器的控制方式，随后会进行校准。这需要在工作温度下耗时数分钟。
+  Switching to MPC changes how this heater is controlled.: 切换到 MPC 会改变此加热器的控制方式。
   Switching to MPC requires a config change and Klipper restart.: 切换到 MPC 需要修改配置并重启
     Klipper。
   Sync with Spoolman: 与 Spoolman 同步
@@ -2904,7 +2904,7 @@ translations:
   This will reset all settings to defaults. This action cannot be undone.: 这将把所有设置重置为默认值。此操作无法撤销。
   This will restart Klipper firmware. Any active operations will be interrupted.: 将重启Klipper固件。所有正在进行的操作将被中断。
   This will restart Klipper.: 这将重启 Klipper。
-  This will restore the default jog step distances for all three modes.: ''
+  This will restore the default jog step distances for all three modes.: 这将把全部三种模式的移动步进距离恢复为默认值。
   This will save the Z-offset and restart Klipper to write the configuration. The printer will briefly disconnect.: 这将保存 Z 偏移并重启 Klipper 以写入配置。打印机将短暂断开连接。
   ? This writes the tool offsets to the printer's config and restarts Klipper, which takes a few seconds. Until then they apply only to this session.
   : 这会将工具偏移写入打印机配置并重启 Klipper，需要几秒钟。在此之前，它们仅在本次会话中生效。
@@ -2988,8 +2988,8 @@ translations:
   Tune: 调优
   Tuning tower enabled - start a print to test: 调优塔已启用 - 开始打印以测试
   Turbo: 极速
-  Turbo Inner: ''
-  Turbo Outer: ''
+  Turbo Inner: 极速内圈
+  Turbo Outer: 极速外圈
   Turn Off: 关闭
   Turn Off WiFi?: 关闭 WiFi？
   Turn On: 开启
@@ -3183,7 +3183,7 @@ translations:
   X: X
   X Axis: X 轴
   X Offset: X 偏移
-  X and Y jog feedrate: ''
+  X and Y jog feedrate: X/Y 轴移动速度
   X axis applied, but Y axis failed: X 轴已应用，但 Y 轴失败
   X axis done, starting Y...: 'X 轴完成，开始 Y 轴...'
   X jog blocked at bed edge: X 轴移动已限制在热床边缘
@@ -3215,8 +3215,8 @@ translations:
   Z Offset: Z 偏移
   Z Range: Z 范围
   Z Tilt Adjust...: 正在调整Z倾斜...
-  Z jog blocked at axis limit: ''
-  Z jog feedrate: ''
+  Z jog blocked at axis limit: Z 轴移动已限制在轴极限
+  Z jog feedrate: Z 轴移动速度
   Z motor calibration failed: Z 电机校准失败
   Z probes for bed leveling and mesh generation: 用于热床调平和网格生成的 Z 探针
   'Z-Off:': Z 偏移：
@@ -3271,7 +3271,7 @@ translations:
   'off': 关闭
   AFC's remember_spool is retaining spool info in firmware; that takes precedence over this toggle: AFC 的 remember_spool 会在固件中保留料盘信息；其优先级高于此开关
   AI detection: AI 检测
-  Modifying G-code needs the HelixPrint plugin. Printing original file.: ''
+  Modifying G-code needs the HelixPrint plugin. Printing original file.: 修改 G-code 需要 HelixPrint 插件。将打印原始文件。
   Monitor for print abnormalities (K2 Plus camera-based): 监测打印异常（基于 K2 Plus 摄像头）
   Monitor for print abnormalities (camera-based): '监测打印异常（基于摄像头）'
   on unit {}: '在单元 {}'

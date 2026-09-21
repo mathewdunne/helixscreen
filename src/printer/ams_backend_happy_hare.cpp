@@ -1007,6 +1007,7 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
             if (reconcile_lane_binding(gate, firmware_id) != ams::BindingVerdict::Holds) {
                 helix::ams::clear_persisted_override(override_store_.get(), overrides_, gate,
                                                      backend_log_tag());
+                retire_departed_identity_locked(gate);
             }
         }
         spdlog::trace("[AMS HappyHare] Parsed gate_spool_id for {} gates", spool_ids.size());
@@ -1295,6 +1296,20 @@ void AmsBackendHappyHare::parse_mmu_state(const nlohmann::json& mmu_data) {
     // gate/filament pair this frame may have moved. Unconditional, and last, so
     // no ordering between the three keys can leave a stale stamp behind.
     refresh_gate_statuses_locked();
+}
+
+void AmsBackendHappyHare::retire_departed_identity_locked(int gate) {
+    auto* entry = slots_.get_mut(gate);
+    if (!entry) {
+        return;
+    }
+    entry->info.brand.clear();
+    entry->info.spool_name.clear();
+    entry->info.catalog_id.clear();
+    entry->info.product_name.clear();
+    entry->info.spoolman_vendor_id = 0;
+    entry->info.remaining_weight_g = -1.0F;
+    entry->info.total_weight_g = -1.0F;
 }
 
 void AmsBackendHappyHare::refresh_gate_statuses_locked() {

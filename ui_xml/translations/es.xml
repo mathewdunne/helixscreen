@@ -252,8 +252,8 @@
   <translation tag="Backup spool switching state unknown" es="Estado del cambio a bobina de respaldo desconocido"/>
   <translation tag="Barcode Scanner" es="Escáner de Código de Barras"/>
   <translation tag="Base" es="Referencia"/>
-  <translation tag="Batch load failed"/>
-  <translation tag="Batch unload failed"/>
+  <translation tag="Batch load failed" es="Error al cargar por lotes"/>
+  <translation tag="Batch unload failed" es="Error al descargar por lotes"/>
   <translation tag="Beacon auto-calibrate sent" es="Beacon auto-calibración enviada"/>
   <translation tag="Beacon calibrate sent" es="Beacon calibración enviada"/>
   <translation tag="Bed" es="Cama"/>
@@ -396,7 +396,7 @@
   <translation tag="Calibration failed - touch targets more precisely." es="Calibración fallida – toca los objetivos con más precisión."/>
   <translation tag="Calibration kept timing out. Your previous settings were kept." es="La calibración siguió agotando el tiempo de espera. Se conservó su configuración anterior."/>
   <translation tag="Calibration may still be running — printer connection was interrupted" es="La calibración puede seguir en curso — se interrumpió la conexión con la impresora"/>
-  <translation tag="Calibration may still be running — response timed out"/>
+  <translation tag="Calibration may still be running — response timed out" es="La calibración puede seguir en curso — se agotó el tiempo de respuesta"/>
   <translation tag="Calibration move may still be running — printer connection was interrupted" es="El movimiento de calibración puede seguir en curso — se interrumpió la conexión con la impresora"/>
   <translation tag="Calibration saved but cannot apply on SDL display" es="Calibración guardada pero no se puede aplicar en pantalla SDL"/>
   <translation tag="Calibration succeeded, but the frequency chart data couldn&apos;t be read." es="La calibración se completó correctamente, pero no se pudieron leer los datos del gráfico de frecuencia."/>
@@ -457,7 +457,7 @@
   <translation tag="Change Printer Host" es="Cambiar host de impresora"/>
   <translation tag="Change Tool" es="Cambiar Herramienta"/>
   <translation tag="Change Tool While Paused" es="Cambiar Herramienta en Pausa"/>
-  <translation tag="Change heater control?"/>
+  <translation tag="Change heater control?" es="¿Cambiar el control del calentador?"/>
   <translation tag="Change tool" es="Cambiar herramienta"/>
   <translation tag="Changes apply immediately. Adjust during print for tuning." es="Los cambios se aplican inmediatamente. Ajuste durante la impresión para afinar."/>
   <translation tag="Changes are temporary and reset on printer reboot" es="Los cambios son temporales y se reinician al reiniciar la impresora"/>
@@ -532,8 +532,8 @@
   <translation tag="Closer" es="Más cerca"/>
   <translation tag="Closer = more squish | Farther = less squish" es="Más cerca = más aplastamiento | Más lejos = menos aplastamiento"/>
   <translation tag="Coarse" es="Grueso"/>
-  <translation tag="Coarse Inner"/>
-  <translation tag="Coarse Outer"/>
+  <translation tag="Coarse Inner" es="Grueso interior"/>
+  <translation tag="Coarse Outer" es="Grueso exterior"/>
   <translation tag="Code" es="Código"/>
   <translation tag="Coil Temperature" es="Temperatura de Bobina"/>
   <translation tag="Collect logs and system info for support" es="Recopilar registros e info del sistema para soporte"/>
@@ -771,7 +771,7 @@
   <translation tag="Distance from hub to toolhead" es="Distancia del hub al cabezal"/>
   <translation tag="Distance from lane extruder to hub" es="Distancia del extrusor del carril al hub"/>
   <translation tag="Distance from toolhead sensor to nozzle tip" es="Distancia del sensor del cabezal a la punta de la boquilla"/>
-  <translation tag="Distance moved per jog button tap"/>
+  <translation tag="Distance moved per jog button tap" es="Distancia recorrida al tocar un botón de movimiento"/>
   <translation tag="Do not power off your printer." es="No apague la impresora."/>
   <translation tag="Do not touch the printer during calibration" es="No toque la impresora durante la calibración"/>
   <translation tag="Dock" es="Acoplar"/>
@@ -782,7 +782,7 @@
   <translation tag="Documentation" es="Documentación"/>
   <translation tag="Don&apos;t Save" es="No Guardar"/>
   <translation tag="Don&apos;t ask again" es="No volver a preguntar"/>
-  <translation tag="Don&apos;t show again"/>
+  <translation tag="Don&apos;t show again" es="No volver a mostrar"/>
   <translation tag="Done" es="Listo"/>
   <translation tag="Download update?" es="¿Descargar actualización?"/>
   <translation tag="Download v{}?" es="¿Descargar v{}?"/>
@@ -1108,7 +1108,7 @@
   <translation tag="Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume." es="El filamento se agotó. El rellenado automático está desactivado, así que el CFS no cambiará de bobina por sí solo. Carga filamento y reanuda."/>
   <translation tag="Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume." es="El filamento se agotó. El CFS sabe qué bobinas coinciden, pero esas ranuras están vacías. Cargue una de ellas y reanude."/>
   <translation tag="Filament reload failed" es="Error al recargar el filamento"/>
-  <translation tag="Filament remapping is unavailable"/>
+  <translation tag="Filament remapping is unavailable" es="La reasignación de filamento no está disponible"/>
   <translation tag="Filament runout" es="Filamento agotado"/>
   <translation tag="Filament runout and motion detection sensors" es="Sensores de detección de agotamiento y movimiento de filamento"/>
   <translation tag="Filament saved" es="Filamento guardado"/>
@@ -1129,8 +1129,8 @@
   <translation tag="Filter Fan: Off" es="Ventilador de filtro: Apagado"/>
   <translation tag="Filter Fan: On" es="Ventilador de filtro: Encendido"/>
   <translation tag="Fine" es="Fino"/>
-  <translation tag="Fine Inner"/>
-  <translation tag="Fine Outer"/>
+  <translation tag="Fine Inner" es="Fino interior"/>
+  <translation tag="Fine Outer" es="Fino exterior"/>
   <translation tag="Finish" es="Finalizar"/>
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" es="Termine o cancele la impresión antes de cargar, descargar o cambiar el filamento"/>
   <translation tag="Finishing clean..." es="Terminando limpieza..."/>
@@ -1247,7 +1247,7 @@
   <translation tag="HelixScreen Crashed" es="HelixScreen se Bloqueó"/>
   <translation tag="HelixScreen is detecting your display orientation" es="HelixScreen está detectando la orientación de su pantalla"/>
   <translation tag="HelixScreen will integrate with your filament changer for multi-spool/color print operations." es="HelixScreen se integrará con su cambiador de filamento para operaciones de impresión multi-bobina/color."/>
-  <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect."/>
+  <translation tag="HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect." es="HelixScreen escribirá esto en printer.cfg y reiniciará Klipper. La impresora se desconectará brevemente."/>
   <translation tag="HelixScreen {} is available — tap Update" es="HelixScreen {} está disponible — toque Actualizar"/>
   <translation tag="Help &amp; About" es="Ayuda y acerca de"/>
   <translation tag="Help Improve HelixScreen" es="Ayude a mejorar HelixScreen"/>
@@ -1386,10 +1386,10 @@
   <translation tag="It&apos;s a new spool" es="Es una bobina nueva"/>
   <translation tag="Jammed at the Toolhead" es="Atascado en el cabezal"/>
   <translation tag="Job Queue" es="Cola de trabajos"/>
-  <translation tag="Jog Speed XY"/>
-  <translation tag="Jog Speed Z"/>
+  <translation tag="Jog Speed XY" es="Velocidad de movimiento XY"/>
+  <translation tag="Jog Speed Z" es="Velocidad de movimiento Z"/>
   <translation tag="Jog failed: {}" es="Error en movimiento: {}"/>
-  <translation tag="Jog speeds and step distances"/>
+  <translation tag="Jog speeds and step distances" es="Velocidades de movimiento y distancias de paso"/>
   <translation tag="Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests." es="Únase a la comunidad de HelixScreen en Discord para discusión, consejos, ayuda con la solución de problemas y solicitudes de funciones."/>
   <translation tag="Joining Wi-Fi disconnects the wired network." es="Unirse a Wi-Fi desconecta la red por cable."/>
   <translation tag="Just now" es="Justo ahora"/>
@@ -1468,7 +1468,7 @@
   <translation tag="Listening" es="Escuchando"/>
   <translation tag="Live view from your webcam" es="Vista en vivo de tu webcam"/>
   <translation tag="Load" es="Cargar"/>
-  <translation tag="Load / Unload"/>
+  <translation tag="Load / Unload" es="Cargar / Descargar"/>
   <translation tag="Load Failed" es="Fallo al cargar"/>
   <translation tag="Load Filament" es="Cargar Filamento"/>
   <translation tag="Load a filament first before trying to unload" es="Cargue primero filamento antes de intentar descargar"/>
@@ -1619,7 +1619,7 @@
   <translation tag="Missing value" es="Falta un valor"/>
   <translation tag="Mode" es="Modo"/>
   <translation tag="Modified" es="Modificado"/>
-  <translation tag="Modifying G-code needs the HelixPrint plugin. Printing original file."/>
+  <translation tag="Modifying G-code needs the HelixPrint plugin. Printing original file." es="Modificar G-code requiere el plugin HelixPrint. Se imprimirá el archivo original."/>
   <translation tag="Monitor for print abnormalities (K2 Plus camera-based)" es="Monitorear anomalías de impresión (basado en cámara del K2 Plus)"/>
   <translation tag="Monitor for print abnormalities (camera-based)" es="Monitorear anomalías de impresión (basado en cámara)"/>
   <translation tag="Monitor prints in progress — time remaining, current layer, and progress. Tap to pause, resume, or cancel the active job." es="Monitoriza las impresiones en curso — tiempo restante, capa actual y progreso. Toca para pausar, reanudar o cancelar el trabajo activo."/>
@@ -2019,7 +2019,7 @@
   <translation tag="Print ending..." es="Finalizando impresión..."/>
   <translation tag="Print error" es="Error de impresión"/>
   <translation tag="Print failed" es="Impresión fallida"/>
-  <translation tag="Print history will show the rewritten name"/>
+  <translation tag="Print history will show the rewritten name" es="El historial de impresión mostrará el nombre reescrito"/>
   <translation tag="Print issue detected" es="Problema de impresión detectado"/>
   <translation tag="Print jobs waiting to run" es="Trabajos en espera de impresión"/>
   <translation tag="Print preparation failed: {}" es="Error en preparación de impresión: {}"/>
@@ -2145,7 +2145,7 @@
   <translation tag="RFCOMM connect failed: " es="Error al conectar RFCOMM: "/>
   <translation tag="RFID reader malfunction (left)" es="Fallo del lector RFID (izquierdo)"/>
   <translation tag="RFID reader malfunction (right)" es="Fallo del lector RFID (derecho)"/>
-  <translation tag="RFID, auto-refill, nozzle and link care"/>
+  <translation tag="RFID, auto-refill, nozzle and link care" es="RFID, rellenado automático, cuidado de boquilla y enlace"/>
   <translation tag="RSS" es="RSS"/>
   <translation tag="RSS:" es="RSS:"/>
   <translation tag="Ramming Volume" es="Volumen de compactación"/>
@@ -2198,8 +2198,8 @@
   <translation tag="Remaining (g)" es="Restante (g)"/>
   <translation tag="Remaining Weight (g)" es="Peso Restante (g)"/>
   <translation tag="Remap Tool" es="Reasignar Herramienta"/>
-  <translation tag="Remapping rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally."/>
-  <translation tag="Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart."/>
+  <translation tag="Remapping rewrites the job file before printing it. This printer&apos;s Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally." es="La reasignación reescribe el archivo de impresión antes de imprimirlo. El Moonraker de esta impresora es demasiado antiguo para que el plugin HelixPrint restaure después el nombre de archivo original, por lo que el trabajo terminado aparece con el nombre reescrito. La reasignación en sí funciona con normalidad."/>
+  <translation tag="Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.&#10;&#10;Installing the plugin takes a moment and needs no restart." es="La reasignación reescribe el archivo de impresión antes de imprimirlo. Sin el plugin HelixPrint, la copia reescrita es la que queda en el historial de impresión, por lo que los trabajos terminados aparecen con nombres como modified_1730824_benchy.gcode en lugar del archivo elegido.&#10;&#10;Instalar el plugin toma un momento y no requiere reiniciar."/>
   <translation tag="Remap…" es="Reasignar…"/>
   <translation tag="Remember slot spool details across an eject" es="Recordar los detalles de la bobina de la ranura tras una expulsión"/>
   <translation tag="Remove" es="Eliminar"/>
@@ -2233,8 +2233,8 @@
   <translation tag="Reset" es="Restablecer"/>
   <translation tag="Reset Blade Counter" es="Restablecer el contador de cuchilla"/>
   <translation tag="Reset CFS" es="Restablecer CFS"/>
-  <translation tag="Reset Distances"/>
-  <translation tag="Reset Distances?"/>
+  <translation tag="Reset Distances" es="Restablecer distancias"/>
+  <translation tag="Reset Distances?" es="¿Restablecer distancias?"/>
   <translation tag="Reset Endless Spool" es="Restablecer la bobina infinita"/>
   <translation tag="Reset Endless Spool?" es="¿Restablecer la bobina infinita?"/>
   <translation tag="Reset Home Screen?" es="¿Restablecer pantalla de inicio?"/>
@@ -2424,7 +2424,7 @@
   <translation tag="Select a valid tool" es="Seleccione una herramienta válida"/>
   <translation tag="Select a valid {}" es="Seleccione un valor válido para {}"/>
   <translation tag="Select a {}" es="Seleccione {}"/>
-  <translation tag="Select at least one"/>
+  <translation tag="Select at least one" es="Selecciona al menos uno"/>
   <translation tag="Select fan" es="Seleccionar ventilador"/>
   <translation tag="Select gate" es="Seleccionar gate"/>
   <translation tag="Select macro for first button" es="Seleccionar macro para el primer botón"/>
@@ -2643,12 +2643,12 @@
   <translation tag="Switch to v%s" es="Cambiar a la v%s"/>
   <translation tag="Switched to {}" es="Cambiado a {}"/>
   <translation tag="Switches to a backup spool on runout" es="Cambia a una bobina de respaldo al agotarse"/>
-  <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature."/>
-  <translation tag="Switching back to PID changes how this heater is controlled."/>
-  <translation tag="Switching back to PID requires a config change and Klipper restart."/>
+  <translation tag="Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." es="Cambiar de nuevo a PID cambia cómo se controla este calentador y luego lo calibra. Eso tarda varios minutos a temperatura."/>
+  <translation tag="Switching back to PID changes how this heater is controlled." es="Cambiar de nuevo a PID cambia cómo se controla este calentador."/>
+  <translation tag="Switching back to PID requires a config change and Klipper restart." es="Cambiar de nuevo a PID requiere modificar la configuración y reiniciar Klipper."/>
   <translation tag="Switching heater control to MPC. Klipper will restart." es="Cambiando control del calentador a MPC. Klipper se reiniciará."/>
-  <translation tag="Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature."/>
-  <translation tag="Switching to MPC changes how this heater is controlled."/>
+  <translation tag="Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature." es="Cambiar a MPC cambia cómo se controla este calentador y luego lo calibra. Eso tarda varios minutos a temperatura."/>
+  <translation tag="Switching to MPC changes how this heater is controlled." es="Cambiar a MPC cambia cómo se controla este calentador."/>
   <translation tag="Switching to MPC requires a config change and Klipper restart." es="Cambiar a MPC requiere modificar la configuración y reiniciar Klipper."/>
   <translation tag="Sync with Spoolman" es="Sincronizar con Spoolman"/>
   <translation tag="Sysfs" es="Sysfs"/>
@@ -2809,7 +2809,7 @@
   <translation tag="This will reset all settings to defaults. This action cannot be undone." es="Esto restablecerá todos los ajustes a los valores predeterminados. Esta acción no se puede deshacer."/>
   <translation tag="This will restart Klipper firmware. Any active operations will be interrupted." es="Se reiniciará el firmware de Klipper. Las operaciones activas se interrumpirán."/>
   <translation tag="This will restart Klipper." es="Esto reiniciará Klipper."/>
-  <translation tag="This will restore the default jog step distances for all three modes."/>
+  <translation tag="This will restore the default jog step distances for all three modes." es="Esto restablecerá las distancias de paso predeterminadas para los tres modos."/>
   <translation tag="This will save the Z-offset and restart Klipper to write the configuration. The printer will briefly disconnect." es="Esto guardará el Z-offset y reiniciará Klipper para escribir la configuración. La impresora se desconectará brevemente."/>
   <translation tag="This writes the tool offsets to the printer&apos;s config and restarts Klipper, which takes a few seconds. Until then they apply only to this session." es="Esto escribe los offsets de herramienta en la configuración de la impresora y reinicia Klipper, lo que tarda unos segundos. Hasta entonces solo se aplican a esta sesión."/>
   <translation tag="Thorough" es="Exhaustivo"/>
@@ -2891,8 +2891,8 @@
   <translation tag="Tune" es="Ajustar"/>
   <translation tag="Tuning tower enabled - start a print to test" es="Torre de ajuste activada - inicie una impresión para probar"/>
   <translation tag="Turbo" es="Turbo"/>
-  <translation tag="Turbo Inner"/>
-  <translation tag="Turbo Outer"/>
+  <translation tag="Turbo Inner" es="Turbo interior"/>
+  <translation tag="Turbo Outer" es="Turbo exterior"/>
   <translation tag="Turn Off" es="Apagar"/>
   <translation tag="Turn Off WiFi?" es="¿Desactivar WiFi?"/>
   <translation tag="Turn On" es="Encender"/>
@@ -3079,7 +3079,7 @@
   <translation tag="X" es="X"/>
   <translation tag="X Axis" es="Eje X"/>
   <translation tag="X Offset" es="Desfase X"/>
-  <translation tag="X and Y jog feedrate"/>
+  <translation tag="X and Y jog feedrate" es="Velocidad de avance del movimiento X y Y"/>
   <translation tag="X axis applied, but Y axis failed" es="Eje X aplicado, pero eje Y falló"/>
   <translation tag="X axis done, starting Y..." es="Eje X terminado, empezando con Y..."/>
   <translation tag="X jog blocked at bed edge" es="Movimiento X bloqueado en el borde de la cama"/>
@@ -3108,8 +3108,8 @@
   <translation tag="Z Offset" es="Z Offset"/>
   <translation tag="Z Range" es="Rango Z"/>
   <translation tag="Z Tilt Adjust..." es="Ajuste de inclinación Z..."/>
-  <translation tag="Z jog blocked at axis limit"/>
-  <translation tag="Z jog feedrate"/>
+  <translation tag="Z jog blocked at axis limit" es="Movimiento Z bloqueado en el límite del eje"/>
+  <translation tag="Z jog feedrate" es="Velocidad de avance del movimiento Z"/>
   <translation tag="Z motor calibration failed" es="Falló la calibración del motor Z"/>
   <translation tag="Z probes for bed leveling and mesh generation" es="Sondas Z para nivelación de cama y generación de malla"/>
   <translation tag="Z-Off:" es="Z-Offset:"/>

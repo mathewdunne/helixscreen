@@ -93,9 +93,11 @@ void PowerDeviceState::set_devices(const std::vector<PowerDevice>& devices) {
             auto* print_subj = ps.get_print_lifecycle_subject();
             if (print_subj) {
                 print_state_observer_ = ui::observe_int_sync<PowerDeviceState>(
-                    print_subj, this, [](PowerDeviceState* self, int /*lifecycle*/) {
+                    print_subj, this,
+                    [](PowerDeviceState* self, int /*lifecycle*/) {
                         self->reevaluate_lock_states();
-                    });
+                    },
+                    ps.get_subjects_lifetime());
             }
         }
     }

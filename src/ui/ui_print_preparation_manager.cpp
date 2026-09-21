@@ -127,7 +127,8 @@ void PrintPreparationManager::set_dependencies(IMoonrakerAPI* api, PrinterState*
                 if (state == static_cast<int>(ConnectionState::CONNECTED)) {
                     self->analyze_print_start_macro();
                 }
-            });
+            },
+            printer_state_->get_subjects_lifetime());
     }
 }
 
@@ -1385,7 +1386,8 @@ void PrintPreparationManager::begin_pre_start_completion_wait(
                          "starting print");
             self->continue_print_start(filename, ops_to_disable, on_navigate_to_status,
                                        on_completion);
-        });
+        },
+        printer_state_->get_subjects_lifetime());
 }
 
 void PrintPreparationManager::finish_pre_start_wait() {

@@ -49,6 +49,20 @@ void apply_resolved(SlotInfo& slot, const ResolvedLane& resolved) {
         slot.total_weight_g = *resolved.total_weight_g;
 }
 
+void copy_resolver_owned_identity(SlotInfo& dst, const SlotInfo& src) {
+    dst.color_rgb = src.color_rgb;
+    dst.color_name = src.color_name;
+    dst.material = src.material;
+    dst.brand = src.brand;
+    dst.spool_name = src.spool_name;
+    dst.catalog_id = src.catalog_id;
+    dst.product_name = src.product_name;
+    dst.spoolman_id = src.spoolman_id;
+    dst.spoolman_vendor_id = src.spoolman_vendor_id;
+    dst.remaining_weight_g = src.remaining_weight_g;
+    dst.total_weight_g = src.total_weight_g;
+}
+
 ResolvedLane resolved_lane(LaneId lane) {
     return resolve(lane_sources(lane));
 }

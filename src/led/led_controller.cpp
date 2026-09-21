@@ -74,14 +74,13 @@ void LedController::init(IMoonrakerAPI* api, IMoonrakerClient* client) {
         helix::xml::register_subject_in_current_scope("led_controllable", &led_controllable_);
         helix::xml::register_subject_in_current_scope("led_command_in_flight",
                                                       &led_command_in_flight_);
+        subjects_.register_subject(&led_config_version_);
+        subjects_.register_subject(&led_controllable_, "led_controllable");
+        subjects_.register_subject(&led_command_in_flight_, "led_command_in_flight");
         version_subject_initialized_ = true;
         StaticSubjectRegistry::instance().register_deinit("LedController", [this]() {
-            if (version_subject_initialized_) {
-                lv_subject_deinit(&led_config_version_);
-                lv_subject_deinit(&led_controllable_);
-                lv_subject_deinit(&led_command_in_flight_);
-                version_subject_initialized_ = false;
-            }
+            subjects_.deinit_all();
+            version_subject_initialized_ = false;
         });
     }
 
@@ -94,7 +93,8 @@ void LedController::init(IMoonrakerAPI* api, IMoonrakerClient* client) {
             if (state != static_cast<int>(helix::ConnectionState::CONNECTED)) {
                 self->force_clear_in_flight();
             }
-        });
+        },
+        get_printer_state().get_subjects_lifetime());
 
     // Second half of the same safety net, for the case the observer above cannot
     // see: printer_connection_state tracks the MOONRAKER WebSocket only. A Klipper
@@ -104,14 +104,14 @@ void LedController::init(IMoonrakerAPI* api, IMoonrakerClient* client) {
     // (#1129). Any exit from READY kills every RPC Klipper had in flight, so clear.
     // force_clear_in_flight() is a no-op at count 0, so a simultaneous
     // disconnect firing both observers is harmless.
-    // No paired SubjectLifetime: get_klippy_state_subject() is a static
-    // singleton-lifetime subject on PrinterState (no lifetime-token overload).
     klippy_observer_ = helix::ui::observe_int_sync(
-        get_printer_state().get_klippy_state_subject(), this, [](LedController* self, int state) {
+        get_printer_state().get_klippy_state_subject(), this,
+        [](LedController* self, int state) {
             if (state != static_cast<int>(helix::KlippyState::READY)) {
                 self->force_clear_in_flight();
             }
-        });
+        },
+        get_printer_state().get_subjects_lifetime());
 
     initialized_ = true;
     load_config();

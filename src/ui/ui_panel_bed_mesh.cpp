@@ -483,7 +483,8 @@ void BedMeshPanel::setup_orientation_rewire_observer() {
     // never touches an ObserverGuard or a ui_is_portrait subscription.
     portrait_rewire_observer_ = helix::ui::observe_int_immediate<BedMeshPanel>(
         portrait_subject, this,
-        [](BedMeshPanel* self, int /*is_portrait*/) { self->rewire_after_orientation_flip(); });
+        [](BedMeshPanel* self, int /*is_portrait*/) { self->rewire_after_orientation_flip(); },
+        subject_never_freed());
 }
 
 void BedMeshPanel::rewire_after_orientation_flip() {
@@ -922,12 +923,17 @@ void BedMeshPanel::setup_build_volume_observer() {
         return;
     }
 
-    // Observe build_volume_version subject to refresh bounds when stepper config loads
+    // Observe build_volume_version subject to refresh bounds when stepper config loads.
+    // The subject dies only in ~MoonrakerAPI, and both teardown paths reset
+    // m_panels and run StaticPanelRegistry::destroy_all() BEFORE m_moonraker,
+    // so no observer guard can still be alive when it is freed.
     build_volume_observer_ = helix::ui::observe_int_sync<BedMeshPanel>(
-        api->get_build_volume_version_subject(), this, [](BedMeshPanel* self, int /*version*/) {
+        api->get_build_volume_version_subject(), this,
+        [](BedMeshPanel* self, int /*version*/) {
             spdlog::debug("[{}] build_volume changed, refreshing bed bounds", self->get_name());
             self->refresh_bed_bounds();
-        });
+        },
+        subject_never_freed());
 }
 
 void BedMeshPanel::refresh_bed_bounds() {

@@ -2639,3 +2639,92 @@ EOF
     [ "$status" -eq 1 ]
     contains "'p' from getenv() is read at line 3" "$output"
 }
+
+# --- The override-store lifecycle goes through make_loaded_override_store() ---
+#
+# A FilamentSlotOverrideStore is only useful once it has been loaded into the
+# map the backend reads. helix::ams::make_loaded_override_store() returns the
+# store together with that map, so "constructed but never loaded" has no
+# spelling. Assigning override_store_ from a bare make_unique reopens it, and
+# the failure is silent: every save_async and clear_async site is guarded on
+# override_store_, so a backend that skipped the load still answers every
+# in-session read from overrides_ while persisting nothing. Nothing goes red
+# until the next launch, by which time the user's colours are gone.
+#
+# AFC's and Happy Hare's lane_publish_store_ is deliberately not covered. It
+# publishes to the shared namespace their Klipper plugins own and holds no map
+# to load, so it has no lifecycle to forget.
+
+override_store_offenders() {
+    local root="${1:-src}"
+    # Keyed on the TYPE, not on the member name: splitting the build from the
+    # assignment is the natural thing to write once the argument list grows,
+    # and a name-keyed grep reads a two-line
+    #     auto s = std::make_unique<FilamentSlotOverrideStore>(...);
+    #     override_store_ = std::move(s);
+    # as clean. A seventh backend naming its member something else evades a
+    # name-keyed grep too. Every construction of the type is therefore an
+    # offender unless it is one of the three the allowlist names.
+    grep -rnE 'make_unique<[^>]*FilamentSlotOverrideStore|new[[:space:]]+[A-Za-z:]*FilamentSlotOverrideStore' \
+        --include='*.cpp' --include='*.h' "$root" 2>/dev/null \
+        | grep -v 'printer/filament_slot_override_store\.cpp' \
+        | grep -v 'lane_publish_store_' \
+        || true
+}
+
+@test "override_store_ is only ever assigned from make_loaded_override_store()" {
+    run override_store_offenders src
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+
+    run override_store_offenders include
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
+
+@test "the override-store lifecycle gate fires on a hand-written construction" {
+    # A gate that cannot fail is not a gate. Three spellings, all of which
+    # persist nothing: the direct assignment, the split build-then-move, and a
+    # differently-named member in a backend that never says override_store_.
+    local d="${BATS_TEST_TMPDIR}/offender"
+    mkdir -p "$d"
+    cat > "$d/ams_backend_thing.cpp" <<'EOF'
+void AmsBackendThing::on_started() {
+    override_store_ = std::make_unique<helix::ams::FilamentSlotOverrideStore>(
+        api_, "thing", helix::ams::lane_key_style_for(get_type()));
+}
+void AmsBackendThing::restart() {
+    auto s = std::make_unique<helix::ams::FilamentSlotOverrideStore>(
+        api_, "thing", helix::ams::lane_key_style_for(get_type()));
+    override_store_ = std::move(s);
+}
+void AmsBackendThing::third() {
+    slot_store_.reset(new helix::ams::FilamentSlotOverrideStore(api_, "thing", style));
+}
+EOF
+    run override_store_offenders "$d"
+    [ "$status" -eq 0 ]
+    [ "${#lines[@]}" -eq 3 ]
+    contains "FilamentSlotOverrideStore" "$output"
+}
+
+@test "the override-store gate stays quiet on the helper and on the publish store" {
+    # The silent half: the sanctioned spelling moves a store the helper built,
+    # and the publish store is a different member with no map behind it.
+    local d="${BATS_TEST_TMPDIR}/quiet"
+    mkdir -p "$d"
+    cat > "$d/ams_backend_ok.cpp" <<'EOF'
+void AmsBackendOk::on_started() {
+    auto loaded = helix::ams::make_loaded_override_store(api_, "ok", get_type(),
+                                                         backend_log_tag());
+    std::lock_guard<std::mutex> lock(mutex_);
+    override_store_ = std::move(loaded.store);
+    overrides_ = std::move(loaded.overrides);
+    lane_publish_store_ = std::make_unique<helix::ams::FilamentSlotOverrideStore>(
+        api_, "ok", style, "lane_data");
+}
+EOF
+    run override_store_offenders "$d"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}

@@ -210,7 +210,8 @@ void FanControlOverlay::on_activate() {
     using helix::ui::observe_int_sync;
     if (auto* fans_ver = printer_state_.get_fans_version_subject()) {
         fans_observer_ = observe_int_sync<FanControlOverlay>(
-            fans_ver, this, [](FanControlOverlay* self, int /* version */) {
+            fans_ver, this,
+            [](FanControlOverlay* self, int /* version */) {
                 if (!self->is_visible())
                     return;
                 // Defer rebuild (#80) AND use safe_clean_children (#776): lifetime_.defer
@@ -228,7 +229,8 @@ void FanControlOverlay::on_activate() {
                         self->subscribe_to_fan_speeds();
                     });
                 }
-            });
+            },
+            printer_state_.get_subjects_lifetime());
     }
 
     // Observe animation setting changes to refresh spin animations on all fan cards

@@ -260,17 +260,6 @@ PrintControlButtons::~PrintControlButtons() {
 }
 
 void PrintControlButtons::teardown_subjects() {
-    // Death signal BEFORE deinit_all(), which frees every observer node on these
-    // subjects. Outside holders — PrintStatusPanel's pending_action_observer_ —
-    // read it in ObserverGuard::reset() and skip the removal instead of
-    // dereferencing a freed observer. Replace rather than clear: an empty token
-    // reads as "dead" and would suppress removal for observers registered after
-    // this teardown, orphaning live nodes.
-    if (subjects_lifetime_) {
-        *subjects_lifetime_ = false;
-    }
-    subjects_lifetime_ = std::make_shared<bool>(true);
-
     cancel_pending_action_timer();
     subjects_.deinit_all();
     subjects_initialized_ = false;

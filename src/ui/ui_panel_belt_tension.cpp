@@ -78,10 +78,9 @@ BeltTensionPanel::~BeltTensionPanel() {
     // Backstop for a BeltTrace observer that outlives deinit_subjects() (e.g.
     // torn down after StaticPanelRegistry::destroy_all() but before this
     // object's own subjects field is destroyed) - same reasoning as
-    // PrinterState::~PrinterState().
-    if (subjects_lifetime_) {
-        *subjects_lifetime_ = false;
-    }
+    // PrinterState::~PrinterState(). Plain flip, no renewal: a dying panel
+    // has no successor generation.
+    subjects_.mark_subjects_dead();
 
     accel_observer_.reset();
     print_active_observer_.reset();
@@ -298,18 +297,6 @@ void BeltTensionPanel::deinit_subjects() {
     // subjects_.deinit_all() below is about to tear down - drop it first for
     // the same reason.
     replay_observer_.reset();
-
-    // Signal death of every subject below BEFORE it is torn down, so a
-    // BeltTrace observer still holding a copy of the old token sees it is
-    // gone and skips lv_observer_remove() on the observer node
-    // subjects_.deinit_all() is about to free (#705). Install a fresh live
-    // token rather than clearing the member - an empty token reads as "dead"
-    // in ObserverGuard::reset() and would make every observer registered
-    // after this point skip its removal too.
-    if (subjects_lifetime_) {
-        *subjects_lifetime_ = false;
-    }
-    subjects_lifetime_ = std::make_shared<bool>(true);
 
     if (subjects_initialized_) {
         subjects_.deinit_all();

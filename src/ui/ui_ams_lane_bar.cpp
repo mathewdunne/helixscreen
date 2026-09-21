@@ -265,31 +265,37 @@ static void setup_lane_bar_observers(LaneBarData* data) {
     lv_obj_t* obj = data->root;
 
     if (lane_state_subject) {
-        data->lane_state_observer =
-            observe_int_sync<lv_obj_t>(lane_state_subject, obj, [](lv_obj_t* o, int state_int) {
+        data->lane_state_observer = observe_int_sync<lv_obj_t>(
+            lane_state_subject, obj,
+            [](lv_obj_t* o, int state_int) {
                 auto* d = get_lane_bar_data(o);
                 if (d)
                     apply_lane_state(d, static_cast<helix::ui::LaneState>(state_int));
-            });
+            },
+            state.get_subjects_lifetime());
     }
     if (color_subject) {
-        data->color_observer =
-            observe_int_sync<lv_obj_t>(color_subject, obj, [](lv_obj_t* o, int color_int) {
+        data->color_observer = observe_int_sync<lv_obj_t>(
+            color_subject, obj,
+            [](lv_obj_t* o, int color_int) {
                 auto* d = get_lane_bar_data(o);
                 if (d)
                     apply_lane_color(d, color_int);
-            });
+            },
+            state.get_subjects_lifetime());
     }
     if (fill_subject) {
         // pct < 0 means "no data" -> leave the current render untouched.
-        data->fill_observer =
-            observe_int_sync<lv_obj_t>(fill_subject, obj, [](lv_obj_t* o, int pct) {
+        data->fill_observer = observe_int_sync<lv_obj_t>(
+            fill_subject, obj,
+            [](lv_obj_t* o, int pct) {
                 auto* d = get_lane_bar_data(o);
                 if (!d || pct < 0)
                     return;
                 d->fill_pct = std::clamp(pct, 0, 100);
                 apply_lane_state(d, d->last_state);
-            });
+            },
+            state.get_subjects_lifetime());
     }
     if (active_loaded_subject) {
         data->active_loaded_observer = observe_int_sync<lv_obj_t>(

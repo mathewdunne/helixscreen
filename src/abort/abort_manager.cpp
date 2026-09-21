@@ -311,7 +311,8 @@ void AbortManager::send_cancel_print() {
             printer_state_->get_print_state_enum_subject(), this,
             [](AbortManager* self, PrintJobState value) {
                 self->on_print_state_during_cancel(value);
-            });
+            },
+            printer_state_->get_subjects_lifetime());
         spdlog::debug("[AbortManager] Registered print_state_enum observer for cancel detection");
     }
 
@@ -482,9 +483,11 @@ void AbortManager::wait_for_reconnect() {
     // Register observer on klippy_state subject to detect when klippy becomes ready
     if (printer_state_) {
         klippy_observer_ = helix::ui::observe_int_immediate<AbortManager>(
-            printer_state_->get_klippy_state_subject(), this, [](AbortManager* self, int value) {
+            printer_state_->get_klippy_state_subject(), this,
+            [](AbortManager* self, int value) {
                 self->on_klippy_state_changed(static_cast<KlippyState>(value));
-            });
+            },
+            printer_state_->get_subjects_lifetime());
         spdlog::debug("[AbortManager] Registered klippy_state observer for reconnect detection");
     }
 }

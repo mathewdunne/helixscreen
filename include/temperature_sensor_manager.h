@@ -230,6 +230,18 @@ class TemperatureSensorManager : public ISensorManager {
     [[nodiscard]] lv_subject_t* get_sensor_count_subject();
 
     /**
+     * @brief Death signal for the set-level subjects this singleton owns.
+     *
+     * deinit_subjects() frees every observer node on them without bumping the
+     * ObserverGuard invalidation epoch, so outside observers must pass this to
+     * observe_*(), or their guards call lv_observer_remove() on a freed node.
+     * Per-sensor subjects have their own tokens via get_temp_subject().
+     */
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
+
+    /**
      * @brief Enable synchronous mode for testing
      *
      * When enabled, update_from_status() calls update_subjects() synchronously

@@ -1221,11 +1221,11 @@ void KeyboardManager::init(lv_obj_t* parent) {
     // The keyboard is created once at startup and never rebuilt, so without this
     // its keys keep the palette that was active when the app started. The bg
     // colour swap in theme_manager_apply_theme() reaches the key background but
-    // not the derived skirt or press colours. Static singleton subject, so a
-    // plain member guard with no SubjectLifetime is correct.
+    // not the derived skirt or press colours. theme_changed is a file-static
+    // theme global, reseeded in place and never freed mid-process.
     theme_observer_ = helix::ui::observe_int_sync<KeyboardManager>(
         theme_manager_get_changed_subject(), this,
-        [](KeyboardManager* self, int) { self->apply_key_styles(); });
+        [](KeyboardManager* self, int) { self->apply_key_styles(); }, subject_never_freed());
 
     lv_obj_align(keyboard_, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_add_flag(keyboard_, LV_OBJ_FLAG_HIDDEN);

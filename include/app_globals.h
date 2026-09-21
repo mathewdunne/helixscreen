@@ -172,6 +172,17 @@ lv_subject_t& get_notification_subject();
 lv_subject_t& get_home_edit_mode_subject();
 
 /**
+ * @brief Death signal for the file-static app_globals subjects
+ *
+ * home_edit_mode, wizard_active and siblings are freed by
+ * app_globals_deinit_subjects() during a soft restart, outside the
+ * ObserverGuard invalidation epoch. Observers of them must pass this to
+ * observe_*().
+ */
+SubjectLifetime get_app_globals_subjects_lifetime(); // NAMESPACE_OK: sits with the other
+                                                     // app-globals accessors at file scope
+
+/**
  * @brief Get the global wizard-active subject
  *
  * Observable mirror of is_wizard_active(), updated inside set_wizard_active().

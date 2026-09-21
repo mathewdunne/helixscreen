@@ -120,15 +120,17 @@ void FirstRunTour::start_impl() {
         // The overlay dim doesn't cover the navbar, so without this the tour
         // would be orphaned on top of a different panel with a stale target.
         auto* nav_subject = NavigationManager::instance().get_active_panel_subject();
-        nav_observer_ =
-            helix::ui::observe_int_sync(nav_subject, this, [](FirstRunTour* self, int panel_id) {
+        nav_observer_ = helix::ui::observe_int_sync(
+            nav_subject, this,
+            [](FirstRunTour* self, int panel_id) {
                 if (!self->running_)
                     return;
                 if (panel_id != static_cast<int>(helix::PanelId::Home)) {
                     spdlog::debug("[FirstRunTour] Cancelled: user navigated away from Home");
                     self->skip();
                 }
-            });
+            },
+            NavigationManager::instance().get_subjects_lifetime());
 
         // Re-resolve the current step's target widget when the responsive
         // breakpoint changes. The breakpoint swap rebuilds panel widgets, so
@@ -136,8 +138,9 @@ void FirstRunTour::start_impl() {
         // tick via lv_async_call so the new widget tree is built before we
         // look up the target by name.
         if (auto* bp_subj = theme_manager_get_breakpoint_subject()) {
-            breakpoint_observer_ =
-                helix::ui::observe_int_sync(bp_subj, this, [](FirstRunTour* self, int /*bp*/) {
+            breakpoint_observer_ = helix::ui::observe_int_sync(
+                bp_subj, this,
+                [](FirstRunTour* self, int /*bp*/) {
                     if (!self->running_ || !self->overlay_)
                         return;
                     // Defer: panel rebuild on breakpoint change is async; the
@@ -152,7 +155,8 @@ void FirstRunTour::start_impl() {
                             tour->render_current_step();
                         },
                         self);
-                });
+                },
+                subject_never_freed());
         }
     }
 

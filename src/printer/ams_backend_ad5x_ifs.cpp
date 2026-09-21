@@ -16,6 +16,7 @@
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
 #include "json_utils.h"
+#include "lane_apply.h"
 #include "lane_legacy_migration.h"
 #include "lane_source_store.h"
 #include "lane_translation.h"
@@ -222,25 +223,17 @@ void AmsBackendAd5xIfs::on_started() {
     // on this (main) thread; the Moonraker DB callback fires on the libhv
     // event loop, so the two threads don't interfere.
     if (api_) {
-        override_store_ = std::make_unique<helix::ams::FilamentSlotOverrideStore>(
-            api_, "ifs", helix::ams::lane_key_style_for(get_type()));
-        // Do the (potentially 5s) MR DB round-trip OUTSIDE the lock, then swap in
-        // under mutex_. AmsSubscriptionBackend::start() registers the WebSocket
-        // notify subscription before on_started() is invoked, so a status
-        // notification could in principle fire on the libhv thread while we're
-        // still inside load_blocking. Holding mutex_ during the swap ensures
-        // the parse path (which reads overrides_ under mutex_) sees a coherent
-        // map rather than a torn write.
-        auto loaded = override_store_->load_blocking();
-        helix::ams::ingest_legacy_records(*override_store_, helix::ams::LegacyLockKeys::LaneData,
-                                          backend_index());
-        const auto loaded_count = loaded.size();
+        auto loaded =
+            helix::ams::make_loaded_override_store(api_, "ifs", get_type(), backend_log_tag());
+        if (loaded.store) {
+            helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
+                                              backend_index());
+        }
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            overrides_ = std::move(loaded);
+            override_store_ = std::move(loaded.store);
+            overrides_ = std::move(loaded.overrides);
         }
-        spdlog::info("{} Loaded {} slot overrides from filament_slot store", backend_log_tag(),
-                     loaded_count);
 
         // Restore the last-known seated lane (#1065 power-cycle floor). The
         // firmware forgets the seated channel across a reboot, so this is the only
@@ -1895,8 +1888,8 @@ PathSegment AmsBackendAd5xIfs::infer_error_segment() const {
 // --- Filament operations ---
 
 AmsError AmsBackendAd5xIfs::do_load_filament(int slot_index) {
-    if (!validate_slot_index(slot_index)) {
-        return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, NUM_PORTS - 1);
+    if (auto err = validate_slot_index(slot_index); !err.success()) {
+        return err;
     }
 
     int port = slot_index + 1;
@@ -2186,8 +2179,8 @@ void AmsBackendAd5xIfs::finalize_op_after_macro(bool is_unload) {
 }
 
 AmsError AmsBackendAd5xIfs::do_select_slot(int slot_index) {
-    if (!validate_slot_index(slot_index)) {
-        return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, NUM_PORTS - 1);
+    if (auto err = validate_slot_index(slot_index); !err.success()) {
+        return err;
     }
 
     // Standalone module: it has no point-without-load command — selection IS a
@@ -2281,8 +2274,8 @@ AmsError AmsBackendAd5xIfs::eject_lane(int slot_index) {
         // The dispatch stamp is that test (#1250).
         note_filament_op_dispatch_locked();
 
-        if (!validate_slot_index(slot_index)) {
-            return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, NUM_PORTS - 1);
+        if (auto err = validate_slot_index(slot_index); !err.success()) {
+            return err;
         }
 
         // Refuse to cold-eject the lane currently seated at the toolhead: the
@@ -2787,28 +2780,42 @@ std::string AmsBackendAd5xIfs::write_port_locked(int slot_index, SlotInfo& slot,
     return normalized_material;
 }
 
-void AmsBackendAd5xIfs::settle_port_locked(int slot_index, uint32_t color_rgb,
-                                           const std::string& material) {
-    // Recalculate slot status now that port_presence may have changed.
+void AmsBackendAd5xIfs::settle_port_locked(int slot_index) {
+    auto* entry = slots_.get_mut(slot_index);
+    if (!entry) {
+        return;
+    }
+
+    // write_port_locked() has already put the caller's identity on the slot.
+    // Recalculate slot status now that port_presence may have changed, and
+    // keep that identity across the recalculation.
+    //
     // update_slot_from_state() repaints identity from the firmware-truth
     // caches and the lane's filed records. The write that led here is on
     // neither: an edit's declaration is filed by commit_user_edit() once
-    // apply_user_edit() returns, and a sync files nothing at all. Paint the
-    // caller's values back over the firmware reading that call produced —
-    // without this, an edit or sync lands in entry->info only after the next
-    // parse, and a sync (which no declaration ever follows) never lands.
+    // apply_user_edit() returns, and a sync files nothing at all. Worse, on a
+    // re-bind the lane still holds the records describing the spool this write
+    // replaces, and user_edit_observation() declares the id alone, so those
+    // records never speak for the new binding at all. A paint run here
+    // therefore lays the OUTGOING spool's identity over the incoming one
+    // (prestonbrown/helixscreen#1672).
+    //
+    // So snapshot what the caller wrote, let the parse run for the status and
+    // presence it recomputes, and put the identity back over its answer. The
+    // repaint commit_user_edit() runs once the declaration is filed is what
+    // lays down the lane's real verdict.
+    const SlotInfo caller = entry->info;
     update_slot_from_state(slot_index);
 
-    if (auto* entry = slots_.get_mut(slot_index)) {
-        entry->info.color_rgb = color_rgb;
-        entry->info.material = material;
+    if (auto* settled = slots_.get_mut(slot_index)) {
+        helix::ams::copy_resolver_owned_identity(settled->info, caller);
     }
 }
 
 AmsError AmsBackendAd5xIfs::apply_user_edit(int slot_index, const SlotInfo& info,
                                             const helix::ams::Observation& declared) {
-    if (!validate_slot_index(slot_index)) {
-        return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, NUM_PORTS - 1);
+    if (auto err = validate_slot_index(slot_index); !err.success()) {
+        return err;
     }
 
     auto idx = static_cast<size_t>(slot_index);
@@ -2840,7 +2847,7 @@ AmsError AmsBackendAd5xIfs::apply_user_edit(int slot_index, const SlotInfo& info
         helix::ams::stage_user_override(overrides_, slot_index, info, normalized_material,
                                         declared);
 
-        settle_port_locked(slot_index, info.color_rgb, normalized_material);
+        settle_port_locked(slot_index);
     }
 
     // Bare-hex spelling of the edit's colour — the wire form IFS_SET_MATERIAL,
@@ -2973,8 +2980,8 @@ void AmsBackendAd5xIfs::persist_external_identity_impl(int slot_index,
 }
 
 AmsError AmsBackendAd5xIfs::sync_external_identity(int slot_index, const SlotInfo& info) {
-    if (!validate_slot_index(slot_index)) {
-        return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, NUM_PORTS - 1);
+    if (auto err = validate_slot_index(slot_index); !err.success()) {
+        return err;
     }
 
     {
@@ -2986,8 +2993,8 @@ AmsError AmsBackendAd5xIfs::sync_external_identity(int slot_index, const SlotInf
         }
         // Nothing reaches Adventurer5M.json, _IFS_VARS or the override store: a
         // synced value lives in memory only.
-        const std::string normalized_material = write_port_locked(slot_index, entry->info, info);
-        settle_port_locked(slot_index, info.color_rgb, normalized_material);
+        write_port_locked(slot_index, entry->info, info);
+        settle_port_locked(slot_index);
     }
 
     emit_event(EVENT_SLOT_CHANGED, std::to_string(slot_index));
@@ -3114,8 +3121,8 @@ AmsError AmsBackendAd5xIfs::set_tool_mapping_impl(int tool_number, int slot_inde
     // structural error, not a verb to send. Takes precedence when both
     // contracts are detected (parse_ifs_tool_map_locked logs that case).
     if (wire_backed) {
-        if (slot_index < 0 || slot_index >= NUM_PORTS) {
-            return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, NUM_PORTS - 1);
+        if (auto err = validate_slot_index(slot_index); !err.success()) {
+            return err;
         }
         std::string verb = "IFS_MAP_TOOL TOOL=" + std::to_string(tool_number) + " SLOT=";
         verb += std::to_string(slot_index + 1); // DISPLAY_NUMBERING_OK: gcode wire, not a label
@@ -6648,8 +6655,11 @@ void AmsBackendAd5xIfs::persist_seated_slot_locked(int slot0) {
     }
 }
 
-bool AmsBackendAd5xIfs::validate_slot_index(int slot_index) const {
-    return slot_index >= 0 && slot_index < NUM_PORTS;
+AmsError AmsBackendAd5xIfs::validate_slot_index(int slot_index) const {
+    if (slot_index < 0 || slot_index >= NUM_PORTS) {
+        return AmsErrorHelper::invalid_slot(lane_noun(), slot_index, NUM_PORTS - 1);
+    }
+    return AmsErrorHelper::success();
 }
 
 // ensure_homed_then() provided by AmsSubscriptionBackend

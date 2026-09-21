@@ -627,7 +627,8 @@ void ControlsPanel::register_observers() {
                         self->populate_secondary_fans();
                 });
             }
-        });
+        },
+        printer_state_.get_subjects_lifetime());
 
     // Which macros a printer defines is not fixed for the life of a session: a
     // Klipper restart or a config change re-runs discovery, and StandardMacros
@@ -668,7 +669,8 @@ void ControlsPanel::register_observers() {
                         self->populate_secondary_temps();
                 });
             }
-        });
+        },
+        helix::sensors::TemperatureSensorManager::instance().get_subjects_lifetime());
 
     // Subscribe to pending Z-offset delta (for unsaved adjustment banner)
     pending_z_offset_observer_ = observe_int_sync<ControlsPanel>(

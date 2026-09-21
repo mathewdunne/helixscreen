@@ -7,6 +7,7 @@
 
 #include "bed_dimensions.h"
 #include "display_numbering.h"
+#include "lv_draw_buf_guard.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
 #include "printer_excluded_objects_state.h"
@@ -218,16 +219,18 @@ void ExcludeObjectMapView::create(lv_obj_t* parent, helix::PrinterExcludedObject
         };
 
         excluded_version_obs_ = observe_int_sync<ExcludeObjectMapView>(
-            state_->get_excluded_objects_version_subject(), this, rebuild_handler);
+            state_->get_excluded_objects_version_subject(), this, rebuild_handler,
+            state_->get_subjects_lifetime());
 
-        defined_version_obs_ =
-            observe_int_sync<ExcludeObjectMapView>(state_->get_defined_objects_version_subject(),
-                                                   this, [](ExcludeObjectMapView* self, int) {
-                                                       if (!self->root_)
-                                                           return;
-                                                       self->build_object_rects();
-                                                       self->build_key_bar();
-                                                   });
+        defined_version_obs_ = observe_int_sync<ExcludeObjectMapView>(
+            state_->get_defined_objects_version_subject(), this,
+            [](ExcludeObjectMapView* self, int) {
+                if (!self->root_)
+                    return;
+                self->build_object_rects();
+                self->build_key_bar();
+            },
+            state_->get_subjects_lifetime());
     }
 
     spdlog::info("[ExcludeObjectMapView] Created successfully");
@@ -277,11 +280,9 @@ void ExcludeObjectMapView::destroy() {
         }
         canvas_ = nullptr;
 
-        // Free canvas draw buffer now that no live widget references it.
-        if (canvas_buf_) {
-            lv_draw_buf_destroy(canvas_buf_);
-            canvas_buf_ = nullptr;
-        }
+        // Free canvas draw buffer now that no live widget references it. A
+        // blend of it from the last refresh may still be in flight.
+        helix::safe_draw_buf_destroy(canvas_buf_, "exclmap");
 
         // Deferred delete: a bare lv_obj_delete(root_) here is a sync widget
         // deletion that can run inside a UpdateQueue process_pending batch

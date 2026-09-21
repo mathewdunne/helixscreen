@@ -7,6 +7,7 @@
 
 #include "async_lifetime_guard.h"
 #include "moonraker_queue_api.h"
+#include "subject_managed_panel.h" // SubjectManager
 
 #include <atomic>
 #include <lvgl.h>
@@ -70,6 +71,16 @@ class JobQueueState {
     /// Initialize LVGL subjects (call before XML creation)
     void init_subjects();
 
+    /// Death signal for the subjects this object owns.
+    ///
+    /// deinit_subjects() and the destructor both free every observer node on
+    /// them without bumping the ObserverGuard invalidation epoch, so outside
+    /// observers must pass this to observe_*(), or their guards call
+    /// lv_observer_remove() on a freed node.
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
+
   private:
     friend class JobQueueStateTestAccess;
 
@@ -115,6 +126,9 @@ class JobQueueState {
     // rebuilds them, so a queue mutation that does not move this subject is
     // invisible until the next resize.
     lv_subject_t job_queue_count_subject_;
+    /// Owns the three subjects above and the death signal
+    /// get_subjects_lifetime() hands out.
+    SubjectManager subjects_;
 
     // Async callback safety guard
     helix::AsyncLifetimeGuard lifetime_;

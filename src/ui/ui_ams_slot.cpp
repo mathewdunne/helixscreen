@@ -786,11 +786,11 @@ static void setup_slot_observers(AmsSlotData* data) {
     // change (type edited while color is unchanged) repaints on EVERY consumer
     // — AmsPanel, AmsOverviewPanel, AmsDetail — with no container re-reading it
     // imperatively (#1065, native ZMOD AD5X "material stuck, color updates").
-    // The material subject is a static singleton, so no SubjectLifetime token.
     lv_subject_t* material_subject = state.get_slot_material_subject(data->slot_index);
     if (material_subject) {
         data->material_observer = helix::ui::observe_string<lv_obj_t>(
-            material_subject, obj, [](lv_obj_t* o, const char* mat) {
+            material_subject, obj,
+            [](lv_obj_t* o, const char* mat) {
                 auto* d = get_slot_data(o);
                 if (!d)
                     return;
@@ -811,7 +811,8 @@ static void setup_slot_observers(AmsSlotData* data) {
                 if (d->last_status == SlotStatus::EMPTY) {
                     apply_slot_status(d, static_cast<int>(SlotStatus::EMPTY));
                 }
-            });
+            },
+            state.get_subjects_lifetime());
     }
 
     if (current_slot_subject) {
@@ -824,7 +825,7 @@ static void setup_slot_observers(AmsSlotData* data) {
                     apply_current_slot_highlight(d, current_slot);
                 }
             },
-            AmsState::instance().get_subjects_lifetime());
+            state.get_subjects_lifetime());
     }
     if (filament_loaded_subject) {
         // When filament_loaded changes, re-evaluate highlight using current_slot value
@@ -839,23 +840,24 @@ static void setup_slot_observers(AmsSlotData* data) {
                     apply_current_slot_highlight(d, lv_subject_get_int(slot_subject));
                 }
             },
-            AmsState::instance().get_subjects_lifetime());
+            state.get_subjects_lifetime());
     }
 
     // Per-slot active-loaded observer: the SINGLE source driving the active-lane
     // highlight. Fires the instant slot_is_actively_loaded(i) flips on a status
     // sync (e.g. an idle unload clears it), so the badge tracks live load state.
-    // Static-array subject (singleton lifetime) — no SubjectLifetime token needed.
     lv_subject_t* active_loaded_subject = state.get_slot_active_loaded_subject(data->slot_index);
     if (active_loaded_subject) {
-        data->active_loaded_observer =
-            observe_int_sync<lv_obj_t>(active_loaded_subject, obj, [](lv_obj_t* o, int /*active*/) {
+        data->active_loaded_observer = observe_int_sync<lv_obj_t>(
+            active_loaded_subject, obj,
+            [](lv_obj_t* o, int /*active*/) {
                 auto* d = get_slot_data(o);
                 if (d) {
                     evaluate_pulse_state(d);
                     apply_current_slot_highlight(d, d->slot_index);
                 }
-            });
+            },
+            state.get_subjects_lifetime());
     }
 
     // Action observer: auto-pulse this slot during active filament operations
@@ -868,7 +870,7 @@ static void setup_slot_observers(AmsSlotData* data) {
                 if (d)
                     evaluate_pulse_state(d);
             },
-            AmsState::instance().get_subjects_lifetime());
+            state.get_subjects_lifetime());
     }
 
     // Target slot observer: re-evaluate pulse when swap target changes
@@ -881,7 +883,7 @@ static void setup_slot_observers(AmsSlotData* data) {
                 if (d)
                     evaluate_pulse_state(d);
             },
-            AmsState::instance().get_subjects_lifetime());
+            state.get_subjects_lifetime());
     }
 
     // Update slot badge with 1-based display number

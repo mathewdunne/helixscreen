@@ -122,9 +122,11 @@ void ExcludeObjectSideList::create(lv_obj_t* parent, PrinterState* printer_state
         }
     };
     excluded_version_obs_ = observe_int_sync<ExcludeObjectSideList>(
-        printer_state_->get_excluded_objects_version_subject(), this, repopulate);
+        printer_state_->get_excluded_objects_version_subject(), this, repopulate,
+        printer_state_->get_subjects_lifetime());
     defined_version_obs_ = observe_int_sync<ExcludeObjectSideList>(
-        printer_state_->get_defined_objects_version_subject(), this, repopulate);
+        printer_state_->get_defined_objects_version_subject(), this, repopulate,
+        printer_state_->get_subjects_lifetime());
 
     lv_anim_t a;
     lv_anim_init(&a);

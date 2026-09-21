@@ -11644,6 +11644,70 @@ TEST_CASE(
     CHECK(written.at("FFMInfo").at("ffmType1") == "SILK");
 }
 
+TEST_CASE("clearing an AD5X port takes the linked spool's brand off it",
+          "[ams][ad5x_ifs][lane][1672]") {
+    // The clear the context menu performs: ui_ams_detail blanks the identity
+    // fields, drops the Spoolman handles, and commits that as a user edit.
+    //
+    // apply_user_edit() paints the lane onto the port while it runs, and at
+    // that moment the lane still carries the record for the spool being
+    // unlinked - commit_user_edit() drops it only once apply_user_edit() has
+    // returned. Without settle_port_locked() holding the caller's identity
+    // across that paint, the outgoing spool's brand lands back on a port the
+    // user just cleared, and no later paint can retire it: nothing states a
+    // brand any more, and apply_resolved() leaves an unobserved field standing.
+    Ad5xIfsTmpCacheDir tmp("clear_takes_the_brand");
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
+    helix::PrinterState state;
+    state.init_subjects(false);
+    MoonrakerAPIMock api(client, state);
+
+    helix::test::RegisteredBackend<AmsBackendAd5xIfs> backend_reg(&api, nullptr);
+    AmsBackendAd5xIfs& backend = *backend_reg;
+    auto store = std::make_unique<helix::ams::FilamentSlotOverrideStore>(&api, "ifs");
+    FilamentSlotOverrideStoreTestAccess::set_cache_directory(*store, tmp.path);
+    Ad5xIfsTestAccess::inject_override_store(backend, std::move(store));
+
+    SpoolInfo spool;
+    spool.id = 1;
+    spool.vendor = "Polymaker";
+    spool.filament_name = "PolyLite PETG";
+    spool.material = "PETG";
+    spool.color_hex = "FF00FF";
+    helix::test::spool_states(backend, 0, spool);
+    backend.repaint_slot_from_lane(0);
+
+    const SlotInfo linked = backend.get_slot_info(0);
+    REQUIRE(linked.brand == "Polymaker");
+    REQUIRE(linked.spoolman_id == 1);
+
+    // Field for field what ui_ams_detail.cpp#handle_menu_action does on
+    // CLEAR_SPOOL. The default colour and the multi-colour list matter to the
+    // shape of the record this leaves behind: declares_color() is what
+    // classify_declaration() keys on, so a clear that left a declarable colour
+    // standing would file the user's word where a real one files a memory.
+    SlotInfo cleared = linked;
+    cleared.material.clear();
+    cleared.color_rgb = AMS_DEFAULT_SLOT_COLOR;
+    cleared.color_name.clear();
+    cleared.multi_color_hexes.clear();
+    cleared.brand.clear();
+    cleared.catalog_id.clear();
+    cleared.product_name.clear();
+    cleared.clear_spoolman_link();
+    cleared.remaining_weight_g = -1;
+    cleared.total_weight_g = -1;
+    helix::test::edit_slot_as_user(backend, 0, cleared);
+
+    // The brand is the assertion this test exists for: nothing states one any
+    // more, and apply_resolved() cannot retire a field no source observes, so
+    // whatever stands here after the commit is what the port will show until
+    // some source speaks. spoolman_id rides along as the binding half.
+    const SlotInfo after = backend.get_slot_info(0);
+    CHECK(after.brand.empty());
+    CHECK(after.spoolman_id == 0);
+}
+
 TEST_CASE("an external AD5X type change leaves a linked lane's Spoolman material standing",
           "[ams][ad5x_ifs][filament_slot_override][1653]") {
     // A linked spool owns its material. Firmware's own type still shows beneath

@@ -131,9 +131,8 @@ PrinterState::~PrinterState() {
     // otherwise reset() against freed storage. Flipping costs nothing when
     // deinit_subjects() already ran — that installed a fresh token, and flipping
     // it just tells holders registered since then that the state is gone too.
-    if (subjects_lifetime_) {
-        *subjects_lifetime_ = false;
-    }
+    // Plain flip, no renewal: a dying object has no successor generation.
+    subjects_.mark_subjects_dead();
 }
 
 void PrinterState::deinit_subjects() {
@@ -156,21 +155,18 @@ void PrinterState::deinit_subjects() {
     // own PrinterState), so leaving it registered would hold a callback over freed memory.
     helix::PrinterCacheRegistry::instance().unregister("PrinterState");
 
-    // Signal death of EVERY subject below BEFORE anything is torn down. Observers
-    // held by objects that outlive this call — process-lifetime panel singletons,
-    // most of all — check this token in ObserverGuard::reset() and skip
-    // lv_observer_remove() on observer nodes that lv_subject_deinit() is about to
-    // free. Flipping the bool (rather than only dropping our shared_ptr) is what
-    // makes it work when a holder still has a copy: expired() would report false,
-    // but the value tells them the subject is gone. Same contract as
-    // PrinterPrintState's static_subjects_lifetime_.
-    if (subjects_lifetime_) {
-        *subjects_lifetime_ = false;
-    }
-    // Install a fresh live token rather than clearing the member: an empty token
-    // reads as "dead" in ObserverGuard::reset() and would make every observer
-    // registered after this point skip its removal (see the member's comment).
-    subjects_lifetime_ = std::make_shared<bool>(true);
+    // Signal death of EVERY subject below BEFORE anything is torn down. The
+    // umbrella contract: this token covers the per-domain components too, whose
+    // subjects die in the cascade below — BEFORE this manager's own
+    // deinit_all() runs — so the flip cannot wait for it. Observers held by
+    // objects that outlive this call — process-lifetime panel singletons, most
+    // of all — check this token in ObserverGuard::reset() and skip
+    // lv_observer_remove() on observer nodes that lv_subject_deinit() is about
+    // to free. Flipping the bool (rather than only dropping the shared_ptr) is
+    // what makes it work when a holder still has a copy. The later
+    // subjects_.deinit_all() flips again; that lands on the renewed token,
+    // which nothing can have fetched in between.
+    subjects_.expire_subjects_lifetime();
 
     // Deinit all sub-component subjects
     temperature_state_.deinit_subjects();
@@ -214,12 +210,6 @@ void PrinterState::init_subjects(bool register_xml) {
     cached_display_ = current_display;
 
     spdlog::trace("[PrinterState] Initializing subjects (register_xml={})", register_xml);
-
-    // NOTE: subjects_lifetime_ is deliberately NOT refreshed here. It is created
-    // with the object and replaced by deinit_subjects(), so the token covering
-    // the subjects below is already live and already handed to any observer that
-    // subscribed before this call. Minting a new one here would strand those
-    // holders on a token that never flips false.
 
     // Initialize temperature state component (extruder and bed temperatures)
     temperature_state_.init_subjects(register_xml);

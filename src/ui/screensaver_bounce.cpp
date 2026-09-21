@@ -7,6 +7,7 @@
 
 #include "ui_confetti.h"
 
+#include "lv_draw_buf_guard.h"
 #include "platform_capabilities.h"
 #include "printer_image_manager.h"
 #include "printer_images.h"
@@ -166,10 +167,9 @@ bool BouncingPrinterScreensaver::decode_sprite() {
 }
 
 void BouncingPrinterScreensaver::free_sprite() {
-    if (decoded_) {
-        lv_draw_buf_destroy(decoded_);
-        decoded_ = nullptr;
-    }
+    // The sprite is the bounce image's source until the overlay teardown stops
+    // the saver; a blend of its last frame may still be in flight.
+    helix::safe_draw_buf_destroy(decoded_, "bounce");
 }
 
 void BouncingPrinterScreensaver::seed_motion() {

@@ -115,9 +115,11 @@ void JobQueueModal::on_show() {
 
     // Observe job_queue_count to auto-refresh list when data changes (e.g., after delete)
     auto* count_subj = lv_xml_get_subject(nullptr, "job_queue_count");
+    auto* jqs = get_job_queue_state();
     if (count_subj) {
         count_observer_ = helix::ui::observe_int_sync<JobQueueModal>(
-            count_subj, this, [](JobQueueModal* self, int /*count*/) {
+            count_subj, this,
+            [](JobQueueModal* self, int /*count*/) {
                 // Defer rebuild (#80) AND use safe_clean_children inside
                 // populate_job_list (#776): lifetime_.defer moves the rebuild
                 // off the observer callback's stack, and safe_clean_children
@@ -133,7 +135,8 @@ void JobQueueModal::on_show() {
                         }
                     });
                 }
-            });
+            },
+            jqs ? jqs->get_subjects_lifetime() : SubjectLifetime{});
     }
 
     populate_job_list();

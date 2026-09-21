@@ -288,7 +288,7 @@ void DisplaySettingsManager::init_subjects() {
         [](DisplaySettingsManager*, int enabled) {
             lv_xml_set_transition_scale(enabled ? 256 : 0);
         },
-        subjects_lifetime_);
+        get_subjects_lifetime());
 
     // System keyboard preference (default: off — use built-in LVGL keyboard)
     bool sys_kb = config->get<bool>("/display/use_system_keyboard", false);
@@ -425,16 +425,6 @@ void DisplaySettingsManager::deinit_subjects() {
     }
 
     spdlog::trace("[DisplaySettingsManager] Deinitializing subjects");
-    // Death signal BEFORE the subjects go away: deinit frees every observer
-    // node on them, so outside ObserverGuards must learn they are gone or their
-    // next reset() calls lv_observer_remove() on freed memory. Replaced, not
-    // cleared — an empty token reads as "dead" and would suppress removal for
-    // observers registered after this teardown.
-    if (subjects_lifetime_) {
-        *subjects_lifetime_ = false;
-    }
-    subjects_lifetime_ = std::make_shared<bool>(true);
-
     subjects_.deinit_all();
     subjects_initialized_ = false;
     spdlog::trace("[DisplaySettingsManager] Subjects deinitialized");

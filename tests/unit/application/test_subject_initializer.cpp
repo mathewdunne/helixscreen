@@ -148,7 +148,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "ObserverGuard RAII removes observer on destru
     {
         // Create observer in inner scope
         auto guard = helix::ui::observe_int_sync<TestReceiver>(
-            &subject, &receiver, [](TestReceiver* r, int /*value*/) { r->counter->fetch_add(1); });
+            &subject, &receiver, [](TestReceiver* r, int /*value*/) { r->counter->fetch_add(1); },
+            subject_never_freed());
 
         REQUIRE(guard); // Guard should be valid
 
@@ -202,7 +203,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "ObserverGuard move semantics transfer ownersh
 
     {
         auto inner_guard = helix::ui::observe_int_sync<TestReceiver>(
-            &subject, &receiver, [](TestReceiver* r, int /*value*/) { r->counter->fetch_add(1); });
+            &subject, &receiver, [](TestReceiver* r, int /*value*/) { r->counter->fetch_add(1); },
+            subject_never_freed());
 
         REQUIRE(inner_guard);
 

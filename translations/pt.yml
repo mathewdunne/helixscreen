@@ -279,8 +279,8 @@ translations:
   Backup spool switching state unknown: Estado da troca para carretel de reserva desconhecido
   Barcode Scanner: Leitor de Código de Barras
   Base: Referência
-  Batch load failed: ''
-  Batch unload failed: ''
+  Batch load failed: Falha no carregamento em lote
+  Batch unload failed: Falha no descarregamento em lote
   Beacon auto-calibrate sent: Beacon auto-calibração enviada
   Beacon calibrate sent: Beacon calibração enviada
   Bed: Mesa
@@ -432,7 +432,7 @@ translations:
     alvos com mais precisão.
   Calibration kept timing out. Your previous settings were kept.: A calibração expirou repetidamente. Suas configurações anteriores foram mantidas.
   Calibration may still be running — printer connection was interrupted: 'A calibração pode ainda estar em execução — a conexão com a impressora foi interrompida'
-  Calibration may still be running — response timed out: ''
+  Calibration may still be running — response timed out: 'A calibração pode ainda estar em execução — tempo esgotado'
   Calibration move may still be running — printer connection was interrupted: 'O movimento de calibração pode ainda estar em execução — a conexão com a impressora foi interrompida'
   Calibration saved but cannot apply on SDL display: Calibração salva mas não pode
     ser aplicada no display SDL
@@ -508,7 +508,7 @@ translations:
   Change Printer Host: Alterar Host da Impressora
   Change Tool: Trocar Ferramenta
   Change Tool While Paused: Trocar Ferramenta com Impressão Pausada
-  Change heater control?: ''
+  Change heater control?: Alterar o controle do aquecedor?
   Change tool: Trocar ferramenta
   Changes apply immediately. Adjust during print for tuning.: Alterações aplicadas
     imediatamente. Ajuste durante a impressão para calibrar.
@@ -596,8 +596,8 @@ translations:
   Closer = more squish | Farther = less squish: Mais perto = mais compressão | Mais
     longe = menos compressão
   Coarse: Grosso
-  Coarse Inner: ''
-  Coarse Outer: ''
+  Coarse Inner: Grosso Interno
+  Coarse Outer: Grosso Externo
   Code: Código
   Coil Temperature: Temperatura da Bobina
   Collect logs and system info for support: Coletar logs e informações do sistema
@@ -857,7 +857,7 @@ translations:
   Distance from hub to toolhead: 'Distância do hub ao cabeçote'
   Distance from lane extruder to hub: 'Distância do extrusor da lane ao hub'
   Distance from toolhead sensor to nozzle tip: 'Distância do sensor do cabeçote à ponta do bico'
-  Distance moved per jog button tap: ''
+  Distance moved per jog button tap: Distância movida por toque no botão de movimento
   Do not power off your printer.: Não desligue sua impressora.
   Do not touch the printer during calibration: Não toque na impressora durante a calibração
   Dock: Encaixar
@@ -868,7 +868,7 @@ translations:
   Documentation: Documentação
   Don't Save: Não Salvar
   Don't ask again: Não perguntar novamente
-  Don't show again: ''
+  Don't show again: Não mostrar novamente
   Done: Concluído
   Download update?: Baixar atualização?
   Download v{}?: Baixar v{}?
@@ -1218,7 +1218,7 @@ translations:
   Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'O filamento acabou. O reabastecimento automático está desligado, então o CFS não trocará de carretel sozinho. Carregue filamento e retome.'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: O filamento acabou. O CFS sabe quais carretéis correspondem, mas esses slots estão vazios. Carregue um deles e depois retome.
   Filament reload failed: Falha ao recarregar o filamento
-  Filament remapping is unavailable: ''
+  Filament remapping is unavailable: O remapeamento de filamento está indisponível
   Filament runout: Fim de filamento
   Filament runout and motion detection sensors: Sensores de detecção de fim de filamento
     e movimento
@@ -1241,8 +1241,8 @@ translations:
   'Filter Fan: Off': 'Ventoinha do Filtro: Desligado'
   'Filter Fan: On': 'Ventoinha do Filtro: Ligado'
   Fine: Fino
-  Fine Inner: ''
-  Fine Outer: ''
+  Fine Inner: Fino Interno
+  Fine Outer: Fino Externo
   Finish: Finalizar
   Finish or cancel the print before loading, unloading, or changing filament: Termine ou cancele a impressão antes de carregar, descarregar ou trocar o filamento
   Finishing clean...: Finalizando limpeza...
@@ -1374,7 +1374,7 @@ translations:
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     se integrará com seu trocador de filamento para operações de impressão com múltiplos
     carretéis/cores.
-  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: ''
+  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: O HelixScreen grava isso no printer.cfg e reinicia o Klipper. A impressora se desconectará brevemente.
   HelixScreen {} is available — tap Update: HelixScreen {} está disponível — toque
     em Atualizar
   Help & About: Ajuda e sobre
@@ -1535,10 +1535,10 @@ translations:
   It's a new spool: É um carretel novo
   Jammed at the Toolhead: Atolado no cabeçote
   Job Queue: Fila de Trabalhos
-  Jog Speed XY: ''
-  Jog Speed Z: ''
+  Jog Speed XY: Velocidade de movimento XY
+  Jog Speed Z: Velocidade de movimento Z
   'Jog failed: {}': 'Falha ao mover: {}'
-  Jog speeds and step distances: ''
+  Jog speeds and step distances: Velocidades de movimento e distâncias de passo
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: Participe
     da comunidade HelixScreen no Discord para discussões, dicas, ajuda na solução
     de problemas e solicitações de recursos.
@@ -1634,7 +1634,7 @@ translations:
   Listening: Escutando
   Live view from your webcam: Visão ao vivo da sua webcam
   Load: Carregar
-  Load / Unload: ''
+  Load / Unload: Carregar / Descarregar
   Load Failed: 'Falha ao carregar'
   Load Filament: Carregar Filamento
   Load a filament first before trying to unload: Carregue primeiro filamento antes de tentar descarregar
@@ -2224,7 +2224,7 @@ translations:
   Print ending...: Finalizando impressão...
   Print error: Erro de impressão
   Print failed: Impressão falhou
-  Print history will show the rewritten name: ''
+  Print history will show the rewritten name: O histórico de impressões mostrará o nome reescrito
   Print issue detected: Problema de impressão detectado
   Print jobs waiting to run: Trabalhos aguardando impressão
   'Print preparation failed: {}': 'Falha na preparação da impressão: {}'
@@ -2365,7 +2365,7 @@ translations:
   'RFCOMM connect failed: ': 'Falha ao conectar RFCOMM: '
   RFID reader malfunction (left): Falha do leitor RFID (esquerdo)
   RFID reader malfunction (right): Falha do leitor RFID (direito)
-  RFID, auto-refill, nozzle and link care: ''
+  RFID, auto-refill, nozzle and link care: RFID, reabastecimento automático, cuidados com bico e enlace
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'Volume de compactação'
@@ -2426,9 +2426,9 @@ translations:
   Remaining Weight (g): Peso Restante (g)
   Remap Tool: Remapear Ferramenta
   ? Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  : ''
+  : O remapeamento reescreve o arquivo de trabalho antes de imprimi-lo. O Moonraker desta impressora é antigo demais para o plugin HelixPrint restaurar o nome do arquivo original depois, então o trabalho concluído aparece com o nome reescrito. O remapeamento em si funciona normalmente.
   ? "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  : ''
+  : "O remapeamento reescreve o arquivo de trabalho antes de imprimi-lo. Sem o plugin HelixPrint, a cópia reescrita é o que entra no seu histórico de impressões, então os trabalhos concluídos aparecem com nomes como modified_1730824_benchy.gcode em vez do arquivo escolhido.\n\nInstalar o plugin leva um momento e não exige reinicialização."
   Remap…: Remapear…
   Remember slot spool details across an eject: Lembrar os detalhes do carretel do slot ao ejetar
   Remove: Remover
@@ -2463,8 +2463,8 @@ translations:
   Reset: Resetar
   Reset Blade Counter: 'Resetar o contador de lâmina'
   Reset CFS: Resetar CFS
-  Reset Distances: ''
-  Reset Distances?: ''
+  Reset Distances: Resetar Distâncias
+  Reset Distances?: Resetar distâncias?
   Reset Endless Spool: 'Resetar o carretel infinito'
   Reset Endless Spool?: 'Resetar o carretel infinito?'
   Reset Home Screen?: Redefinir tela inicial?
@@ -2680,7 +2680,7 @@ translations:
   Select a valid tool: Selecione uma ferramenta válida
   Select a valid {}: 'Selecione um valor válido para {}'
   Select a {}: 'Selecione {}'
-  Select at least one: ''
+  Select at least one: Selecione pelo menos um
   Select fan: Selecionar ventoinha
   Select gate: 'Selecionar gate'
   Select macro for first button: Selecionar macro para o primeiro botão
@@ -2932,13 +2932,13 @@ translations:
   Switched to {}: 'Alterado para {}'
   Switches to a backup spool on runout: Troca para um carretel de reserva ao acabar
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
-  : ''
-  Switching back to PID changes how this heater is controlled.: ''
-  Switching back to PID requires a config change and Klipper restart.: ''
+  : Voltar para PID altera como este aquecedor é controlado e depois o calibra. Isso leva vários minutos em temperatura.
+  Switching back to PID changes how this heater is controlled.: Voltar para PID altera como este aquecedor é controlado.
+  Switching back to PID requires a config change and Klipper restart.: Voltar para PID requer alteração de configuração e reinicialização do Klipper.
   Switching heater control to MPC. Klipper will restart.: Alterando controle do aquecedor
     para MPC. Klipper será reiniciado.
-  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: ''
-  Switching to MPC changes how this heater is controlled.: ''
+  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: Mudar para MPC altera como este aquecedor é controlado e depois o calibra. Isso leva vários minutos em temperatura.
+  Switching to MPC changes how this heater is controlled.: Mudar para MPC altera como este aquecedor é controlado.
   Switching to MPC requires a config change and Klipper restart.: Mudar para MPC requer
     alteração de configuração e reinicialização do Klipper.
   Sync with Spoolman: Sincronizar com Spoolman
@@ -3164,7 +3164,7 @@ translations:
   This will restart Klipper firmware. Any active operations will be interrupted.: O
     firmware Klipper será reiniciado. Operações ativas serão interrompidas.
   This will restart Klipper.: Isso reiniciará o Klipper.
-  This will restore the default jog step distances for all three modes.: ''
+  This will restore the default jog step distances for all three modes.: Isso restaurará as distâncias de passo de movimento padrão para todos os três modos.
   This will save the Z-offset and restart Klipper to write the configuration. The printer will briefly disconnect.: Isso salvará o Z-offset e reiniciará o Klipper para gravar a configuração. A impressora será brevemente desconectada.
   ? This writes the tool offsets to the printer's config and restarts Klipper, which takes a few seconds. Until then they apply only to this session.
   : Isso grava os offsets de ferramenta na configuração da impressora e reinicia o Klipper, o que leva alguns segundos. Até lá, eles valem apenas para esta sessão.
@@ -3250,8 +3250,8 @@ translations:
   Tuning tower enabled - start a print to test: Torre de ajuste habilitada - inicie
     uma impressão para testar
   Turbo: Turbo
-  Turbo Inner: ''
-  Turbo Outer: ''
+  Turbo Inner: Turbo Interno
+  Turbo Outer: Turbo Externo
   Turn Off: Desligar
   Turn Off WiFi?: Desligar WiFi?
   Turn On: Ligar
@@ -3458,7 +3458,7 @@ translations:
   X: X
   X Axis: Eixo X
   X Offset: Offset X
-  X and Y jog feedrate: ''
+  X and Y jog feedrate: Velocidade de movimento dos eixos X e Y
   X axis applied, but Y axis failed: Eixo X aplicado, mas eixo Y falhou
   X axis done, starting Y...: 'Eixo X concluído, iniciando Y...'
   X jog blocked at bed edge: Movimento X bloqueado na borda da mesa
@@ -3493,8 +3493,8 @@ translations:
   Z Offset: Z Offset
   Z Range: Alcance Z
   Z Tilt Adjust...: Ajuste de inclinação Z...
-  Z jog blocked at axis limit: ''
-  Z jog feedrate: ''
+  Z jog blocked at axis limit: Movimento Z bloqueado no limite do eixo
+  Z jog feedrate: Velocidade de movimento do eixo Z
   Z motor calibration failed: Falha na calibração do motor Z
   Z probes for bed leveling and mesh generation: Sondas Z para nivelamento da mesa
     e geração de malha
@@ -3552,7 +3552,7 @@ translations:
   'off': desligado
   AFC's remember_spool is retaining spool info in firmware; that takes precedence over this toggle: O remember_spool do AFC retém informações do carretel no firmware; isso tem precedência sobre esta opção
   AI detection: Detecção por AI
-  Modifying G-code needs the HelixPrint plugin. Printing original file.: ''
+  Modifying G-code needs the HelixPrint plugin. Printing original file.: Modificar G-code requer o plugin HelixPrint. Imprimindo o arquivo original.
   Monitor for print abnormalities (K2 Plus camera-based): Monitorar anomalias de impressão (baseado na câmera do K2 Plus)
   Monitor for print abnormalities (camera-based): 'Monitorar anomalias de impressão (baseado em câmera)'
   on unit {}: 'na unidade {}'

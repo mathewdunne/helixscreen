@@ -55,7 +55,7 @@ class PrintControlButtons {
      * removal for live observers instead.
      */
     [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
-        return subjects_lifetime_;
+        return subjects_.get_subjects_lifetime();
     }
 
     void handle_primary_button();
@@ -126,9 +126,6 @@ class PrintControlButtons {
     lv_timer_t* pending_action_timeout_ = nullptr;
 
     SubjectManager subjects_;
-    /// See get_subjects_lifetime(). Created with the object and REPLACED (never
-    /// nulled) by teardown, so the accessor always hands out a live token.
-    SubjectLifetime subjects_lifetime_ = std::make_shared<bool>(true);
     lv_subject_t primary_icon_subject_;
     lv_subject_t primary_label_subject_;
     lv_subject_t primary_enabled_subject_;

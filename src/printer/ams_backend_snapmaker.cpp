@@ -316,18 +316,17 @@ void AmsBackendSnapmaker::on_started() {
     if (!api_)
         return;
 
-    override_store_ = std::make_unique<helix::ams::FilamentSlotOverrideStore>(
-        api_, "snapmaker", helix::ams::lane_key_style_for(get_type()));
-    auto loaded = override_store_->load_blocking();
-    helix::ams::ingest_legacy_records(*override_store_, helix::ams::LegacyLockKeys::LaneData,
-                                      backend_index());
-    const auto loaded_count = loaded.size();
+    auto loaded =
+        helix::ams::make_loaded_override_store(api_, "snapmaker", get_type(), backend_log_tag());
+    if (loaded.store) {
+        helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
+                                          backend_index());
+    }
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        overrides_ = std::move(loaded);
+        override_store_ = std::move(loaded.store);
+        overrides_ = std::move(loaded.overrides);
     }
-    spdlog::info("{} Loaded {} slot overrides from filament_slot store", backend_log_tag(),
-                 loaded_count);
 }
 
 // ============================================================================

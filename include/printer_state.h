@@ -580,7 +580,7 @@ class PrinterState {
      * static subjects that only die with the whole PrinterState.
      */
     [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
-        return subjects_lifetime_;
+        return subjects_.get_subjects_lifetime();
     }
 
     /**
@@ -2493,17 +2493,6 @@ class PrinterState {
     /// the `SubjectLifetime` tokens handed to observers, which are
     /// `shared_ptr<bool>` death signals and carry no deferral machinery.
     AsyncLifetimeGuard async_lifetime_;
-
-    /// Death signal covering EVERY subject reachable through this PrinterState,
-    /// including the per-domain components. See get_subjects_lifetime().
-    ///
-    /// Created here rather than in init_subjects(), and REPLACED (never left
-    /// null) by deinit_subjects(), so the accessor can never hand out an empty
-    /// token. An empty one is not a harmless no-op: ObserverGuard::reset() reads
-    /// `!alive_token_.lock()` as "subject already dead" and SKIPS
-    /// lv_observer_remove(), which orphans a live observer node whose context is
-    /// about to be freed — the failure mode behind bundles 449TVQ82 / X3RA4252.
-    SubjectLifetime subjects_lifetime_ = std::make_shared<bool>(true);
 
     // Cached display pointer to detect LVGL reinitialization (for test isolation)
     lv_display_t* cached_display_ = nullptr;

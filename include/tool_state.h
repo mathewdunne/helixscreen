@@ -277,7 +277,7 @@ class ToolState {
      * the token dereferences a freed observer on its next reset().
      */
     [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
-        return subjects_lifetime_;
+        return subjects_.get_subjects_lifetime();
     }
     lv_subject_t* get_tool_count_subject() {
         return &tool_count_;
@@ -397,11 +397,6 @@ class ToolState {
     ToolState() = default;
 
     SubjectManager subjects_;
-    /// See get_subjects_lifetime(). Created with the object and REPLACED (never
-    /// nulled) by deinit_subjects(), so the accessor never hands out an empty
-    /// token — an empty one reads as "dead" and would suppress removal for live
-    /// observers instead of protecting dead ones.
-    SubjectLifetime subjects_lifetime_ = std::make_shared<bool>(true);
     bool subjects_initialized_ = false;
 
     /// The offset model init_tools() resolved from the hardware, so the

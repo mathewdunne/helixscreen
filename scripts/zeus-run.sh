@@ -67,7 +67,11 @@ fi
 # shellcheck disable=SC2016  # $HELIX_J must reach zeus unexpanded
 case "$WHAT" in
     mutate) CMD='python3 scripts/mutate_diff.py --jobs $HELIX_J '"$*" ;;
-    asan)   CMD='make test-asan-one TEST="'"${1:-}"'" -j$HELIX_J' ; GB_PER_JOB=1.5 ;;
+    asan)   _tag="${1:-}"; [ $# -gt 0 ] && shift
+            # Trailing args become make overrides, so ASAN_RUN_OPTIONS can be
+            # tuned per run (quarantine_size_mb keeps freed blocks poisoned, which
+            # turns a recycled-memory SEGV into a heap-use-after-free report).
+            CMD='make test-asan-one TEST="'"$_tag"'" -j$HELIX_J '"$*" ; GB_PER_JOB=1.5 ;;
     test)   CMD='make test -j$HELIX_J && ./build/bin/helix-tests "'"${1:-}"'"' ;;
     asan-app|tsan-app)
         # RECIPE is the positional argument; --repeat N (default 25 in the

@@ -188,7 +188,7 @@ class PrinterPrintState {
      * deinit already freed the observer node).
      */
     [[nodiscard]] SubjectLifetime get_static_subjects_lifetime() const {
-        return static_subjects_lifetime_;
+        return subjects_.get_subjects_lifetime();
     }
 
     /// 1 when PRINTING or PAUSED, 0 otherwise
@@ -886,17 +886,12 @@ class PrinterPrintState {
     SubjectManager subjects_;
     bool subjects_initialized_ = false;
 
-    /// Lifetime for the "static" subjects below. Reset (to false then released)
-    /// in `deinit_subjects()` so cross-singleton observers can detect subject
-    /// death and skip `lv_observer_remove()` on freed observer nodes.
-    SubjectLifetime static_subjects_lifetime_;
-
     /// Generation guard for the setters that defer their subject writes to the
     /// main thread. Invalidated by `deinit_subjects()` and by destruction, so a
     /// callback still sitting in the UpdateQueue when the subjects go away is
     /// dropped instead of notifying a freed observer list (#1165, #1146).
-    /// Distinct from `static_subjects_lifetime_`, which is a `shared_ptr<bool>`
-    /// read by observers and carries no deferral machinery.
+    /// Distinct from the SubjectLifetime death signal handed to observers,
+    /// which carries no deferral machinery.
     AsyncLifetimeGuard async_lifetime_;
 
     // Print progress subjects

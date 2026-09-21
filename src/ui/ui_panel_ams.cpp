@@ -778,13 +778,13 @@ void AmsPanel::setup_slot_path_observers(int slot_count) {
         int global_idx = i + slot_offset;
         // Segment subject — how far filament extends along this lane's path.
         if (auto* seg_subj = state.get_slot_segment_subject(global_idx)) {
-            slot_path_observers_.push_back(
-                helix::ui::observe_int_sync<AmsPanel>(seg_subj, this, on_slot_path_change));
+            slot_path_observers_.push_back(helix::ui::observe_int_sync<AmsPanel>(
+                seg_subj, this, on_slot_path_change, state.get_subjects_lifetime()));
         }
         // Toolhead-present subject — live per-slot motion/switch sensor.
         if (auto* th_subj = state.get_slot_toolhead_present_subject(global_idx)) {
-            slot_path_observers_.push_back(
-                helix::ui::observe_int_sync<AmsPanel>(th_subj, this, on_slot_path_change));
+            slot_path_observers_.push_back(helix::ui::observe_int_sync<AmsPanel>(
+                th_subj, this, on_slot_path_change, state.get_subjects_lifetime()));
         }
     }
     spdlog::debug("[AmsPanel] Wired {} per-slot path observers (offset={})",

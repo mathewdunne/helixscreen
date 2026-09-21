@@ -770,6 +770,7 @@ void UpdateChecker::shutdown() {
         // Expire any worker-thread callback still queued on the UpdateQueue
         // before the subjects it writes are torn down (#1165, #1146).
         async_lifetime_.invalidate();
+
         subjects_.deinit_all();
         subjects_initialized_ = false;
     }

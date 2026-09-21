@@ -41,6 +41,23 @@
 using SubjectLifetime = std::shared_ptr<bool>;
 
 /**
+ * @brief Lifetime token claiming the subject is never freed before process exit.
+ *
+ * A claim, not a default. Legitimate only where the observer provably cannot
+ * outlive the subject: theme globals (file-static, reseeded in place by
+ * theme_manager_init()), or a subject that is a member of the very object
+ * doing the observing and dies with it. For any subject owned elsewhere,
+ * pass that owner's get_subjects_lifetime() instead — claiming never-freed
+ * about a subject that does get freed disarms ObserverGuard::reset()'s
+ * liveness check and defends nothing.
+ */
+// NAMESPACE_OK: sits with SubjectLifetime and ObserverGuard at file scope
+inline SubjectLifetime subject_never_freed() {
+    static const auto token = std::make_shared<bool>(true);
+    return token;
+}
+
+/**
  * @brief RAII wrapper for LVGL observers - auto-removes on destruction
  *
  * For observers on dynamic subjects, set an alive token via set_alive_token()

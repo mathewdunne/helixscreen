@@ -1,6 +1,8 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_observer_guard.h"
+
 #include "../helix_test_fixture.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
@@ -12,6 +14,7 @@
 #include "moonraker_client_mock.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
+#include "static_subject_registry.h"
 
 #include "../catch_amalgamated.hpp"
 #include "hv/json.hpp"
@@ -2598,6 +2601,36 @@ TEST_CASE_METHOD(LedControllerFixture,
     REQUIRE(ctrl.light_is_on());
     ctrl.light_set(!ctrl.light_is_on());
     REQUIRE(!ctrl.light_is_on());
+
+    ctrl.deinit();
+}
+
+namespace {
+void led_lifetime_noop_cb(lv_observer_t*, lv_subject_t*) {}
+} // namespace
+
+TEST_CASE_METHOD(LedControllerFixture,
+                 "LedController registry deinit expires its token before freeing its subjects",
+                 "[led][observer][crash_hardening]") {
+    auto& ctrl = helix::led::LedController::instance();
+    ctrl.deinit();
+    ctrl.init(nullptr, nullptr);
+    REQUIRE(ctrl.is_initialized());
+
+    auto token = ctrl.get_subjects_lifetime();
+    REQUIRE(token != nullptr);
+    REQUIRE(*token);
+
+    // A guard built the way observe_*() builds one: observer attached, token
+    // set. The registry deinit must expire the token BEFORE lv_subject_deinit()
+    // frees the observer node, or the reset() below removes a freed node.
+    ObserverGuard guard(ctrl.get_led_controllable_subject(), led_lifetime_noop_cb, nullptr);
+    guard.set_alive_token(token);
+
+    REQUIRE(StaticSubjectRegistry::instance().deinit_one("LedController"));
+
+    CHECK_FALSE(*token);
+    guard.reset();
 
     ctrl.deinit();
 }

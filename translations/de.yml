@@ -285,8 +285,8 @@ translations:
   Backup spool switching state unknown: 'Reserve-Spulen-Wechsel: Status unbekannt'
   Barcode Scanner: Barcode-Scanner
   Base: Referenz
-  Batch load failed: ''
-  Batch unload failed: ''
+  Batch load failed: Mehrfachladen fehlgeschlagen
+  Batch unload failed: Mehrfachentladen fehlgeschlagen
   Beacon auto-calibrate sent: Beacon Auto-Kalibrierung gesendet
   Beacon calibrate sent: Beacon Kalibrierung gesendet
   Bed: Heizbett
@@ -438,7 +438,7 @@ translations:
     – Ziele präziser berühren.
   Calibration kept timing out. Your previous settings were kept.: Bei der Kalibrierung kam es wiederholt zu einer Zeitüberschreitung. Ihre vorherigen Einstellungen wurden beibehalten.
   Calibration may still be running — printer connection was interrupted: 'Kalibrierung läuft möglicherweise noch — Druckerverbindung wurde unterbrochen'
-  Calibration may still be running — response timed out: ''
+  Calibration may still be running — response timed out: Kalibrierung läuft möglicherweise noch — Zeitüberschreitung der Antwort
   Calibration move may still be running — printer connection was interrupted: 'Kalibrierungsbewegung läuft möglicherweise noch — Druckerverbindung wurde unterbrochen'
   Calibration saved but cannot apply on SDL display: Kalibrierung gespeichert, kann
     aber auf SDL-Display nicht angewendet werden
@@ -514,7 +514,7 @@ translations:
   Change Printer Host: Drucker-Host ändern
   Change Tool: Werkzeug wechseln
   Change Tool While Paused: Werkzeug während Pause wechseln
-  Change heater control?: ''
+  Change heater control?: Heizungsregelung ändern?
   Change tool: Werkzeug wechseln
   Changes apply immediately. Adjust during print for tuning.: Änderungen werden sofort
     angewendet. Während des Drucks zur Feinabstimmung anpassen.
@@ -603,8 +603,8 @@ translations:
   Closer = more squish | Farther = less squish: Näher = mehr Quetschung | Weiter =
     weniger Quetschung
   Coarse: Grob
-  Coarse Inner: ''
-  Coarse Outer: ''
+  Coarse Inner: Grob Innen
+  Coarse Outer: Grob Außen
   Code: Code
   Coil Temperature: Spulentemperatur
   Collect logs and system info for support: Protokolle und Systemdaten für Support
@@ -861,7 +861,7 @@ translations:
   Distance from hub to toolhead: 'Abstand vom Hub zum Werkzeugkopf'
   Distance from lane extruder to hub: 'Abstand vom Spurextruder zum Hub'
   Distance from toolhead sensor to nozzle tip: 'Abstand vom Werkzeugkopfsensor zur Düsenspitze'
-  Distance moved per jog button tap: ''
+  Distance moved per jog button tap: Strecke pro Tipp auf eine Bewegungstaste
   Do not power off your printer.: Drucker nicht ausschalten.
   Do not touch the printer during calibration: Drucker während der Kalibrierung nicht
     berühren
@@ -873,7 +873,7 @@ translations:
   Documentation: Dokumentation
   Don't Save: Nicht speichern
   Don't ask again: Nicht erneut fragen
-  Don't show again: ''
+  Don't show again: Nicht erneut anzeigen
   Done: Fertig
   Download update?: Update herunterladen?
   Download v{}?: v{} herunterladen?
@@ -1231,7 +1231,7 @@ translations:
   Filament ran out. Auto-refill is off, so the CFS will not switch spools on its own. Load filament, then resume.: 'Filament zu Ende. Automatisches Nachfüllen ist aus, daher wechselt das CFS die Spule nicht von selbst. Filament laden und dann fortsetzen.'
   Filament ran out. The CFS knows which spools match, but those slots are empty. Load one of them, then resume.: Das Filament ist zu Ende. Das CFS weiß, welche Spulen passen, aber diese Slots sind leer. Laden Sie eine davon und setzen Sie dann fort.
   Filament reload failed: Erneutes Laden des Filaments fehlgeschlagen
-  Filament remapping is unavailable: ''
+  Filament remapping is unavailable: Filament-Neuzuordnung ist nicht verfügbar
   Filament runout: Filament aufgebraucht
   Filament runout and motion detection sensors: Filament-Auslauf- und Bewegungserkennungssensoren
   Filament saved: Filament gespeichert
@@ -1253,8 +1253,8 @@ translations:
   'Filter Fan: Off': 'Filterlüfter: Aus'
   'Filter Fan: On': 'Filterlüfter: Ein'
   Fine: Fein
-  Fine Inner: ''
-  Fine Outer: ''
+  Fine Inner: Fein Innen
+  Fine Outer: Fein Außen
   Finish: Fertig
   Finish or cancel the print before loading, unloading, or changing filament: Beenden oder brechen Sie den Druck ab, bevor Sie Filament laden, entladen oder wechseln
   Finishing clean...: Reinigung abschließen...
@@ -1382,7 +1382,7 @@ translations:
   HelixScreen is detecting your display orientation: HelixScreen erkennt Ihre Display-Ausrichtung
   HelixScreen will integrate with your filament changer for multi-spool/color print operations.: HelixScreen
     wird sich mit Ihrem Filamentwechsler für Multi-Spulen/Farb-Druckoperationen integrieren.
-  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: ''
+  HelixScreen writes this to printer.cfg and restarts Klipper. The printer will briefly disconnect.: HelixScreen schreibt dies in die printer.cfg und startet Klipper neu. Der Drucker wird kurz getrennt.
   HelixScreen {} is available — tap Update: HelixScreen {} ist verfügbar — auf Aktualisieren
     tippen
   Help & About: Hilfe & Über
@@ -1542,10 +1542,10 @@ translations:
   It's a new spool: Es ist eine neue Spule
   Jammed at the Toolhead: Stau am Werkzeugkopf
   Job Queue: Auftragswarteschlange
-  Jog Speed XY: ''
-  Jog Speed Z: ''
+  Jog Speed XY: Bewegungsgeschwindigkeit XY
+  Jog Speed Z: Bewegungsgeschwindigkeit Z
   'Jog failed: {}': 'Bewegung fehlgeschlagen: {}'
-  Jog speeds and step distances: ''
+  Jog speeds and step distances: Bewegungsgeschwindigkeiten und Schrittweiten
   Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests.: Tritt
     der HelixScreen-Community auf Discord bei für Diskussionen, Tipps, Hilfe zur Fehlerbehebung
     und Funktionswünsche.
@@ -1641,7 +1641,7 @@ translations:
   Listening: Zuhören
   Live view from your webcam: Livebild Ihrer Webcam
   Load: Laden
-  Load / Unload: ''
+  Load / Unload: Laden / Entladen
   Load Failed: 'Laden fehlgeschlagen'
   Load Filament: Filament laden
   Load a filament first before trying to unload: Laden Sie zuerst Filament, bevor Sie entladen
@@ -2230,7 +2230,7 @@ translations:
   Print ending...: Druck wird beendet...
   Print error: Druckfehler
   Print failed: Druck fehlgeschlagen
-  Print history will show the rewritten name: ''
+  Print history will show the rewritten name: Im Druckverlauf wird der umgeschriebene Name angezeigt
   Print issue detected: Druckproblem erkannt
   Print jobs waiting to run: Wartende Druckaufträge
   'Print preparation failed: {}': 'Druckvorbereitung fehlgeschlagen: {}'
@@ -2370,7 +2370,7 @@ translations:
   'RFCOMM connect failed: ': 'RFCOMM-Verbindung fehlgeschlagen: '
   RFID reader malfunction (left): Fehlfunktion des RFID-Lesers (links)
   RFID reader malfunction (right): Fehlfunktion des RFID-Lesers (rechts)
-  RFID, auto-refill, nozzle and link care: ''
+  RFID, auto-refill, nozzle and link care: RFID, automatisches Nachfüllen, Düsen- und Verbindungspflege
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'Ramming-Volumen'
@@ -2431,9 +2431,9 @@ translations:
   Remaining Weight (g): Restgewicht (g)
   Remap Tool: Werkzeug zuordnen
   ? Remapping rewrites the job file before printing it. This printer's Moonraker is too old for the HelixPrint plugin to restore the original filename afterwards, so the finished job is listed under the rewritten name. Remapping itself works normally.
-  : ''
+  : Die Neuzuordnung schreibt die Druckdatei vor dem Drucken um. Das Moonraker dieses Druckers ist zu alt, damit das HelixPrint-Plugin den ursprünglichen Dateinamen danach wiederherstellen kann; der abgeschlossene Auftrag wird daher unter dem umgeschriebenen Namen aufgeführt. Die Neuzuordnung selbst funktioniert normal.
   ? "Remapping rewrites the job file before printing it. Without the HelixPrint plugin the rewritten copy is what lands in your print history, so finished jobs are listed under names like modified_1730824_benchy.gcode instead of the file you picked.\n\nInstalling the plugin takes a moment and needs no restart."
-  : ''
+  : "Die Neuzuordnung schreibt die Druckdatei vor dem Drucken um. Ohne das HelixPrint-Plugin landet die umgeschriebene Kopie in Ihrem Druckverlauf, sodass abgeschlossene Drucke unter Namen wie modified_1730824_benchy.gcode statt unter der gewählten Datei aufgelistet werden.\n\nDie Installation des Plugins dauert einen Moment und erfordert keinen Neustart."
   Remap…: Neu zuordnen…
   Remember slot spool details across an eject: Spulendetails des Slots über ein Auswerfen hinweg merken
   Remove: Entfernen
@@ -2467,8 +2467,8 @@ translations:
   Reset: Zurücksetzen
   Reset Blade Counter: 'Klingenzähler zurücksetzen'
   Reset CFS: CFS zurücksetzen
-  Reset Distances: ''
-  Reset Distances?: ''
+  Reset Distances: Schrittweiten zurücksetzen
+  Reset Distances?: Schrittweiten zurücksetzen?
   Reset Endless Spool: 'Endlosspule zurücksetzen'
   Reset Endless Spool?: 'Endlosspule zurücksetzen?'
   Reset Home Screen?: Startbildschirm zurücksetzen?
@@ -2685,7 +2685,7 @@ translations:
   Select a valid tool: Wählen Sie ein gültiges Werkzeug
   Select a valid {}: 'Wählen Sie einen gültigen Wert für {}'
   Select a {}: 'Wählen Sie {} aus'
-  Select at least one: ''
+  Select at least one: Mindestens eines auswählen
   Select fan: Lüfter auswählen
   Select gate: 'Gate auswählen'
   Select macro for first button: Makro für erste Taste auswählen
@@ -2931,13 +2931,13 @@ translations:
   Switched to {}: 'Gewechselt zu {}'
   Switches to a backup spool on runout: Wechselt bei leerer Spule auf eine Reserve-Spule
   ? Switching back to PID changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.
-  : ''
-  Switching back to PID changes how this heater is controlled.: ''
-  Switching back to PID requires a config change and Klipper restart.: ''
+  : Der Wechsel zurück zu PID ändert, wie diese Heizung geregelt wird, und kalibriert sie anschließend. Das dauert mehrere Minuten bei Betriebstemperatur.
+  Switching back to PID changes how this heater is controlled.: Der Wechsel zurück zu PID ändert, wie diese Heizung geregelt wird.
+  Switching back to PID requires a config change and Klipper restart.: Wechsel zurück zu PID erfordert eine Konfigurationsänderung und Klipper-Neustart.
   Switching heater control to MPC. Klipper will restart.: Heizungsregelung wird auf
     MPC umgestellt. Klipper wird neu starten.
-  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: ''
-  Switching to MPC changes how this heater is controlled.: ''
+  Switching to MPC changes how this heater is controlled, then calibrates it. That takes several minutes at temperature.: Der Wechsel zu MPC ändert, wie diese Heizung geregelt wird, und kalibriert sie anschließend. Das dauert mehrere Minuten bei Betriebstemperatur.
+  Switching to MPC changes how this heater is controlled.: Der Wechsel zu MPC ändert, wie diese Heizung geregelt wird.
   Switching to MPC requires a config change and Klipper restart.: Wechsel zu MPC erfordert
     eine Konfigurationsänderung und Klipper-Neustart.
   Sync with Spoolman: Mit Spoolman synchronisieren
@@ -3165,7 +3165,7 @@ translations:
   This will restart Klipper firmware. Any active operations will be interrupted.: Klipper-Firmware
     wird neu gestartet. Aktive Vorgänge werden unterbrochen.
   This will restart Klipper.: Dies startet Klipper neu.
-  This will restore the default jog step distances for all three modes.: ''
+  This will restore the default jog step distances for all three modes.: Dies stellt die Standard-Schrittweiten für alle drei Modi wieder her.
   This will save the Z-offset and restart Klipper to write the configuration. The printer will briefly disconnect.: Dies speichert den Z-offset und startet Klipper neu, um die Konfiguration zu schreiben. Der Drucker wird kurz getrennt.
   ? This writes the tool offsets to the printer's config and restarts Klipper, which takes a few seconds. Until then they apply only to this session.
   : Dies schreibt die Werkzeug-Offsets in die Konfiguration des Druckers und startet Klipper neu, was einige Sekunden dauert. Bis dahin gelten sie nur für diese Sitzung.
@@ -3252,8 +3252,8 @@ translations:
   Tuning tower enabled - start a print to test: Tuning-Tower aktiviert - starten Sie
     einen Druck zum Testen
   Turbo: Turbo
-  Turbo Inner: ''
-  Turbo Outer: ''
+  Turbo Inner: Turbo Innen
+  Turbo Outer: Turbo Außen
   Turn Off: Ausschalten
   Turn Off WiFi?: WiFi ausschalten?
   Turn On: Einschalten
@@ -3459,7 +3459,7 @@ translations:
   X: X
   X Axis: X-Achse
   X Offset: X-Offset
-  X and Y jog feedrate: ''
+  X and Y jog feedrate: Vorschub für die X- und Y-Bewegung
   X axis applied, but Y axis failed: X-Achse angewendet, aber Y-Achse fehlgeschlagen
   X axis done, starting Y...: 'X-Achse fertig, starte Y...'
   X jog blocked at bed edge: X-Bewegung an Bettkante blockiert
@@ -3495,8 +3495,8 @@ translations:
   Z Offset: Z Offset
   Z Range: Z-Bereich
   Z Tilt Adjust...: Z-Neigung anpassen...
-  Z jog blocked at axis limit: ''
-  Z jog feedrate: ''
+  Z jog blocked at axis limit: Z-Bewegung an Achsgrenze blockiert
+  Z jog feedrate: Vorschub für die Z-Bewegung
   Z motor calibration failed: Kalibrierung des Z-Motors fehlgeschlagen
   Z probes for bed leveling and mesh generation: Z-Sonden für Bettnivellierung und
     Netzerzeugung
@@ -3555,7 +3555,7 @@ translations:
   'off': aus
   AFC's remember_spool is retaining spool info in firmware; that takes precedence over this toggle: AFCs remember_spool behält Spuleninfos in der Firmware; das hat Vorrang vor diesem Schalter
   AI detection: AI-Erkennung
-  Modifying G-code needs the HelixPrint plugin. Printing original file.: ''
+  Modifying G-code needs the HelixPrint plugin. Printing original file.: Zum Ändern von G-Code wird das HelixPrint-Plugin benötigt. Die Originaldatei wird gedruckt.
   Monitor for print abnormalities (K2 Plus camera-based): Überwacht auf Druckanomalien (K2 Plus kamerabasiert)
   Monitor for print abnormalities (camera-based): 'Überwacht auf Druckanomalien (kamerabasiert)'
   on unit {}: 'an Einheit {}'

@@ -183,11 +183,13 @@ void LedControlOverlay::on_activate() {
 
     // Subscribe to WLED brightness slider changes
     wled_brightness_observer_ = helix::ui::observe_int_sync<LedControlOverlay>(
-        &wled_brightness_subject_, this, [](LedControlOverlay* self, int value) {
+        &wled_brightness_subject_, this,
+        [](LedControlOverlay* self, int value) {
             if (self->is_visible()) {
                 self->handle_wled_brightness(value);
             }
-        });
+        },
+        get_subjects_lifetime());
 
     // Sync effect highlight to current Moonraker state
     if (effects_container_ && controller.is_initialized()) {

@@ -28,6 +28,15 @@ namespace helix::ams {
 /// backend set them. Pure: no clock, no globals, no I/O.
 void apply_resolved(SlotInfo& slot, const ResolvedLane& resolved);
 
+/// Copy the fields apply_resolved() can write, status aside, from @p src.
+///
+/// The inverse of a paint: it puts a caller's own values back over one. A
+/// backend that paints from the lane in the middle of applying a write has
+/// painted a lane that does not know about that write yet, so the values it
+/// laid down are the ones being replaced. Snapshot before, copy back after,
+/// and the paint keeps only what it is there for.
+void copy_resolver_owned_identity(SlotInfo& dst, const SlotInfo& src);
+
 /// This lane's resolved values. Never calls into a backend: backends call it
 /// while holding their own mutex_.
 [[nodiscard]] ResolvedLane resolved_lane(LaneId lane);

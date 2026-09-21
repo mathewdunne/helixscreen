@@ -72,24 +72,28 @@ void PrinterStatusIcon::init() {
                   "{}",
                   (void*)conn_subject);
     connection_observer_ = observe_int_sync<PrinterStatusIcon>(
-        conn_subject, this, [](PrinterStatusIcon* self, int val) {
+        conn_subject, this,
+        [](PrinterStatusIcon* self, int val) {
             self->cached_connection_state_ = val;
             spdlog::trace("[PrinterStatusIcon] Connection state changed to: {}",
                           self->cached_connection_state_);
             self->update_icon_state();
-        });
+        },
+        printer_state.get_subjects_lifetime());
 
     // Klippy state observer
     lv_subject_t* klippy_subject = printer_state.get_klippy_state_subject();
     spdlog::trace("[PrinterStatusIcon] Registering observer on klippy_state_subject at {}",
                   (void*)klippy_subject);
     klippy_observer_ = observe_int_sync<PrinterStatusIcon>(
-        klippy_subject, this, [](PrinterStatusIcon* self, int val) {
+        klippy_subject, this,
+        [](PrinterStatusIcon* self, int val) {
             self->cached_klippy_state_ = val;
             spdlog::trace("[PrinterStatusIcon] Klippy state changed to: {}",
                           self->cached_klippy_state_);
             self->update_icon_state();
-        });
+        },
+        printer_state.get_subjects_lifetime());
 
     initialized_ = true;
     spdlog::debug("[PrinterStatusIcon] Initialization complete");

@@ -427,7 +427,7 @@ class DisplaySettingsManager {
      * ObserverGuards keep pointers to observer nodes deinit_all() freed.
      */
     [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
-        return subjects_lifetime_;
+        return subjects_.get_subjects_lifetime();
     }
 
     lv_subject_t* subject_gcode_render_mode() {
@@ -456,10 +456,6 @@ class DisplaySettingsManager {
     ~DisplaySettingsManager() = default;
 
     SubjectManager subjects_;
-    /// See get_subjects_lifetime(). Created with the object and REPLACED (never
-    /// nulled) by deinit_subjects(): an empty token reads as "dead" and would
-    /// suppress removal for live observers.
-    SubjectLifetime subjects_lifetime_ = std::make_shared<bool>(true);
 
     /// Keeps the XML style engine's transition scale following
     /// animations_enabled_subject_. See init_subjects().

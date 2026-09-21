@@ -182,6 +182,11 @@ lv_subject_t& get_home_edit_mode_subject() {
     return g_home_edit_mode_subject;
 }
 
+// NAMESPACE_OK: definition of a file-scope declaration in app_globals.h
+SubjectLifetime get_app_globals_subjects_lifetime() {
+    return g_subjects.get_subjects_lifetime();
+}
+
 lv_subject_t& get_wizard_active_subject() {
     return g_wizard_active_subject;
 }

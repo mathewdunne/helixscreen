@@ -35,11 +35,13 @@ void FilamentConsumptionTracker::start() {
         printer.get_print_state_enum_subject(), this,
         [](FilamentConsumptionTracker* self, PrintJobState state) {
             self->on_print_state_changed(state);
-        });
+        },
+        printer.get_subjects_lifetime());
 
     filament_used_obs_ = helix::ui::observe_int_sync<FilamentConsumptionTracker>(
         printer.get_print_filament_used_subject(), this,
-        [](FilamentConsumptionTracker* self, int mm) { self->on_filament_used_changed(mm); });
+        [](FilamentConsumptionTracker* self, int mm) { self->on_filament_used_changed(mm); },
+        printer.get_subjects_lifetime());
 
     // Per-extruder filament_used_mm observers. These are dynamic subjects
     // ([L077]) and share one lifetime token so a single reset() in stop()

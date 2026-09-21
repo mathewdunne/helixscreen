@@ -93,9 +93,11 @@ void JobQueueWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
 
     // Observe job_queue_count subject to rebuild the list when count changes
     auto* count_subj = lv_xml_get_subject(nullptr, "job_queue_count");
+    auto* jqs = get_job_queue_state();
     if (count_subj) {
         count_observer_ = helix::ui::observe_int_sync<JobQueueWidget>(
-            count_subj, this, [](JobQueueWidget* self, int /*count*/) {
+            count_subj, this,
+            [](JobQueueWidget* self, int /*count*/) {
                 // Defer rebuild (#80) AND use safe_clean_children inside
                 // rebuild_job_list (#776): lv_async_call moves the rebuild off
                 // the observer callback's stack, and safe_clean_children schedules
@@ -122,7 +124,8 @@ void JobQueueWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
                         },
                         ctx);
                 }
-            });
+            },
+            jqs ? jqs->get_subjects_lifetime() : SubjectLifetime{});
     }
 
     spdlog::debug("[JobQueueWidget] Attached");

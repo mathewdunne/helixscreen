@@ -716,7 +716,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     /// nor the lane yet (an edit's declaration is filed by
     /// commit_user_edit() once apply_user_edit() returns; a sync files
     /// nothing). Caller holds mutex_.
-    void settle_port_locked(int slot_index, uint32_t color_rgb, const std::string& material);
+    void settle_port_locked(int slot_index);
     // Layer any configured FilamentSlotOverride for `slot_index` over `slot`,
     // mutating `slot` in place. Override wins for every non-default field;
     // default values (empty string, 0, -1.0 weights) fall through to the parsed
@@ -1153,7 +1153,7 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     void log_seated_state_locked(const char* where) const;
 
   private:
-    bool validate_slot_index(int slot_index) const;
+    AmsError validate_slot_index(int slot_index) const;
     void check_action_timeout();
     // Reset the indeterminate ("Working…") no-progress clock. Called on every
     // genuine load/unload progress signal. Caller must hold mutex_.

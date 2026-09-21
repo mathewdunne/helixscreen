@@ -1199,7 +1199,8 @@ void NavigationManager::init() {
 
     active_panel_observer_ = observe_int_sync<NavigationManager>(
         &active_panel_subject_, this,
-        [](NavigationManager* mgr, int value) { mgr->handle_active_panel_change(value); });
+        [](NavigationManager* mgr, int value) { mgr->handle_active_panel_change(value); },
+        get_subjects_lifetime());
 
     subjects_initialized_ = true;
 
@@ -1316,7 +1317,8 @@ void NavigationManager::wire_events(lv_obj_t* navbar) {
     // immediately instead of waiting for the stack to pop.
     printer_switcher_observer_ = observe_int_sync<NavigationManager>(
         SettingsManager::instance().subject_show_printer_switcher(), this,
-        [](NavigationManager* mgr, int /* shown */) { mgr->refresh_overlay_backdrop(); });
+        [](NavigationManager* mgr, int /* shown */) { mgr->refresh_overlay_backdrop(); },
+        SettingsManager::instance().get_subjects_lifetime());
 
     spdlog::trace(
         "[NavigationManager] Navigation button events wired (with connection/klippy gating)");

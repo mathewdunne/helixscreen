@@ -43,7 +43,9 @@ void JobQueueState::watch_connection_state() {
 JobQueueState::~JobQueueState() {
     connection_observer_.reset();
 
-    // lifetime_'s destructor invalidates its own tokens automatically
+    // lifetime_'s destructor invalidates its own tokens automatically. The
+    // subjects_' manager member dies with the object and flips its death
+    // signal there.
 
     if (client_) {
         client_->unregister_method_callback("notify_job_queue_changed", "JobQueueState");
@@ -59,13 +61,16 @@ void JobQueueState::init_subjects() {
     lv_subject_init_string(&job_queue_state_subject_, state_buffer_, nullptr, sizeof(state_buffer_),
                            "Ready");
     lv_xml_register_subject(nullptr, "job_queue_state_text", &job_queue_state_subject_);
+    subjects_.register_subject(&job_queue_state_subject_, "job_queue_state_text");
 
     lv_subject_init_string(&job_queue_summary_subject_, summary_buffer_, nullptr,
                            sizeof(summary_buffer_), "Queue empty");
     lv_xml_register_subject(nullptr, "job_queue_summary_text", &job_queue_summary_subject_);
+    subjects_.register_subject(&job_queue_summary_subject_, "job_queue_summary_text");
 
     lv_subject_init_int(&job_queue_count_subject_, 0);
     lv_xml_register_subject(nullptr, "job_queue_count", &job_queue_count_subject_);
+    subjects_.register_subject(&job_queue_count_subject_, "job_queue_count");
 
     SubjectDebugRegistry::instance().register_subject(&job_queue_state_subject_,
                                                       "job_queue_state_text",
@@ -89,9 +94,9 @@ void JobQueueState::deinit_subjects() {
     if (!subjects_initialized_)
         return;
 
-    lv_subject_deinit(&job_queue_count_subject_);
-    lv_subject_deinit(&job_queue_summary_subject_);
-    lv_subject_deinit(&job_queue_state_subject_);
+    // deinit_all() flips the death signal first, then withdraws each XML
+    // name and frees the subject.
+    subjects_.deinit_all();
 
     subjects_initialized_ = false;
     spdlog::debug("[JobQueueState] Subjects deinitialized");

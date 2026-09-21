@@ -267,17 +267,21 @@ void PrintTuneOverlay::setup_panel() {
     if (printer_state_) {
         speed_observer_ = helix::ui::observe_int_sync<PrintTuneOverlay>(
             printer_state_->get_speed_factor_subject(), this,
-            [](PrintTuneOverlay* self, int /*value*/) { self->update_actual_speed_display(); });
+            [](PrintTuneOverlay* self, int /*value*/) { self->update_actual_speed_display(); },
+            printer_state_->get_subjects_lifetime());
         gcode_speed_observer_ = helix::ui::observe_int_sync<PrintTuneOverlay>(
             printer_state_->get_gcode_speed_subject(), this,
-            [](PrintTuneOverlay* self, int /*value*/) { self->update_actual_speed_display(); });
+            [](PrintTuneOverlay* self, int /*value*/) { self->update_actual_speed_display(); },
+            printer_state_->get_subjects_lifetime());
         max_velocity_observer_ = helix::ui::observe_int_sync<PrintTuneOverlay>(
             printer_state_->get_max_velocity_subject(), this,
-            [](PrintTuneOverlay* self, int /*value*/) { self->update_actual_speed_display(); });
+            [](PrintTuneOverlay* self, int /*value*/) { self->update_actual_speed_display(); },
+            printer_state_->get_subjects_lifetime());
         // Observe extruder velocity for live flow display
         extruder_vel_observer_ = helix::ui::observe_int_sync<PrintTuneOverlay>(
             printer_state_->get_live_extruder_velocity_subject(), this,
-            [](PrintTuneOverlay* self, int /*value*/) { self->update_actual_flow_display(); });
+            [](PrintTuneOverlay* self, int /*value*/) { self->update_actual_flow_display(); },
+            printer_state_->get_subjects_lifetime());
     }
 
     // Per-tool z-offset. ToolState's lifetime is passed on every one of these:

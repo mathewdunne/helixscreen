@@ -394,6 +394,26 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     void refresh_gate_statuses_locked();
 
     /**
+     * @brief Blank the identity only a departed source could have stated.
+     *
+     * reconcile_lane_binding() drops the Spoolman, user and remembered records
+     * from a gate's lane the moment the gate map stops agreeing with them. The
+     * fields below are the ones parse_mmu_state() never writes, so with those
+     * records gone nothing can restate them, and apply_resolved() does not
+     * write a field no source observed. They would otherwise stand on a gate
+     * describing a spool that has nothing to do with it - on a re-bind, the
+     * incoming spool wearing the outgoing one's brand
+     * (prestonbrown/helixscreen#1672).
+     *
+     * Colour, material, gate name and the spool id are left alone: the gate map
+     * states each of them and this frame has already written them.
+     *
+     * Caller must hold mutex_. The paint at the end of parse_mmu_state() is
+     * what fills these back in from whatever still speaks for the gate.
+     */
+    void retire_departed_identity_locked(int gate);
+
+    /**
      * @brief Initialize slot structures based on gate_status array size
      *
      * Called when we first receive gate_status to create the correct

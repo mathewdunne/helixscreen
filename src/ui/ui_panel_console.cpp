@@ -204,17 +204,20 @@ void ConsolePanel::init_subjects() {
         UI_MANAGED_SUBJECT_INT(has_entries_subject_, 0, "console_has_entries", subjects_);
 
         // Seed filter flags from SettingsManager and observe future changes.
-        // SettingsManager subjects are static (singleton-owned) — no SubjectLifetime needed.
+        // SettingsManager owns these subjects in its SubjectManager; panels
+        // outlive a mid-process deinit_subjects(), so they carry its token.
         auto& sm = helix::SettingsManager::instance();
         filter_temps_ = sm.get_console_filter_temps();
         filter_firmware_noise_ = sm.get_console_filter_firmware_noise();
 
         filter_temps_observer_ = helix::ui::observe_int_sync(
             sm.subject_console_filter_temps(), this,
-            [](ConsolePanel* self, int v) { self->filter_temps_ = (v != 0); });
+            [](ConsolePanel* self, int v) { self->filter_temps_ = (v != 0); },
+            sm.get_subjects_lifetime());
         filter_firmware_observer_ = helix::ui::observe_int_sync(
             sm.subject_console_filter_firmware_noise(), this,
-            [](ConsolePanel* self, int v) { self->filter_firmware_noise_ = (v != 0); });
+            [](ConsolePanel* self, int v) { self->filter_firmware_noise_ = (v != 0); },
+            sm.get_subjects_lifetime());
     });
 }
 

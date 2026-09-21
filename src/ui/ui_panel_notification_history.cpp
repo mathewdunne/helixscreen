@@ -97,9 +97,11 @@ void NotificationHistoryPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
         lv_subject_t* version_subject = helix::ui::notification_history_version_subject();
         if (version_subject) {
             history_version_observer_ = helix::ui::observe_int_sync<NotificationHistoryPanel>(
-                version_subject, this, [](NotificationHistoryPanel* p, int value) {
+                version_subject, this,
+                [](NotificationHistoryPanel* p, int value) {
                     p->handle_history_version_change(value);
-                });
+                },
+                NotificationManager::instance().get_subjects_lifetime());
         } else {
             spdlog::warn("[{}] Notification history version subject not initialized", get_name());
         }

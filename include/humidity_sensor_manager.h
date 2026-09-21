@@ -179,6 +179,18 @@ class HumiditySensorManager : public ISensorManager {
     [[nodiscard]] lv_subject_t* get_chamber_humidity_subject();
 
     /**
+     * @brief Death signal for the subjects this HumiditySensorManager owns.
+     *
+     * Pass to observe_*() from anything that can outlive this object's
+     * deinit_subjects(): that path frees every observer node without bumping
+     * the ObserverGuard invalidation epoch, so a guard without the token
+     * dereferences a freed observer on its next reset().
+     */
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
+
+    /**
      * @brief Get subject for chamber pressure
      * @return Subject (int: pressure in Pa, -1 if no chamber sensor)
      */

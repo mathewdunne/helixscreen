@@ -330,7 +330,7 @@ class StandardMacros {
      * without the token dereferences freed memory on its next reset().
      */
     [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
-        return subjects_lifetime_;
+        return subjects_.get_subjects_lifetime();
     }
 
     /**
@@ -530,10 +530,6 @@ class StandardMacros {
     bool initialized_ = false;
 
     SubjectManager subjects_;
-    /// See get_subjects_lifetime(). Created with the object and REPLACED (never
-    /// nulled) by deinit_subjects() — an empty token reads as "dead" and would
-    /// suppress removal for observers registered after the teardown.
-    SubjectLifetime subjects_lifetime_ = std::make_shared<bool>(true);
     bool subjects_initialized_ = false;
     lv_subject_t macros_version_{};
 };

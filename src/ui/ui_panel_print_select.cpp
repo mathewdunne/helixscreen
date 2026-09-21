@@ -725,7 +725,8 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     lv_subject_t* connection_subject = printer_state_.get_printer_connection_state_subject();
     if (connection_subject) {
         connection_observer_ = observe_int_sync<PrintSelectPanel>(
-            connection_subject, this, [](PrintSelectPanel* self, int state) {
+            connection_subject, this,
+            [](PrintSelectPanel* self, int state) {
                 if (state == static_cast<int>(ConnectionState::CONNECTED)) {
                     // Always refresh on (re)connect to pick up files uploaded while
                     // disconnected. The previous guard (file_list_.empty()) silently
@@ -754,7 +755,8 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                     // Note: Plugin detection now happens automatically in discovery flow
                     // (application.cpp). Install prompt is triggered by helix_plugin_observer_.
                 }
-            });
+            },
+            printer_state_.get_subjects_lifetime());
         spdlog::trace("[{}] Registered observer on connection state for auto-refresh", get_name());
     }
 
@@ -767,7 +769,8 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     if (print_state_subject) {
         print_state_observer_ = observe_int_sync<PrintSelectPanel>(
             print_state_subject, this,
-            [](PrintSelectPanel* self, int) { self->update_print_button_state(); });
+            [](PrintSelectPanel* self, int) { self->update_print_button_state(); },
+            printer_state_.get_subjects_lifetime());
         spdlog::trace("[{}] Registered observer on print job state for print button", get_name());
     }
 
@@ -777,7 +780,8 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     if (print_in_progress_subject) {
         print_in_progress_observer_ = observe_int_sync<PrintSelectPanel>(
             print_in_progress_subject, this,
-            [](PrintSelectPanel* self, int) { self->update_print_button_state(); });
+            [](PrintSelectPanel* self, int) { self->update_print_button_state(); },
+            printer_state_.get_subjects_lifetime());
         spdlog::trace("[{}] Registered observer on print_in_progress for print button", get_name());
     }
 
@@ -787,7 +791,8 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     lv_subject_t* plugin_subject = printer_state_.get_helix_plugin_installed_subject();
     if (plugin_subject) {
         helix_plugin_observer_ = observe_int_sync<PrintSelectPanel>(
-            plugin_subject, this, [](PrintSelectPanel* self, int plugin_state) {
+            plugin_subject, this,
+            [](PrintSelectPanel* self, int plugin_state) {
                 // Only show modal when state is explicitly 0 (checked and not installed)
                 // Skip if -1 (unknown/pre-discovery) or 1 (installed)
                 if (plugin_state == 0 && self->plugin_installer_.should_prompt_install()) {
@@ -796,7 +801,8 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                     self->plugin_install_modal_.set_installer(&self->plugin_installer_);
                     self->plugin_install_modal_.show(lv_screen_active());
                 }
-            });
+            },
+            printer_state_.get_subjects_lifetime());
         spdlog::trace("[{}] Registered observer on helix_plugin_installed for install prompt",
                       get_name());
     }

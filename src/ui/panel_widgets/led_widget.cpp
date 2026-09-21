@@ -73,11 +73,13 @@ void LedWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     auto token = lifetime_.token();
     auto& led_ctrl = helix::led::LedController::instance();
     led_version_observer_ = helix::ui::observe_int_sync<LedWidget>(
-        led_ctrl.get_led_config_version_subject(), this, [token](LedWidget* self, int /*version*/) {
+        led_ctrl.get_led_config_version_subject(), this,
+        [token](LedWidget* self, int /*version*/) {
             if (token.expired())
                 return;
             self->bind_led();
-        });
+        },
+        led_ctrl.get_subjects_lifetime());
 
     // Bind immediately rather than waiting for the deferred observer callback.
     // observe_int_sync defers via queue_update, so the initial fire-on-add

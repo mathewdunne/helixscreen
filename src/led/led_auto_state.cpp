@@ -207,19 +207,22 @@ void LedAutoState::subscribe_observers() {
     auto* print_subj = printer_state_->get_print_state_enum_subject();
     if (print_subj) {
         print_state_observer_ = observe_int_sync<LedAutoState>(
-            print_subj, this, [](LedAutoState* self, int) { self->on_state_changed(); });
+            print_subj, this, [](LedAutoState* self, int) { self->on_state_changed(); },
+            printer_state_->get_subjects_lifetime());
     }
 
     auto* klippy_subj = printer_state_->get_klippy_state_subject();
     if (klippy_subj) {
         klippy_state_observer_ = observe_int_sync<LedAutoState>(
-            klippy_subj, this, [](LedAutoState* self, int) { self->on_state_changed(); });
+            klippy_subj, this, [](LedAutoState* self, int) { self->on_state_changed(); },
+            printer_state_->get_subjects_lifetime());
     }
 
     auto* ext_target_subj = printer_state_->get_active_extruder_target_subject();
     if (ext_target_subj) {
         extruder_target_observer_ = observe_int_sync<LedAutoState>(
-            ext_target_subj, this, [](LedAutoState* self, int) { self->on_state_changed(); });
+            ext_target_subj, this, [](LedAutoState* self, int) { self->on_state_changed(); },
+            printer_state_->get_subjects_lifetime());
     }
 
     spdlog::debug("[LedAutoState] Subscribed to printer state observers");
