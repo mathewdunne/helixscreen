@@ -41,6 +41,8 @@
 
 #include <lvgl.h>
 #include <memory>
+#include <optional>
+#include <string>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -78,6 +80,9 @@ class RecordingBackend : public helix::AmsBackendMock {
     /// AmsBackend::filament_ops_self_home() — true only on AD5X IFS in
     /// production. Decides whether a PAUSED print still refuses filament ops.
     bool self_homes_ = false;
+    /// AmsBackend::shared_extruder_name() — set only on a shared-nozzle changer,
+    /// where live "loaded" means a MOUNTED nozzle rather than filament in it.
+    std::optional<std::string> shared_extruder_{};
 
     // Observed dispatches
     int last_load_slot = -999;
@@ -118,6 +123,9 @@ class RecordingBackend : public helix::AmsBackendMock {
     }
     [[nodiscard]] bool filament_ops_self_home() const override {
         return self_homes_;
+    }
+    [[nodiscard]] std::optional<std::string> shared_extruder_name() const override {
+        return shared_extruder_;
     }
 
     helix::AmsError load_filament(int slot) override {
@@ -774,4 +782,50 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Filament panel greys Load/Unload while the 
                        static_cast<int>(AmsAction::IDLE));
     process_lvgl(10);
     CHECK(read("filament_unload_disabled") == 0);
+}
+
+// On a shared-nozzle changer the backend's live "loaded" answer is the MOUNTED
+// nozzle, and nothing reports filament in it. The panel's Load runs the Load
+// Filament macro into that nozzle, so it must stay reachable; Unload stays tied
+// to the mounted nozzle, the only one a filament macro can act on.
+//
+// Mutation check: drop `&& !has_separate_filament_operation` in
+// update_filament_op_buttons() and the shared-nozzle Load check fails.
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "Filament panel keeps Load reachable on a mounted shared-nozzle tool",
+                 "[filament][op_slot][panel][op_gating]") {
+    auto read = [](const char* name) {
+        lv_subject_t* s = lv_xml_get_subject(nullptr, name);
+        REQUIRE(s != nullptr);
+        return lv_subject_get_int(s);
+    };
+
+    AmsSystemInfo sys = boxturtle_sys();
+    sys.type = AmsType::TOOL_CHANGER;
+    sys.current_slot = 0;
+    ToolTopology topo = identity_topo();
+    OpSlotHarness h(*this, sys, /*loaded_slot=*/0, topo);
+
+    SECTION("shared nozzle: Load and Unload both enabled on the mounted tool") {
+        h.mock->shared_extruder_ = "extruder";
+        h.select_tool(0);
+        TA::handle_extruder_changed(*h.panel);
+        process_lvgl(10);
+        CHECK(read("filament_load_disabled") == 0);
+        CHECK(read("filament_unload_disabled") == 0);
+
+        // A parked nozzle has nothing a filament macro can unload.
+        h.select_tool(1);
+        TA::handle_extruder_changed(*h.panel);
+        process_lvgl(10);
+        CHECK(read("filament_unload_disabled") == 1);
+    }
+
+    SECTION("per-tool extruders: a loaded tool still greys Load") {
+        h.select_tool(0);
+        TA::handle_extruder_changed(*h.panel);
+        process_lvgl(10);
+        CHECK(read("filament_load_disabled") == 1);
+        CHECK(read("filament_unload_disabled") == 0);
+    }
 }

@@ -1930,9 +1930,15 @@ void FilamentPanel::update_filament_op_buttons() {
     // belongs to the runout dialog, not to a resting panel) while routing the
     // bypass sentinel to the toolhead-wide flag — the only signal that can
     // answer for a spool with no lane behind it.
-    state.slot_is_loaded = helix::ui::unload_target_is_loaded(
+    const bool slot_is_loaded = helix::ui::unload_target_is_loaded(
         slot, backend->slot_is_actively_loaded(slot), backend->slot_has_filament_at_toolhead(slot),
         /*is_current_slot=*/false, sys.filament_loaded);
+    // On a shared-nozzle changer (Bondtech INDX) that answer is which nozzle is
+    // MOUNTED, not whether it holds filament, and nothing reports the latter.
+    // This panel's Load feeds filament (the user's Load Filament macro), so a
+    // mounted nozzle must not grey it.
+    const bool has_separate_filament_operation = backend->shared_extruder_name().has_value();
+    state.slot_is_loaded = slot_is_loaded && !has_separate_filament_operation;
     if (slot >= 0) {
         // Bypass deliberately skipped: there is no lane whose presence sensor
         // could answer, and slot_presence()'s nullopt ("unanswerable") is what
@@ -1942,7 +1948,7 @@ void FilamentPanel::update_filament_op_buttons() {
     // Unload/Purge act on whatever is at the toolhead for this slot, and the
     // panel's Unload is always the heated toolhead unload — the cold lane ops
     // (Eject / Recover) live on the AMS context menu, not here.
-    state.unload_available = state.slot_is_loaded;
+    state.unload_available = slot_is_loaded;
     state.unload_is_cold_lane_op = false;
 
     const auto gating = helix::ui::compute_op_button_gating(state);
