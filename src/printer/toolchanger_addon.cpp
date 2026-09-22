@@ -2,6 +2,7 @@
 
 #include "toolchanger_addon.h"
 
+#include "operation_patterns.h"
 #include "printer_discovery.h"
 
 #include <algorithm>
@@ -416,8 +417,8 @@ std::vector<std::string> tool_movement_macro_candidates(const PrinterDiscovery& 
     for (const auto& macro : hw.macros()) {
         const bool named =
             macro.find("TOOL") != std::string::npos || macro.find("PARK") != std::string::npos ||
-            macro.find("CHANGE") != std::string::npos || macro.find("SELECT") != std::string::npos ||
-            macro.find("MOUNT") != std::string::npos;
+            macro.find("CHANGE") != std::string::npos ||
+            macro.find("SELECT") != std::string::npos || macro.find("MOUNT") != std::string::npos;
         if (named) {
             out.push_back(macro);
         }
@@ -427,25 +428,28 @@ std::vector<std::string> tool_movement_macro_candidates(const PrinterDiscovery& 
 }
 
 ToolMovementOverride resolve_tool_movement_override(const PrinterDiscovery& hw,
-                                                     const std::string& select_choice,
-                                                     const std::string& park_choice) {
+                                                    const std::string& select_choice,
+                                                    const std::string& park_choice) {
     ToolMovementOverride result;
     result.select_choice_raw = select_choice.empty() ? kAutoMacro : select_choice;
     result.park_choice_raw = park_choice.empty() ? kAutoMacro : park_choice;
 
-    const auto& macros = hw.macros();
+    // A stored choice is matched the way has_macro() matches everywhere else
+    // in this module: by the uppercased alias the macro registers as a gcode
+    // command, so a hand-edited settings.json in any casing still resolves.
+    // The macro sent is that alias, not the raw spelling.
     if (result.select_choice_raw != kAutoMacro) {
-        if (macros.count(result.select_choice_raw) != 0) {
+        if (hw.has_macro(result.select_choice_raw)) {
             result.select_choice = ToolMovementOverride::Choice::kValid;
-            result.select_macro = result.select_choice_raw;
+            result.select_macro = to_upper(result.select_choice_raw);
         } else {
             result.select_choice = ToolMovementOverride::Choice::kInvalid;
         }
     }
     if (result.park_choice_raw != kAutoMacro) {
-        if (macros.count(result.park_choice_raw) != 0) {
+        if (hw.has_macro(result.park_choice_raw)) {
             result.park_choice = ToolMovementOverride::Choice::kValid;
-            result.park_macro = result.park_choice_raw;
+            result.park_macro = to_upper(result.park_choice_raw);
         } else {
             result.park_choice = ToolMovementOverride::Choice::kInvalid;
         }

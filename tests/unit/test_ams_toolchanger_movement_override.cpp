@@ -20,13 +20,14 @@
  *    execute_device_action) exposing and persisting the two choices.
  */
 
+#include "ui_update_queue.h"
+
 #include "../lvgl_test_fixture.h"
 #include "ams_backend_toolchanger.h"
 #include "ams_error.h"
 #include "printer_discovery.h"
 #include "settings_manager.h"
 #include "toolchanger_addon.h"
-#include "ui_update_queue.h"
 
 #include <algorithm>
 #include <any>
@@ -113,8 +114,7 @@ class MovementHelper : public LVGLTestFixture, public AmsBackendToolChanger {
 
 /// A printer exposing exactly one plausible movement macro besides the
 /// INDX-style T<n>/CHANGE_TOOL/PARK_TOOL vocabulary. macros() stores names
-/// uppercased (PrinterDiscovery::parse_objects()), so callers pass the name
-/// already in the case they expect resolve_tool_movement_override() to match.
+/// uppercased (PrinterDiscovery::parse_objects()).
 PrinterDiscovery discovery_with_macro(const std::string& macro_name) {
     PrinterDiscovery hw;
     hw.parse_objects(json::array({"extruder", "gcode_macro " + macro_name}));
@@ -148,6 +148,22 @@ TEST_CASE("Movement override: an explicit choice naming a real macro is valid",
     CHECK(ov.park_choice == Choice::kAuto);
 }
 
+TEST_CASE("Movement override: a stored choice matches the macro in any casing",
+          "[indx][dispatch]") {
+    // has_macro() is case-insensitive everywhere else in the module; a
+    // hand-edited settings.json must not be the one spelling that refuses.
+    auto hw = discovery_with_macro("MY_SELECT_TOOL");
+    auto ov =
+        toolchanger_addon::resolve_tool_movement_override(hw, "my_select_tool", "My_Select_Tool");
+
+    REQUIRE(ov.select_choice == Choice::kValid);
+    CHECK(ov.select_macro == "MY_SELECT_TOOL");
+    REQUIRE(ov.park_choice == Choice::kValid);
+    CHECK(ov.park_macro == "MY_SELECT_TOOL");
+    // The raw spelling survives for the settings UI to echo back.
+    CHECK(ov.select_choice_raw == "my_select_tool");
+}
+
 TEST_CASE("Movement override: a stored choice this printer does not report is invalid",
           "[indx][dispatch]") {
     auto hw = discovery_with_macro("MY_SELECT_TOOL");
@@ -168,7 +184,7 @@ TEST_CASE("Movement override: macro_options lists Auto plus plausible candidates
     REQUIRE_FALSE(ov.macro_options.empty());
     CHECK(ov.macro_options.front() == toolchanger_addon::kAutoMacro);
     CHECK(std::find(ov.macro_options.begin(), ov.macro_options.end(), "CUSTOM_PARK_TOOL") !=
-         ov.macro_options.end());
+          ov.macro_options.end());
 }
 
 // =============================================================================
@@ -191,8 +207,7 @@ TEST_CASE("Movement override: a valid Select override outranks the T<n> shortcut
     CHECK(h.sent().back() == "MY_CHANGE TOOL=2");
 }
 
-TEST_CASE("Movement override: an invalid Select override sends nothing",
-          "[indx][dispatch]") {
+TEST_CASE("Movement override: an invalid Select override sends nothing", "[indx][dispatch]") {
     MovementHelper h(4);
     h.set_tool_commands(indx_commands(4));
     ToolMovementOverride ov;
@@ -294,8 +309,8 @@ TEST_CASE("Movement override: device actions expose select/park dropdowns when c
           "[indx][dispatch]") {
     MovementHelper h(3);
     h.set_tool_commands(indx_commands(3));
-    h.set_tool_movement_override(
-        toolchanger_addon::resolve_tool_movement_override(discovery_with_macro("CUSTOM_TOOL_MACRO")));
+    h.set_tool_movement_override(toolchanger_addon::resolve_tool_movement_override(
+        discovery_with_macro("CUSTOM_TOOL_MACRO")));
 
     auto sections = h.get_device_sections();
     REQUIRE_FALSE(sections.empty());
@@ -323,10 +338,11 @@ TEST_CASE("Movement override: execute_device_action resolves and persists a vali
           "[indx][dispatch]") {
     MovementHelper h(3);
     h.set_tool_commands(indx_commands(3));
-    h.set_tool_movement_override(
-        toolchanger_addon::resolve_tool_movement_override(discovery_with_macro("CUSTOM_TOOL_MACRO")));
+    h.set_tool_movement_override(toolchanger_addon::resolve_tool_movement_override(
+        discovery_with_macro("CUSTOM_TOOL_MACRO")));
 
-    auto err = h.execute_device_action("tool_select_macro", std::any(std::string("CUSTOM_TOOL_MACRO")));
+    auto err =
+        h.execute_device_action("tool_select_macro", std::any(std::string("CUSTOM_TOOL_MACRO")));
     REQUIRE(err.success());
     CHECK(helix::SettingsManager::instance().get_tool_select_macro() == "CUSTOM_TOOL_MACRO");
 
@@ -343,13 +359,14 @@ TEST_CASE("Movement override: execute_device_action rejects an unknown macro nam
           "[indx][dispatch]") {
     MovementHelper h(3);
     h.set_tool_commands(indx_commands(3));
-    h.set_tool_movement_override(
-        toolchanger_addon::resolve_tool_movement_override(discovery_with_macro("CUSTOM_TOOL_MACRO")));
+    h.set_tool_movement_override(toolchanger_addon::resolve_tool_movement_override(
+        discovery_with_macro("CUSTOM_TOOL_MACRO")));
 
     // Not among the resolved macro_options -- an unrecognized choice reaching
     // execute_device_action() through anything other than the offered
     // dropdown values still resolves to Invalid, not a silent accept.
-    auto err = h.execute_device_action("tool_park_macro", std::any(std::string("NOT_A_REAL_MACRO")));
+    auto err =
+        h.execute_device_action("tool_park_macro", std::any(std::string("NOT_A_REAL_MACRO")));
     REQUIRE(err.success()); // the SETTING is accepted and persisted...
     auto park_err = h.unload_filament(0);
     // ...but dispatch of the now-invalid choice sends nothing.
