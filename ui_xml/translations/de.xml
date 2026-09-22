@@ -573,6 +573,8 @@
   <translation tag="Configure PRINT_START" de="PRINT_START konfigurieren"/>
   <translation tag="Configure Spoolman integration and weight sync settings." de="Spoolman-Integration und Gewichtssynchronisierung konfigurieren."/>
   <translation tag="Configure WiFi for this device, or skip if you&apos;re using Ethernet" de="WiFi für dieses Gerät konfigurieren, oder überspringen bei Ethernet-Nutzung"/>
+  <translation tag="Configure a filament load macro in Settings first" de="Konfigurieren Sie zuerst ein Makro zum Laden von Filament in den Einstellungen"/>
+  <translation tag="Configure a filament unload macro in Settings first" de="Konfigurieren Sie zuerst ein Makro zum Entladen von Filament in den Einstellungen"/>
   <translation tag="Configure devices in Moonraker" de="Geräte in Moonraker konfigurieren"/>
   <translation tag="Configure label printer and auto-discovery" de="Etikettendrucker und Auto-Erkennung konfigurieren"/>
   <translation tag="Configure printer sensors" de="Druckersensoren konfigurieren"/>
@@ -2858,9 +2860,12 @@
   <translation tag="Tool Switcher" de="Werkzeugwechsler"/>
   <translation tag="Tool change failed: {}" de="Werkzeugwechsel fehlgeschlagen: {}"/>
   <translation tag="Tool change to T{}" de="Werkzeugwechsel zu T{}"/>
+  <translation tag="Tool commands" de="Werkzeugbefehle"/>
   <translation tag="Tool mapping failed" de="Werkzeugzuordnung fehlgeschlagen"/>
   <translation tag="Tool offsets (mm)" de="Werkzeug-Offsets (mm)"/>
   <translation tag="Tool offsets saved" de="Werkzeug-Offsets gespeichert"/>
+  <translation tag="Tool park macro" de="Makro zum Parken des Werkzeugs"/>
+  <translation tag="Tool select macro" de="Makro zum Auswählen des Werkzeugs"/>
   <translation tag="Tool swap" de="Werkzeugwechsel"/>
   <translation tag="Toolhead" de="Werkzeugkopf"/>
   <translation tag="Toolhead LED" de="Werkzeugkopf-LED"/>
@@ -3047,6 +3052,9 @@
   <translation tag="When starting a print, you&apos;ll be able to choose whether to run %s. This saves time when you&apos;ve already done it recently or want more control over your print preparation." de="Beim Starten eines Drucks können Sie wählen, ob %s ausgeführt werden soll. Das spart Zeit, wenn Sie es kürzlich bereits gemacht haben oder mehr Kontrolle über die Druckvorbereitung wünschen."/>
   <translation tag="Where UI sounds play" de="Wo UI-Töne abgespielt werden"/>
   <translation tag="Whether filament is loaded" de="Ob Filament geladen ist"/>
+  <translation tag="Which macro parks the current tool" de="Welches Makro das aktuelle Werkzeug parkt"/>
+  <translation tag="Which macro selects a tool (sent as MACRO TOOL=&lt;n&gt;)" de="Welches Makro ein Werkzeug auswählt (gesendet als MACRO TOOL=&lt;n&gt;)"/>
+  <translation tag="Which macro selects and parks a tool" de="Welches Makro ein Werkzeug auswählt und parkt"/>
   <translation tag="Which macro the Close feeder button sends" de="Welches Makro die Schaltfläche zum Schließen der Zuführung sendet"/>
   <translation tag="Which macro the Open feeder button sends" de="Welches Makro die Schaltfläche zum Öffnen der Zuführung sendet"/>
   <translation tag="White" de="Weiß"/>

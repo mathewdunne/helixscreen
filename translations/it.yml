@@ -638,6 +638,8 @@ translations:
     Spoolman e impostazioni sincronizzazione peso.
   Configure WiFi for this device, or skip if you're using Ethernet: Configura WiFi
     per questo dispositivo, o salta se usi Ethernet
+  Configure a filament load macro in Settings first: Configura prima una macro di caricamento filamento nelle Impostazioni
+  Configure a filament unload macro in Settings first: Configura prima una macro di scaricamento filamento nelle Impostazioni
   Configure devices in Moonraker: Configura dispositivi in Moonraker
   Configure label printer and auto-discovery: Configura stampante etichette e rilevamento
     automatico
@@ -3209,9 +3211,12 @@ translations:
   Tool Switcher: 'Selettore utensile'
   'Tool change failed: {}': 'Cambio utensile fallito: {}'
   Tool change to T{}: 'Cambio utensile su T{}'
+  Tool commands: Comandi utensile
   Tool mapping failed: Mappatura utensile fallita
   Tool offsets (mm): Offset strumenti (mm)
   Tool offsets saved: Offset strumenti salvati
+  Tool park macro: Macro di parcheggio utensile
+  Tool select macro: Macro di selezione utensile
   Tool swap: Cambio utensile
   Toolhead: 'Testina'
   Toolhead LED: 'LED della testina'
@@ -3419,6 +3424,9 @@ translations:
     preparazione della stampa.
   Where UI sounds play: Dove vengono riprodotti i suoni dell'interfaccia
   Whether filament is loaded: Se il filamento è caricato
+  Which macro parks the current tool: Quale macro parcheggia l'utensile corrente
+  Which macro selects a tool (sent as MACRO TOOL=<n>): Quale macro seleziona un utensile (inviato come MACRO TOOL=<n>)
+  Which macro selects and parks a tool: Quale macro seleziona e parcheggia un utensile
   Which macro the Close feeder button sends: Quale macro invia il pulsante Chiudi alimentatore
   Which macro the Open feeder button sends: Quale macro invia il pulsante Apri alimentatore
   White: Bianco

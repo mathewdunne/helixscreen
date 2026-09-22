@@ -647,6 +647,8 @@ translations:
     Gewichtssynchronisierung konfigurieren.
   Configure WiFi for this device, or skip if you're using Ethernet: WiFi für dieses
     Gerät konfigurieren, oder überspringen bei Ethernet-Nutzung
+  Configure a filament load macro in Settings first: Konfigurieren Sie zuerst ein Makro zum Laden von Filament in den Einstellungen
+  Configure a filament unload macro in Settings first: Konfigurieren Sie zuerst ein Makro zum Entladen von Filament in den Einstellungen
   Configure devices in Moonraker: Geräte in Moonraker konfigurieren
   Configure label printer and auto-discovery: Etikettendrucker und Auto-Erkennung
     konfigurieren
@@ -3215,9 +3217,12 @@ translations:
   Tool Switcher: 'Werkzeugwechsler'
   'Tool change failed: {}': 'Werkzeugwechsel fehlgeschlagen: {}'
   Tool change to T{}: 'Werkzeugwechsel zu T{}'
+  Tool commands: Werkzeugbefehle
   Tool mapping failed: Werkzeugzuordnung fehlgeschlagen
   Tool offsets (mm): Werkzeug-Offsets (mm)
   Tool offsets saved: Werkzeug-Offsets gespeichert
+  Tool park macro: Makro zum Parken des Werkzeugs
+  Tool select macro: Makro zum Auswählen des Werkzeugs
   Tool swap: Werkzeugwechsel
   Toolhead: 'Werkzeugkopf'
   Toolhead LED: 'Werkzeugkopf-LED'
@@ -3426,6 +3431,9 @@ translations:
     die Druckvorbereitung wünschen.
   Where UI sounds play: Wo UI-Töne abgespielt werden
   Whether filament is loaded: Ob Filament geladen ist
+  Which macro parks the current tool: Welches Makro das aktuelle Werkzeug parkt
+  Which macro selects a tool (sent as MACRO TOOL=<n>): Welches Makro ein Werkzeug auswählt (gesendet als MACRO TOOL=<n>)
+  Which macro selects and parks a tool: Welches Makro ein Werkzeug auswählt und parkt
   Which macro the Close feeder button sends: Welches Makro die Schaltfläche zum Schließen der Zuführung sendet
   Which macro the Open feeder button sends: Welches Makro die Schaltfläche zum Öffnen der Zuführung sendet
   White: Weiß

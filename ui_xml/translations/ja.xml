@@ -573,6 +573,8 @@
   <translation tag="Configure PRINT_START" ja="PRINT_START を設定"/>
   <translation tag="Configure Spoolman integration and weight sync settings." ja="Spoolman 連携と重量同期設定を行います。"/>
   <translation tag="Configure WiFi for this device, or skip if you&apos;re using Ethernet" ja="WiFi を設定するか、イーサネットを使用する場合はスキップしてください"/>
+  <translation tag="Configure a filament load macro in Settings first" ja="先に設定でフィラメントロードマクロを設定してください"/>
+  <translation tag="Configure a filament unload macro in Settings first" ja="先に設定でフィラメントアンロードマクロを設定してください"/>
   <translation tag="Configure devices in Moonraker" ja="Moonraker でデバイスを設定"/>
   <translation tag="Configure label printer and auto-discovery" ja="ラベルプリンターの設定と自動検出"/>
   <translation tag="Configure printer sensors" ja="プリンターセンサーを設定"/>
@@ -2858,9 +2860,12 @@
   <translation tag="Tool Switcher" ja="ツール切り替え"/>
   <translation tag="Tool change failed: {}" ja="ツール変更に失敗しました: {}"/>
   <translation tag="Tool change to T{}" ja="ツールを T{} に変更しています"/>
+  <translation tag="Tool commands" ja="ツールコマンド"/>
   <translation tag="Tool mapping failed" ja="ツールマッピングに失敗しました"/>
   <translation tag="Tool offsets (mm)" ja="ツールオフセット (mm)"/>
   <translation tag="Tool offsets saved" ja="ツールオフセットを保存しました"/>
+  <translation tag="Tool park macro" ja="ツールをパーキングするマクロ"/>
+  <translation tag="Tool select macro" ja="ツールを選択するマクロ"/>
   <translation tag="Tool swap" ja="ツール交換"/>
   <translation tag="Toolhead" ja="ツールヘッド"/>
   <translation tag="Toolhead LED" ja="ツールヘッドLED"/>
@@ -3047,6 +3052,9 @@
   <translation tag="When starting a print, you&apos;ll be able to choose whether to run %s. This saves time when you&apos;ve already done it recently or want more control over your print preparation." ja="印刷開始時に %s を実行するかどうかを選択できるようになります。最近すでに実行した場合や、印刷準備をより細かく制御したい場合に時間を節約できます。"/>
   <translation tag="Where UI sounds play" ja="UIサウンドの再生先"/>
   <translation tag="Whether filament is loaded" ja="フィラメントの装填状態"/>
+  <translation tag="Which macro parks the current tool" ja="現在のツールをパーキングするマクロ"/>
+  <translation tag="Which macro selects a tool (sent as MACRO TOOL=&lt;n&gt;)" ja="ツールを選択するマクロ（MACRO TOOL=&lt;n&gt; として送信）"/>
+  <translation tag="Which macro selects and parks a tool" ja="ツールを選択してパーキングするマクロ"/>
   <translation tag="Which macro the Close feeder button sends" ja="「フィーダーを閉じる」ボタンが送信するマクロ"/>
   <translation tag="Which macro the Open feeder button sends" ja="「フィーダーを開く」ボタンが送信するマクロ"/>
   <translation tag="White" ja="ホワイト"/>

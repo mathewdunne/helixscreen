@@ -573,6 +573,8 @@
   <translation tag="Configure PRINT_START" zh="配置 PRINT_START"/>
   <translation tag="Configure Spoolman integration and weight sync settings." zh="配置 Spoolman 集成和重量同步设置。"/>
   <translation tag="Configure WiFi for this device, or skip if you&apos;re using Ethernet" zh="为此设备配置 WiFi，如使用以太网可跳过"/>
+  <translation tag="Configure a filament load macro in Settings first" zh="请先在设置中配置耗材装载宏"/>
+  <translation tag="Configure a filament unload macro in Settings first" zh="请先在设置中配置耗材卸载宏"/>
   <translation tag="Configure devices in Moonraker" zh="在 Moonraker 中配置设备"/>
   <translation tag="Configure label printer and auto-discovery" zh="配置标签打印机及自动发现"/>
   <translation tag="Configure printer sensors" zh="配置打印机传感器"/>
@@ -2858,9 +2860,12 @@
   <translation tag="Tool Switcher" zh="工具切换器"/>
   <translation tag="Tool change failed: {}" zh="工具切换失败: {}"/>
   <translation tag="Tool change to T{}" zh="切换工具到 T{}"/>
+  <translation tag="Tool commands" zh="工具命令"/>
   <translation tag="Tool mapping failed" zh="工具映射失败"/>
   <translation tag="Tool offsets (mm)" zh="工具偏移 (mm)"/>
   <translation tag="Tool offsets saved" zh="工具偏移已保存"/>
+  <translation tag="Tool park macro" zh="工具停放宏"/>
+  <translation tag="Tool select macro" zh="工具选择宏"/>
   <translation tag="Tool swap" zh="工具切换"/>
   <translation tag="Toolhead" zh="工具头"/>
   <translation tag="Toolhead LED" zh="工具头 LED"/>
@@ -3047,6 +3052,9 @@
   <translation tag="When starting a print, you&apos;ll be able to choose whether to run %s. This saves time when you&apos;ve already done it recently or want more control over your print preparation." zh="开始打印时，您可以选择是否运行 %s。如果您最近已经执行过或希望对打印准备过程有更多控制，这样可以节省时间。"/>
   <translation tag="Where UI sounds play" zh="界面声音的播放位置"/>
   <translation tag="Whether filament is loaded" zh="耗材是否已装载"/>
+  <translation tag="Which macro parks the current tool" zh="停放当前工具的宏"/>
+  <translation tag="Which macro selects a tool (sent as MACRO TOOL=&lt;n&gt;)" zh="选择工具的宏（以 MACRO TOOL=&lt;n&gt; 形式发送）"/>
+  <translation tag="Which macro selects and parks a tool" zh="选择并停放工具的宏"/>
   <translation tag="Which macro the Close feeder button sends" zh="“关闭送料器”按钮发送的宏"/>
   <translation tag="Which macro the Open feeder button sends" zh="“打开送料器”按钮发送的宏"/>
   <translation tag="White" zh="白色"/>
