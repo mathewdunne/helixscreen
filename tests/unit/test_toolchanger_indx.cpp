@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -163,6 +164,10 @@ TEST_CASE("toolchanger_addon: MedusaHC subscriptions are unaffected by indx addi
 TEST_CASE("toolchanger_addon: indx default commands are T<n> select / PARK_TOOL park",
           "[indx][backend]") {
     auto hw = discover("objects_list_six_tool.json");
+    // Finalized first, as the discovery sequence does: the provider's command
+    // contract is defined against ITS numbered inventory, so an unfinalized
+    // candidate has nothing for the T<n> probe to answer about yet.
+    REQUIRE(hw.finalize_indx_inventory(addon::indx_tool_ids(6)));
     auto commands = addon::resolve_tool_commands(hw);
 
     REQUIRE(commands.present);
@@ -171,9 +176,47 @@ TEST_CASE("toolchanger_addon: indx default commands are T<n> select / PARK_TOOL 
     REQUIRE(commands.unselect == "PARK_TOOL");
 }
 
+TEST_CASE("toolchanger_addon: an unfinalized indx candidate claims no provider",
+          "[indx][backend][priority]") {
+    // Before the tool count is read there is no inventory to define T<n>
+    // against, and select_shortcut_available would come back empty - which
+    // do_change_tool() reads as "every tool has a shortcut".
+    auto hw = discover("objects_list_six_tool.json");
+    auto commands = addon::resolve_tool_commands(hw);
+
+    REQUIRE(commands.present); // no [toolchanger] on this machine
+    CHECK(commands.provider_name.empty());
+    CHECK(commands.unselect.empty());
+    CHECK(commands.select_shortcut_available.empty());
+}
+
+TEST_CASE("toolchanger_addon: indx alongside several extruder heaters keeps plain T<n>",
+          "[indx][backend][priority]") {
+    // parse_objects() names the tools after the hot ends here ("T0", "T1"),
+    // which is_indx_inventory_candidate() rejects - so nothing ever finalizes
+    // them and the T<n> probe would ask about "TT0". Claiming the provider
+    // anyway would refuse every swap on a machine whose plain T<n> works, and
+    // fold its real second extruder onto one shared_extruder_name().
+    PrinterDiscovery hw;
+    hw.parse_objects(nlohmann::json::array({"extruder", "extruder1", "indx", "save_variables",
+                                            "gcode_macro TOOL_POSITIONS",
+                                            "gcode_macro PARK_TOOL"}));
+    REQUIRE(hw.has_indx());
+    REQUIRE(hw.tool_names() == std::vector<std::string>{"T0", "T1"});
+    REQUIRE_FALSE(addon::is_indx_inventory_candidate(hw));
+
+    auto commands = addon::resolve_tool_commands(hw);
+    REQUIRE(commands.present);
+    CHECK(commands.provider_name.empty());
+    CHECK(commands.select_prefix == "T");
+    CHECK(commands.select_shortcut_available.empty());
+    CHECK(commands.unselect.empty());
+}
+
 TEST_CASE("toolchanger_addon: indx has no feeder or dock sensor capability",
           "[indx][backend]") {
     auto hw = discover("objects_list_six_tool.json");
+    REQUIRE(hw.finalize_indx_inventory(addon::indx_tool_ids(6)));
     REQUIRE_FALSE(addon::resolve_feeder(hw).present);
     // toolchanger_addon's sensor/feeder table only recognizes dock-sensor
     // add-ons (MedusaHC-shaped); INDX must never be folded into that

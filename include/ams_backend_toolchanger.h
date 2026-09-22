@@ -167,6 +167,17 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         return tool_commands_.present && tool_commands_.provider_name == "INDX";
     }
 
+    /// Whether a recognized changer extra drives this machine's swaps, as
+    /// opposed to a plain multi-extruder printer whose T<n> is Klipper's own
+    /// ACTIVATE_EXTRUDER. ToolCommands::present answers only "no
+    /// klipper-toolchanger", which both shapes share; a provider name is what
+    /// separates them. Everything written for a changer extra's own swap
+    /// contract - the ack-owned dispatch ceiling, the Select/Park override
+    /// pickers - scopes on this, never on present alone.
+    [[nodiscard]] bool has_named_tool_provider() const {
+        return tool_commands_.present && !tool_commands_.provider_name.empty();
+    }
+
     /// The upstream INDX commands home conditionally themselves, so their
     /// automatic Select/Park paths own homing. An explicit override is an
     /// arbitrary user macro with no such contract; once either direction is
@@ -375,8 +386,9 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     }
 
     /// Per-printer Select/Park overrides (plan D3). Only consulted when
-    /// tool_commands_.present — a plain klipper-toolchanger has nothing to
-    /// override.
+    /// has_named_tool_provider() — a plain klipper-toolchanger has nothing to
+    /// override, and a plain multi-extruder printer is never offered the
+    /// picker that stores one.
     void set_tool_movement_override(
         helix::toolchanger_addon::ToolMovementOverride override) override {
         movement_override_ = std::move(override);
@@ -636,9 +648,10 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// mutex_.
     void finalize_dispatch_after_macro(uint64_t generation);
 
-    /// Ack timeout for dispatch_operation(): longer for a provider whose only
-    /// completion signal IS the ack (ToolCommands::present), where a timeout
-    /// ends the operation in the UI while the swap may still be running.
+    /// Ack timeout for dispatch_operation(): longer for a changer extra whose
+    /// only completion signal IS the ack (has_named_tool_provider()), where a
+    /// timeout ends the operation in the UI while the swap may still be
+    /// running.
     [[nodiscard]] uint32_t dispatch_timeout_ms() const;
 
     /// Send a tool operation: set @p action optimistically, dispatch @p gcode

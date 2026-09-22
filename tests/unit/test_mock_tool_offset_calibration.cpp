@@ -175,3 +175,21 @@ TEST_CASE_METHOD(ToolCalFixture, "mock: the macro's description: is in configfil
     REQUIRE(section.contains("description"));
     CHECK(section["description"].get<std::string>().find("offset") != std::string::npos);
 }
+
+// =============================================================================
+// The INDX persona's T<n> shortcut parser
+// =============================================================================
+
+TEST_CASE("mock: an absurdly long T<n> is refused, not thrown out of",
+          "[indx][mock][toolchanger]") {
+    // The console panel sends whatever is typed. The digit run is validated but
+    // its LENGTH was not, so std::stoi raised std::out_of_range from inside
+    // gcode_script() with nothing on the way up to catch it.
+    helix::ScopedEnv ams_env{"HELIX_MOCK_AMS"};
+    setenv("HELIX_MOCK_AMS", "indx", 1);
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24, 100.0);
+
+    REQUIRE_NOTHROW(client.gcode_script("T99999999999"));
+    // An in-range tool still works, so the bound did not swallow the feature.
+    REQUIRE_NOTHROW(client.gcode_script("T1"));
+}

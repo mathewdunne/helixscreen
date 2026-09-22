@@ -9,6 +9,7 @@
 #include "filament_slot_override_store.h"
 #include "test_helpers/seeded_override.h"
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -97,6 +98,13 @@ class ToolChangerTestAccess {
     static bool has_overrides(const AmsBackendToolChanger& b) {
         std::lock_guard<std::mutex> lock(b.mutex_);
         return !b.overrides_.empty();
+    }
+
+    /// The ack timeout dispatch_operation() would use. Private on the backend,
+    /// and the whole point of it is which provider shape gets the widened
+    /// ceiling, so a test has no other way to see it.
+    static uint32_t dispatch_timeout_ms(const AmsBackendToolChanger& b) {
+        return b.dispatch_timeout_ms();
     }
 
     /// Name of the Moonraker DB namespace the store was pointed at, so a test

@@ -130,6 +130,22 @@ PrinterDiscovery discovery_with_macro(const std::string& macro_name) {
     return hw;
 }
 
+/// A printer whose macros none of tool_movement_macro_candidates()' name
+/// fragments match, so macro_options comes back empty.
+PrinterDiscovery discovery_without_candidates() {
+    PrinterDiscovery hw;
+    hw.parse_objects(json::array({"extruder", "gcode_macro HEAT_SOAK"}));
+    return hw;
+}
+
+/// The options one action offers, by id.
+std::vector<std::string> options_for(const std::vector<helix::printer::DeviceAction>& actions,
+                                     const std::string& id) {
+    auto it = std::find_if(actions.begin(), actions.end(),
+                           [&](const auto& a) { return a.id == id; });
+    return it == actions.end() ? std::vector<std::string>{} : it->options;
+}
+
 } // namespace
 
 // =============================================================================
@@ -382,4 +398,118 @@ TEST_CASE("Movement override: execute_device_action rejects an unknown macro nam
     CHECK_FALSE(park_err.success());
 
     helix::SettingsManager::instance().set_tool_park_macro("auto");
+}
+
+// =============================================================================
+// An invalid stored choice has to stay reachable (plan §7.1 keeps it invalid;
+// the picker is the only way back to Auto)
+// =============================================================================
+
+TEST_CASE("Movement override: an invalid stored choice is listed so it can be cleared",
+          "[indx][dispatch]") {
+    MovementHelper h(3);
+    h.set_tool_commands(indx_commands(3));
+    h.set_tool_movement_override(toolchanger_addon::resolve_tool_movement_override(
+        discovery_with_macro("CUSTOM_TOOL_MACRO"), "GHOST_TOOL", "auto"));
+
+    // The dropdown echoes current_value back by exact string match against
+    // options. Without the stale name among them the selection stays on the
+    // first entry -- "auto" -- while the backend refuses every swap, and
+    // picking "auto" then changes no index and fires no event.
+    auto actions = h.get_device_actions();
+    auto select_options = options_for(actions, "tool_select_macro");
+    REQUIRE_FALSE(select_options.empty());
+    CHECK(select_options.front() == toolchanger_addon::kAutoMacro);
+    CHECK(std::find(select_options.begin(), select_options.end(), "GHOST_TOOL") !=
+          select_options.end());
+
+    // ...and the invalid state is real until it is cleared.
+    CHECK_FALSE(h.change_tool(1).success());
+
+    REQUIRE(h.execute_device_action("tool_select_macro",
+                                    std::any(std::string(toolchanger_addon::kAutoMacro)))
+                .success());
+    REQUIRE(h.change_tool(1).success());
+    CHECK(h.sent().back() == "T1");
+
+    helix::SettingsManager::instance().set_tool_select_macro("auto");
+}
+
+TEST_CASE("Movement override: a printer with no candidate macros still offers Auto to clear one",
+          "[indx][dispatch]") {
+    // macro_options is empty here, which previously hid the whole section --
+    // leaving a stored choice this printer cannot resolve with no way back.
+    MovementHelper h(2);
+    h.set_tool_commands(indx_commands(2));
+    h.set_tool_movement_override(toolchanger_addon::resolve_tool_movement_override(
+        discovery_without_candidates(), "auto", "GHOST_PARK"));
+
+    auto sections = h.get_device_sections();
+    CHECK(std::any_of(sections.begin(), sections.end(),
+                      [](const auto& sec) { return sec.id == "tool_commands"; }));
+
+    auto park_options = options_for(h.get_device_actions(), "tool_park_macro");
+    REQUIRE(park_options.size() == 2);
+    CHECK(park_options[0] == toolchanger_addon::kAutoMacro);
+    CHECK(park_options[1] == "GHOST_PARK");
+
+    REQUIRE(h.execute_device_action("tool_park_macro",
+                                    std::any(std::string(toolchanger_addon::kAutoMacro)))
+                .success());
+    REQUIRE(h.unload_filament(0).success());
+    CHECK(h.sent().back() == "PARK_TOOL");
+
+    helix::SettingsManager::instance().set_tool_park_macro("auto");
+}
+
+// =============================================================================
+// Scope: the picker belongs to a changer extra, not to every printer without
+// [toolchanger]
+// =============================================================================
+
+TEST_CASE("Movement override: a plain multi-extruder printer is offered no picker",
+          "[indx][dispatch]") {
+    // ToolCommands::present is true for ANY printer without [toolchanger],
+    // including a dual-extruder box whose T<n> is Klipper's own
+    // ACTIVATE_EXTRUDER. Its macros still match TOOL/PARK/CHANGE by name, so
+    // the candidate list is non-empty -- the provider name is what scopes this.
+    MovementHelper h(2);
+    ToolCommands plain;
+    plain.present = true;
+    plain.provider_name = "";
+    plain.select_prefix = "T";
+    h.set_tool_commands(plain);
+    h.set_tool_movement_override(toolchanger_addon::resolve_tool_movement_override(
+        discovery_with_macro("CUSTOM_TOOL_MACRO")));
+
+    CHECK(h.get_device_actions().empty());
+    CHECK(h.get_device_sections().empty());
+}
+
+TEST_CASE("Movement override: a plain multi-extruder printer ignores a stored override",
+          "[indx][dispatch]") {
+    // The choice is one GLOBAL setting across printers. With no picker on this
+    // machine, honouring a macro chosen for a different one would send it --
+    // or, invalid here, refuse every swap with nothing able to clear it.
+    MovementHelper h(2);
+    ToolCommands plain;
+    plain.present = true;
+    plain.select_prefix = "T";
+    h.set_tool_commands(plain);
+
+    ToolMovementOverride ov;
+    ov.select_choice = Choice::kValid;
+    ov.select_macro = "SOMEONE_ELSES_MACRO";
+    ov.park_choice = Choice::kInvalid;
+    ov.park_choice_raw = "GHOST_PARK";
+    h.set_tool_movement_override(ov);
+
+    REQUIRE(h.change_tool(1).success());
+    CHECK(h.sent().back() == "T1");
+
+    // The park direction has no unselect command on a plain machine, so it is
+    // refused for THAT reason -- never for a stale override it cannot clear.
+    auto park = h.unload_filament(0);
+    CHECK_FALSE(park.success());
+    CHECK(park.technical_msg.find("configured macro not found") == std::string::npos);
 }

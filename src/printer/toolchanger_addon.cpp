@@ -344,10 +344,26 @@ ToolCommands resolve_tool_commands(const PrinterDiscovery& hw) {
     // successful no-op) - unlike the MedusaHC-shaped providers above, whose
     // extra registers T<n>/its unmount unconditionally the moment it is
     // detected at all.
-    if (!p && has_indx(hw)) {
+    // ...and only against INDX's OWN inventory. finalize_indx_inventory()
+    // writes bare numbered ids ("0".."N-1"), which is what the T<n> shortcut
+    // probe and the "TOOL=<n>" argument contract below are defined against.
+    // parse_objects() fills tool_names_ from a different source when a printer
+    // reporting `indx` ALSO has several extruder heaters: tool_label() spellings
+    // ("T0", "T1"), which is_indx_inventory_candidate() rejects, so nothing ever
+    // finalizes them. Probing "T" + "T0" then answers false for every tool and
+    // claiming the provider anyway would refuse every swap on a machine whose
+    // plain T<n> worked - and would fold its real second extruder onto one
+    // shared_extruder_name() besides.
+    const auto& tools = hw.tool_names();
+    const bool indx_inventory =
+        !tools.empty() && std::all_of(tools.begin(), tools.end(), [](const std::string& id) {
+            return !id.empty() && std::all_of(id.begin(), id.end(), [](unsigned char ch) {
+                       return std::isdigit(ch) != 0;
+                   });
+        });
+    if (!p && has_indx(hw) && indx_inventory) {
         c.provider_name = "INDX";
         c.unselect = hw.has_macro("PARK_TOOL") ? "PARK_TOOL" : "";
-        const auto& tools = hw.tool_names();
         c.select_shortcut_available.reserve(tools.size());
         for (const auto& id : tools) {
             c.select_shortcut_available.push_back(hw.has_macro("T" + id));

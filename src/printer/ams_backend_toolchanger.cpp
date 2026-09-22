@@ -1134,15 +1134,21 @@ void AmsBackendToolChanger::finalize_dispatch_after_macro(uint64_t generation) {
 
 uint32_t AmsBackendToolChanger::dispatch_timeout_ms() const {
     // klipper-toolchanger hands completion to its own status frames, so the ack
-    // timeout there is advisory. Without it the ack is the whole story.
+    // timeout there is advisory. Without it the ack is the whole story -- but
+    // only a changer extra's swap can run long enough to need the wider
+    // ceiling, so this asks has_named_tool_provider() rather than
+    // ToolCommands::present. A plain multi-extruder printer's T<n> is
+    // ACTIVATE_EXTRUDER, which never heats or moves anything, and holding its
+    // pending action for 15 minutes on a lost ack would lock every later
+    // operation out behind is_busy().
     //
     // The api_ term is what keeps the null-api fixture route alive: a widened
     // timeout is one of the three things dispatch_payload() keys its legacy
     // branch on, and taking that branch is the ONLY way a payload reaches the
     // execute_gcode() virtuals ~20 fixtures override. Nothing to time out
     // against without an API anyway -- those dispatches are synchronous.
-    return (api_ && tool_commands_.present) ? ACK_OWNED_DISPATCH_TIMEOUT_MS
-                                            : IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS;
+    return (api_ && has_named_tool_provider()) ? ACK_OWNED_DISPATCH_TIMEOUT_MS
+                                               : IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS;
 }
 
 AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction action) {
@@ -1276,11 +1282,16 @@ AmsError AmsBackendToolChanger::do_unload_filament(int slot_index) {
         // An explicit Park override (plan D3/§7.1) outranks PARK_TOOL/unselect.
         // A stored choice this printer no longer reports is an explicit
         // unsupported capability — zero sends, never a silent substitution.
+        // Only a named provider offers the picker, and the stored choice is one
+        // global setting across printers: consulting it on a plain
+        // multi-extruder machine would refuse its swaps over a macro picked for
+        // a different printer, with no picker there to clear it.
         using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
-        if (movement_override_.park_choice == Choice::kInvalid) {
+        const bool override_applies = has_named_tool_provider();
+        if (override_applies && movement_override_.park_choice == Choice::kInvalid) {
             return AmsErrorHelper::not_supported("unmount (configured macro not found)");
         }
-        if (movement_override_.park_choice == Choice::kValid) {
+        if (override_applies && movement_override_.park_choice == Choice::kValid) {
             spdlog::info("[AMS ToolChanger] Parking via configured override: {}",
                          movement_override_.park_macro);
             return dispatch_operation(movement_override_.park_macro, AmsAction::UNLOADING);
@@ -1327,11 +1338,14 @@ AmsError AmsBackendToolChanger::do_change_tool(int tool_number) {
             // this printer no longer reports (kInvalid) is an explicit
             // unsupported capability — zero sends, never a silent fall
             // through to the automatic command.
+            // Scoped like the Park override above: the picker exists only for
+            // a named provider, and the setting is global across printers.
             using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
-            if (movement_override_.select_choice == Choice::kInvalid) {
+            const bool override_applies = has_named_tool_provider();
+            if (override_applies && movement_override_.select_choice == Choice::kInvalid) {
                 return AmsErrorHelper::not_supported("Tool selection (configured macro not found)");
             }
-            if (movement_override_.select_choice == Choice::kValid) {
+            if (override_applies && movement_override_.select_choice == Choice::kValid) {
                 cmd = movement_override_.select_macro + " TOOL=" + std::to_string(tool_number);
             } else {
                 // select_shortcut_available is only populated for a provider
@@ -1668,6 +1682,41 @@ bool AmsBackendToolChanger::is_bypass_active() const {
 // Device Actions (stub - not applicable for tool changers)
 // ============================================================================
 
+namespace {
+
+using ToolMovementOverride = helix::toolchanger_addon::ToolMovementOverride;
+
+/// Whether the Select/Park override has anything to show. A printer reporting
+/// no plausible macro still gets the section once a choice is stored, because
+/// a stored choice this printer no longer reports is refused by do_change_tool
+/// ()/do_unload_filament() and the picker is the only way back to "auto".
+bool movement_override_configurable(const ToolMovementOverride& ov) {
+    return !ov.macro_options.empty() || ov.select_choice != ToolMovementOverride::Choice::kAuto ||
+           ov.park_choice != ToolMovementOverride::Choice::kAuto;
+}
+
+/// The options one override dropdown offers: the pickable candidates, "auto"
+/// when this printer reported none, and the stored choice itself when its
+/// macro has since disappeared. Without that last entry the renderer finds no
+/// match for current_value, leaves the selection on the first option and so
+/// displays "auto" while the backend refuses every swap -- and picking "auto"
+/// then changes no index, fires no LV_EVENT_VALUE_CHANGED, and clears nothing.
+std::vector<std::string> override_dropdown_options(const ToolMovementOverride& ov,
+                                                   ToolMovementOverride::Choice choice,
+                                                   const std::string& raw) {
+    std::vector<std::string> options = ov.macro_options;
+    if (options.empty()) {
+        options.emplace_back(helix::toolchanger_addon::kAutoMacro);
+    }
+    if (choice == ToolMovementOverride::Choice::kInvalid &&
+        std::find(options.begin(), options.end(), raw) == options.end()) {
+        options.push_back(raw);
+    }
+    return options;
+}
+
+} // namespace
+
 std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sections() const {
     using DS = helix::printer::DeviceSection;
     std::vector<DS> sections;
@@ -1677,9 +1726,9 @@ std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sec
         sections.push_back(DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"});
     }
     // Select/Park overrides (plan D3) need no feeder — the provider owns
-    // applicability, which here is simply "this machine has its own
-    // Select/Park commands and reports at least one plausible macro to pick".
-    if (tool_commands_.present && !movement_override_.macro_options.empty()) {
+    // applicability, which here is "a recognized changer extra drives the
+    // swaps, and there is either a macro to pick or a stored choice to clear".
+    if (has_named_tool_provider() && movement_override_configurable(movement_override_)) {
         sections.push_back(DS{"tool_commands", "Tool commands", static_cast<int>(sections.size()),
                               "Which macro selects and parks a tool"});
     }
@@ -1688,7 +1737,7 @@ std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sec
 
 std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_actions() const {
     std::vector<helix::printer::DeviceAction> actions;
-    if (tool_commands_.present && !movement_override_.macro_options.empty()) {
+    if (has_named_tool_provider() && movement_override_configurable(movement_override_)) {
         actions.push_back({.id = "tool_select_macro",
                            .label = "Tool select macro",
                            .icon = "",
@@ -1696,7 +1745,9 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
                            .description = "Which macro selects a tool (sent as MACRO TOOL=<n>)",
                            .type = helix::printer::ActionType::DROPDOWN,
                            .current_value = std::any(movement_override_.select_choice_raw),
-                           .options = movement_override_.macro_options,
+                           .options = override_dropdown_options(
+                               movement_override_, movement_override_.select_choice,
+                               movement_override_.select_choice_raw),
                            .min_value = 0,
                            .max_value = 0,
                            .unit = "",
@@ -1710,7 +1761,9 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
                            .description = "Which macro parks the current tool",
                            .type = helix::printer::ActionType::DROPDOWN,
                            .current_value = std::any(movement_override_.park_choice_raw),
-                           .options = movement_override_.macro_options,
+                           .options = override_dropdown_options(
+                               movement_override_, movement_override_.park_choice,
+                               movement_override_.park_choice_raw),
                            .min_value = 0,
                            .max_value = 0,
                            .unit = "",
@@ -1797,7 +1850,7 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
 
 AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_id,
                                                       const std::any& value) {
-    if (tool_commands_.present &&
+    if (has_named_tool_provider() &&
         (action_id == "tool_select_macro" || action_id == "tool_park_macro")) {
         const auto* chosen = std::any_cast<std::string>(&value);
         if (!chosen || chosen->empty()) {

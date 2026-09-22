@@ -2488,7 +2488,9 @@ int MoonrakerClientMock::gcode_script(const std::string& raw_gcode) {
             start_indx_swap(-1);
             return 0;
         }
-        if (cmd.size() >= 2 && cmd[0] == 'T' &&
+        // Bounded to three digits: std::stoi throws std::out_of_range on a
+        // longer run of them, and nothing up the console-panel path catches it.
+        if (cmd.size() >= 2 && cmd.size() <= 4 && cmd[0] == 'T' &&
             std::all_of(cmd.begin() + 1, cmd.end(),
                         [](unsigned char c) { return std::isdigit(c) != 0; })) {
             const int tool = std::stoi(cmd.substr(1));

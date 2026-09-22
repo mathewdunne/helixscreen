@@ -798,16 +798,24 @@ std::string ToolState::nozzle_label() const {
 /// The tool that answers for @p extruder_name, or nullptr when none does or
 /// the answer is ambiguous and unresolved.
 ///
-/// Several tools can share one extruder_name (a shared-resource nozzle
-/// changer), and the first positional match is not necessarily the mounted
-/// one — that is exactly the bug this exists to avoid: reverse lookup used to
-/// answer with tools_[0] regardless of which tool was actually active. When
-/// more than one tool claims this extruder, only the valid ACTIVE tool can
+/// On a shared-resource nozzle changer several tools really do share one
+/// extruder_name, and the first positional match is not necessarily the
+/// mounted one — that is exactly the bug this exists to avoid: reverse lookup
+/// used to answer with tools_[0] regardless of which tool was actually active.
+/// When more than one tool claims this extruder, only the valid ACTIVE tool can
 /// break the tie; with no known active tool (parked/unreported) there is no
 /// specific tool to name.
+///
+/// @p shared_nozzle scopes that to the topology it was written for. Every
+/// lane-expanded AMS (AFC, Happy Hare, CFS, QIDI, AD5X IFS) also leaves every
+/// tool on the default "extruder" name, but those lanes feed ONE nozzle: there
+/// is no mounted tool to identify, and answering with the loaded lane would
+/// rename the single nozzle row every time the lane changed. The first match
+/// is the stable answer there, as it was before.
 static const ToolInfo* find_tool_for_extruder(const std::vector<ToolInfo>& tools,
                                               const ToolInfo* active,
-                                              const std::string& extruder_name) {
+                                              const std::string& extruder_name,
+                                              bool shared_nozzle) {
     const ToolInfo* match = nullptr;
     int match_count = 0;
     for (const auto& tool : tools) {
@@ -818,7 +826,7 @@ static const ToolInfo* find_tool_for_extruder(const std::vector<ToolInfo>& tools
             ++match_count;
         }
     }
-    if (match_count <= 1) {
+    if (match_count <= 1 || !shared_nozzle) {
         return match;
     }
     if (active && active->extruder_name && *active->extruder_name == extruder_name) {
@@ -828,7 +836,8 @@ static const ToolInfo* find_tool_for_extruder(const std::vector<ToolInfo>& tools
 }
 
 std::string ToolState::tool_name_for_extruder(const std::string& extruder_name) const {
-    const ToolInfo* tool = find_tool_for_extruder(tools_, active_tool(), extruder_name);
+    const ToolInfo* tool = find_tool_for_extruder(tools_, active_tool(), extruder_name,
+                                                  ams_topology_shared_extruder_);
     return tool ? tool->name : std::string();
 }
 
@@ -840,7 +849,8 @@ std::string ToolState::extruder_name_for_tool(int tool_index) const {
 }
 
 std::string ToolState::display_label_for_extruder(const std::string& extruder_name) const {
-    const ToolInfo* tool = find_tool_for_extruder(tools_, active_tool(), extruder_name);
+    const ToolInfo* tool = find_tool_for_extruder(tools_, active_tool(), extruder_name,
+                                                  ams_topology_shared_extruder_);
     return tool ? tool->display_label : std::string();
 }
 

@@ -377,6 +377,35 @@ TEST_CASE_METHOD(ToolStateFixture,
     CHECK(ts.display_label_for_extruder("extruder").empty());
 }
 
+TEST_CASE_METHOD(ToolStateFixture,
+                 "a lane-expanded single-nozzle AMS keeps its stable first-match label",
+                 "[indx][resources][tool-state][regression]") {
+    // Every lane-expanded AMS (AFC, Happy Hare, CFS, QIDI, AD5X IFS) also
+    // leaves every tool on ToolInfo's default "extruder" name, so the lookup
+    // above is ambiguous there too -- but those lanes feed ONE nozzle. There is
+    // no mounted tool to identify, and answering with the loaded lane would
+    // rename the single nozzle row (NozzleTempsWidget::create_extruder_row())
+    // every time the lane changed. Only a shared-NOZZLE topology resolves.
+    ToolTopology topo;
+    topo.tool_count = 4;
+    topo.active_tool = 2;
+    // No shared_extruder_name: these are lanes feeding one hot end, not
+    // several nozzles sharing one extruder.
+    REQUIRE_FALSE(topo.shared_extruder_name.has_value());
+    ToolState::instance().set_ams_topology(topo);
+    UpdateQueue::instance().drain();
+
+    auto& ts = ToolState::instance();
+    REQUIRE(ts.active_tool_index() == 2);
+    REQUIRE(ts.tools().size() == 4);
+    // All four claim the default "extruder"...
+    REQUIRE(ts.tools()[0].extruder_name.value_or("") == "extruder");
+    REQUIRE(ts.tools()[2].extruder_name.value_or("") == "extruder");
+    // ...and the answer is the first of them, whatever lane is loaded.
+    CHECK(ts.tool_name_for_extruder("extruder") == ts.tools()[0].name);
+    CHECK(ts.display_label_for_extruder("extruder") == ts.tools()[0].display_label);
+}
+
 // =============================================================================
 // slot_for_extruder() and consumption attribution (plan §6, §9 Package C item 3)
 // =============================================================================
