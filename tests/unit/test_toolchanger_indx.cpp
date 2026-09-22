@@ -10,9 +10,8 @@
  * Fixtures are synthetic and source-derived — see tests/fixtures/indx/README.md.
  */
 
-#include "toolchanger_addon.h"
-
 #include "printer_discovery.h"
+#include "toolchanger_addon.h"
 
 #include <algorithm>
 #include <fstream>
@@ -57,8 +56,7 @@ PrinterDiscovery discover(const std::string& objects_fixture) {
 // Candidate recognition
 // ---------------------------------------------------------------------------
 
-TEST_CASE("toolchanger_addon: indx object alone is an inventory candidate",
-          "[indx][discovery]") {
+TEST_CASE("toolchanger_addon: indx object alone is an inventory candidate", "[indx][discovery]") {
     auto hw = discover("objects_list_six_tool.json");
     REQUIRE(addon::is_indx_inventory_candidate(hw));
 }
@@ -115,9 +113,9 @@ TEST_CASE("toolchanger_addon: the TOOL_POSITIONS subscription keeps the config's
     // uppercased subscription would leave this printer with no inventory and
     // therefore no INDX backend at all.
     PrinterDiscovery hw;
-    hw.parse_objects(nlohmann::json::array(
-        {"indx", "save_variables", "gcode_macro Tool_Positions", "gcode_macro PARK_TOOL",
-         "gcode_macro T0", "gcode_macro T1", "extruder"}));
+    hw.parse_objects(nlohmann::json::array({"indx", "save_variables", "gcode_macro Tool_Positions",
+                                            "gcode_macro PARK_TOOL", "gcode_macro T0",
+                                            "gcode_macro T1", "extruder"}));
     REQUIRE(addon::is_indx_inventory_candidate(hw));
     REQUIRE(addon::indx_tool_positions_object(hw) == "gcode_macro Tool_Positions");
 
@@ -149,8 +147,7 @@ TEST_CASE("toolchanger_addon: a non-indx printer requests no indx objects",
 TEST_CASE("toolchanger_addon: MedusaHC subscriptions are unaffected by indx additions",
           "[indx][discovery][subscriptions][priority]") {
     PrinterDiscovery hw;
-    hw.parse_objects(
-        nlohmann::json::array({"pin_watch io", "toolchanger", "tool T0", "extruder"}));
+    hw.parse_objects(nlohmann::json::array({"pin_watch io", "toolchanger", "tool T0", "extruder"}));
     auto objects = addon::required_status_objects(hw);
     REQUIRE(std::find(objects.begin(), objects.end(), "medusahc") != objects.end());
     REQUIRE(std::find(objects.begin(), objects.end(), "pin_watch io") != objects.end());
@@ -198,9 +195,9 @@ TEST_CASE("toolchanger_addon: indx alongside several extruder heaters keeps plai
     // anyway would refuse every swap on a machine whose plain T<n> works, and
     // fold its real second extruder onto one shared_extruder_name().
     PrinterDiscovery hw;
-    hw.parse_objects(nlohmann::json::array({"extruder", "extruder1", "indx", "save_variables",
-                                            "gcode_macro TOOL_POSITIONS",
-                                            "gcode_macro PARK_TOOL"}));
+    hw.parse_objects(
+        nlohmann::json::array({"extruder", "extruder1", "indx", "save_variables",
+                               "gcode_macro TOOL_POSITIONS", "gcode_macro PARK_TOOL"}));
     REQUIRE(hw.has_indx());
     REQUIRE(hw.tool_names() == std::vector<std::string>{"T0", "T1"});
     REQUIRE_FALSE(addon::is_indx_inventory_candidate(hw));
@@ -213,8 +210,7 @@ TEST_CASE("toolchanger_addon: indx alongside several extruder heaters keeps plai
     CHECK(commands.unselect.empty());
 }
 
-TEST_CASE("toolchanger_addon: indx has no feeder or dock sensor capability",
-          "[indx][backend]") {
+TEST_CASE("toolchanger_addon: indx has no feeder or dock sensor capability", "[indx][backend]") {
     auto hw = discover("objects_list_six_tool.json");
     REQUIRE(hw.finalize_indx_inventory(addon::indx_tool_ids(6)));
     REQUIRE_FALSE(addon::resolve_feeder(hw).present);
@@ -255,8 +251,7 @@ TEST_CASE("toolchanger_addon: valid tool counts finalize to numbered tool ids",
         REQUIRE(inv.has_value());
         REQUIRE(inv->valid);
         REQUIRE(inv->tool_count == 3);
-        REQUIRE(addon::indx_tool_ids(inv->tool_count) ==
-                std::vector<std::string>{"0", "1", "2"});
+        REQUIRE(addon::indx_tool_ids(inv->tool_count) == std::vector<std::string>{"0", "1", "2"});
     }
     {
         auto inv = addon::read_indx_inventory(positions["one_tool"]);
@@ -355,9 +350,8 @@ TEST_CASE("toolchanger_addon: malformed active_tool values are explicitly reject
 TEST_CASE("toolchanger_addon: an active_tool outside the finalized inventory is rejected",
           "[indx][backend][state]") {
     auto status = load_fixture("save_variables_status_malformed.json");
-    auto reading =
-        addon::read_indx_active_tool(status["out_of_range_for_six_tools"],
-                                     /*configured_tool_count=*/6);
+    auto reading = addon::read_indx_active_tool(status["out_of_range_for_six_tools"],
+                                                /*configured_tool_count=*/6);
     REQUIRE(reading.status == addon::IndxActiveToolStatus::kMalformed);
 }
 
@@ -367,9 +361,8 @@ TEST_CASE("toolchanger_addon: with inventory not yet finalized, bounds are not e
     // configured_tool_count == 0 means "not finalized yet" — a positive id
     // must still parse (it will be bounds-checked again once inventory is
     // known), so this must NOT read as malformed merely for being un-bounded.
-    auto reading =
-        addon::read_indx_active_tool(status["out_of_range_for_six_tools"],
-                                     /*configured_tool_count=*/0);
+    auto reading = addon::read_indx_active_tool(status["out_of_range_for_six_tools"],
+                                                /*configured_tool_count=*/0);
     REQUIRE(reading.status == addon::IndxActiveToolStatus::kValid);
     REQUIRE(reading.value == 6);
 }

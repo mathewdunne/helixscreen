@@ -836,8 +836,8 @@ static const ToolInfo* find_tool_for_extruder(const std::vector<ToolInfo>& tools
 }
 
 std::string ToolState::tool_name_for_extruder(const std::string& extruder_name) const {
-    const ToolInfo* tool = find_tool_for_extruder(tools_, active_tool(), extruder_name,
-                                                  ams_topology_shared_extruder_);
+    const ToolInfo* tool =
+        find_tool_for_extruder(tools_, active_tool(), extruder_name, ams_topology_shared_extruder_);
     return tool ? tool->name : std::string();
 }
 
@@ -849,8 +849,8 @@ std::string ToolState::extruder_name_for_tool(int tool_index) const {
 }
 
 std::string ToolState::display_label_for_extruder(const std::string& extruder_name) const {
-    const ToolInfo* tool = find_tool_for_extruder(tools_, active_tool(), extruder_name,
-                                                  ams_topology_shared_extruder_);
+    const ToolInfo* tool =
+        find_tool_for_extruder(tools_, active_tool(), extruder_name, ams_topology_shared_extruder_);
     return tool ? tool->display_label : std::string();
 }
 

@@ -141,8 +141,8 @@ PrinterDiscovery discovery_without_candidates() {
 /// The options one action offers, by id.
 std::vector<std::string> options_for(const std::vector<helix::printer::DeviceAction>& actions,
                                      const std::string& id) {
-    auto it = std::find_if(actions.begin(), actions.end(),
-                           [&](const auto& a) { return a.id == id; });
+    auto it =
+        std::find_if(actions.begin(), actions.end(), [&](const auto& a) { return a.id == id; });
     return it == actions.end() ? std::vector<std::string>{} : it->options;
 }
 

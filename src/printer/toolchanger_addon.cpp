@@ -358,8 +358,8 @@ ToolCommands resolve_tool_commands(const PrinterDiscovery& hw) {
     const bool indx_inventory =
         !tools.empty() && std::all_of(tools.begin(), tools.end(), [](const std::string& id) {
             return !id.empty() && std::all_of(id.begin(), id.end(), [](unsigned char ch) {
-                       return std::isdigit(ch) != 0;
-                   });
+                return std::isdigit(ch) != 0;
+            });
         });
     if (!p && has_indx(hw) && indx_inventory) {
         c.provider_name = "INDX";

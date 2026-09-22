@@ -529,10 +529,9 @@ void AmsBackendToolChanger::handle_status_update(const nlohmann::json& notificat
                     const int tool = reading.value;
                     int seated_slot = -1;
                     if (tool >= 0) {
-                        seated_slot =
-                            tool < static_cast<int>(system_info_.tool_to_slot_map.size())
-                                ? system_info_.tool_to_slot_map[static_cast<size_t>(tool)]
-                                : -1;
+                        seated_slot = tool < static_cast<int>(system_info_.tool_to_slot_map.size())
+                                          ? system_info_.tool_to_slot_map[static_cast<size_t>(tool)]
+                                          : -1;
                         if (seated_slot < 0) {
                             seated_slot = tool;
                         }
@@ -543,7 +542,7 @@ void AmsBackendToolChanger::handle_status_update(const nlohmann::json& notificat
                     refresh_slot_statuses_locked();
                     state_changed = true;
                 } else if (reading.status ==
-                          helix::toolchanger_addon::IndxActiveToolStatus::kMalformed) {
+                           helix::toolchanger_addon::IndxActiveToolStatus::kMalformed) {
                     // Present but unusable this frame (wrong type, out of
                     // range, below -1): report and HOLD the last known
                     // identity. Never guess a park, and never treat this as
@@ -1723,7 +1722,8 @@ std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sec
     // A toolhead changer carries its own extruder and has nothing to expose.
     // Only a machine with a frame-side feeder gets a feeder section.
     if (feeder_.present) {
-        sections.push_back(DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"});
+        sections.push_back(
+            DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"});
     }
     // Select/Park overrides (plan D3) need no feeder — the provider owns
     // applicability, which here is "a recognized changer extra drives the
@@ -1761,9 +1761,9 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
                            .description = "Which macro parks the current tool",
                            .type = helix::printer::ActionType::DROPDOWN,
                            .current_value = std::any(movement_override_.park_choice_raw),
-                           .options = override_dropdown_options(
-                               movement_override_, movement_override_.park_choice,
-                               movement_override_.park_choice_raw),
+                           .options = override_dropdown_options(movement_override_,
+                                                                movement_override_.park_choice,
+                                                                movement_override_.park_choice_raw),
                            .min_value = 0,
                            .max_value = 0,
                            .unit = "",
@@ -1859,12 +1859,12 @@ AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_
         using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
         const bool is_select = (action_id == "tool_select_macro");
         const bool is_auto = (*chosen == helix::toolchanger_addon::kAutoMacro);
-        const bool is_known = is_auto ||
-            std::find(movement_override_.macro_options.begin(),
-                     movement_override_.macro_options.end(),
-                     *chosen) != movement_override_.macro_options.end();
-        const Choice resolved = is_auto ? Choice::kAuto
-                                        : (is_known ? Choice::kValid : Choice::kInvalid);
+        const bool is_known =
+            is_auto || std::find(movement_override_.macro_options.begin(),
+                                 movement_override_.macro_options.end(),
+                                 *chosen) != movement_override_.macro_options.end();
+        const Choice resolved =
+            is_auto ? Choice::kAuto : (is_known ? Choice::kValid : Choice::kInvalid);
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (is_select) {
@@ -1882,8 +1882,8 @@ AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_
         } else {
             helix::SettingsManager::instance().set_tool_park_macro(*chosen);
         }
-        spdlog::info("{} Tool {} macro set to {}", backend_log_tag(),
-                     is_select ? "select" : "park", *chosen);
+        spdlog::info("{} Tool {} macro set to {}", backend_log_tag(), is_select ? "select" : "park",
+                     *chosen);
         return AmsErrorHelper::success();
     }
     (void)value;
