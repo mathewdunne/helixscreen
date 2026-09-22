@@ -2943,7 +2943,7 @@ class AmsBackend {
      */
     virtual void
     set_tool_movement_override(helix::toolchanger_addon::ToolMovementOverride override) {
-        (void)override;
+        (void) override;
     }
 
     /**

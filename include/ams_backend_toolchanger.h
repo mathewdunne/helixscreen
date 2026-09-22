@@ -389,8 +389,8 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// has_named_tool_provider() — a plain klipper-toolchanger has nothing to
     /// override, and a plain multi-extruder printer is never offered the
     /// picker that stores one.
-    void set_tool_movement_override(
-        helix::toolchanger_addon::ToolMovementOverride override) override {
+    void
+    set_tool_movement_override(helix::toolchanger_addon::ToolMovementOverride override) override {
         movement_override_ = std::move(override);
     }
 

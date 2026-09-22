@@ -2989,8 +2989,7 @@ void FilamentPanel::execute_unload() {
     surface.on_refused = [this](const helix::ui::FilamentOpPlan& refused) {
         const helix::ui::FilamentPanelOutcome refusal =
             helix::ui::panel_unload_outcome(refused, false, -1);
-        spdlog::info("[{}] Unload refused ({})", get_name(),
-                     static_cast<int>(refused.refusal));
+        spdlog::info("[{}] Unload refused ({})", get_name(), static_cast<int>(refused.refusal));
         NOTIFY_WARNING(fmt::runtime(refusal.toast.c_str()));
     };
 

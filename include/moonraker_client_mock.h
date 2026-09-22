@@ -1973,9 +1973,9 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     // grid, and within kIndxMaxTools (16). Overridable for focused UI checks.
     static constexpr int kIndxDefaultToolCount = 12;
     std::atomic<int> indx_configured_tool_count_{kIndxDefaultToolCount};
-    std::atomic<int> indx_current_tool_sim_{-1};   ///< Physical active tool, -1 parked
-    std::atomic<int> indx_target_tool_sim_{-1};    ///< Tool a pending swap will land on
-    std::atomic<int> indx_phase_ticks_sim_{0};     ///< Sim ticks left before the swap lands
+    std::atomic<int> indx_current_tool_sim_{-1}; ///< Physical active tool, -1 parked
+    std::atomic<int> indx_target_tool_sim_{-1};  ///< Tool a pending swap will land on
+    std::atomic<int> indx_phase_ticks_sim_{0};   ///< Sim ticks left before the swap lands
 
     // Cached chamber heater status key (updated by override_chamber_heater / populate)
     std::string cached_chamber_status_key_;

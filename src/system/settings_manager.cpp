@@ -300,8 +300,7 @@ void SettingsManager::init_subjects() {
 
     // Tool-changer Select/Park command overrides (default: "auto" = detected
     // default). Per-printer, unlike the global Load/Unload macro choices (D5).
-    tool_select_macro_ =
-        config->get<std::string>(config->df() + wizard::TOOL_SELECT_MACRO, "auto");
+    tool_select_macro_ = config->get<std::string>(config->df() + wizard::TOOL_SELECT_MACRO, "auto");
     tool_park_macro_ = config->get<std::string>(config->df() + wizard::TOOL_PARK_MACRO, "auto");
 
     // ACE bypass macro overrides (default: "auto" = detected default).

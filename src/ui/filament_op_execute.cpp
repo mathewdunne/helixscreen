@@ -389,8 +389,8 @@ void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurfac
             NOTIFY_INFO(lv_tr("That tool is already loaded"));
         } else if (plan.refusal == helix::ui::FilamentRefusal::NoMacroConfigured) {
             spdlog::warn("{} Load refused — no filament-load macro is configured for this "
-                        "printer",
-                        log_tag);
+                         "printer",
+                         log_tag);
             NOTIFY_WARNING(lv_tr("Configure a filament load macro in Settings first"));
         } else {
             spdlog::info("{} Load refused — no slot resolved", log_tag);
@@ -528,8 +528,8 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
         }
         if (plan.refusal == helix::ui::FilamentRefusal::NoMacroConfigured) {
             spdlog::warn("{} Unload refused — no filament-unload macro is configured for this "
-                        "printer",
-                        log_tag);
+                         "printer",
+                         log_tag);
             NOTIFY_WARNING(lv_tr("Configure a filament unload macro in Settings first"));
             return;
         }

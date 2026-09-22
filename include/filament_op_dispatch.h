@@ -25,11 +25,11 @@ enum class FilamentTier {
 /// Why a plan declined to dispatch. Each maps to different caller-side copy.
 enum class FilamentRefusal {
     None,
-    SelectSlot,     ///< Load: the backend wants a slot and none resolved
-    NothingLoaded,  ///< Unload: the selected slot has no filament to pull
-    AlreadyMounted, ///< The requested tool is already on the carriage
-    BypassLoaded,   ///< Load: a lane was asked for, but the bypass spool still
-                    ///< crosses the toolhead and only a hand can clear it
+    SelectSlot,        ///< Load: the backend wants a slot and none resolved
+    NothingLoaded,     ///< Unload: the selected slot has no filament to pull
+    AlreadyMounted,    ///< The requested tool is already on the carriage
+    BypassLoaded,      ///< Load: a lane was asked for, but the bypass spool still
+                       ///< crosses the toolhead and only a hand can clear it
     NoMacroConfigured, ///< A Filament-intent op on a backend with a separate
                        ///< filament capability (BackendCaps::has_separate_filament_operation),
                        ///< but no Load/Unload macro is configured or detected.
@@ -314,10 +314,9 @@ inline constexpr int EXTERNAL_SPOOL_SLOT = -2;
  *
  * @param target_is_loaded  slot_is_actively_loaded(slot) || slot_has_filament_at_toolhead(slot)
  */
-[[nodiscard]] inline FilamentOpPlan plan_unload(const BackendCaps& caps, int target_slot,
-                                                bool target_is_loaded, bool macro_available,
-                                                bool macro_user_configured,
-                                                OperationIntent intent = OperationIntent::Filament) {
+[[nodiscard]] inline FilamentOpPlan
+plan_unload(const BackendCaps& caps, int target_slot, bool target_is_loaded, bool macro_available,
+            bool macro_user_configured, OperationIntent intent = OperationIntent::Filament) {
     // See plan_load()'s identical guard: a Filament-intent caller on a
     // shared-nozzle-changer backend never reaches tier 1 (parking is not
     // retracting filament) and never falls back to raw retraction either.

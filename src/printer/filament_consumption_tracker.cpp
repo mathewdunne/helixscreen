@@ -256,8 +256,8 @@ void FilamentConsumptionTracker::on_filament_used_changed(int filament_mm) {
             became_current_by_backend.emplace(ams->backend_index(), false);
         if (inserted) {
             auto last_it = last_current_slot_by_backend_.find(ams->backend_index());
-            changed_it->second = last_it != last_current_slot_by_backend_.end() &&
-                                 last_it->second != current_slot;
+            changed_it->second =
+                last_it != last_current_slot_by_backend_.end() && last_it->second != current_slot;
             last_current_slot_by_backend_[ams->backend_index()] = current_slot;
         }
 
