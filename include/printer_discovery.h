@@ -1684,8 +1684,14 @@ class PrinterDiscovery {
             // clause admits a single-tool INDX installation the same way,
             // without claiming a nonexistent native `toolchanger` object.
             // Still last in the chain, so a real MMU always keeps its backend.
+            // Named for whoever actually owns the swap: with a real
+            // klipper-toolchanger present, resolve_tool_commands() hands the
+            // machine SELECT_TOOL/UNSELECT_TOOL and INDX sends nothing, so
+            // "Bondtech INDX" there would name a system whose commands the
+            // printer never sees.
+            const bool indx_owns_swap = has_indx_ && !has_tool_changer_;
             detected_ams_systems_.push_back(
-                {AmsType::TOOL_CHANGER, has_indx_ ? "Bondtech INDX" : "Tool Changer"});
+                {AmsType::TOOL_CHANGER, indx_owns_swap ? "Bondtech INDX" : "Tool Changer"});
             mmu_type_ = AmsType::TOOL_CHANGER;
         }
     }

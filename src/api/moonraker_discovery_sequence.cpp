@@ -1634,10 +1634,16 @@ void MoonrakerDiscoverySequence::complete_discovery_subscription(uint64_t seq) {
     // hardware callback for an INDX inventory candidate is decided from facts
     // as of the subscribe request, not whatever hardware_ becomes afterward.
     const bool was_indx_candidate = helix::toolchanger_addon::is_indx_inventory_candidate(hw);
+    // Same snapshot, same key the subscription above asked for: the reply is
+    // keyed on the macro's CONFIG case, which the uppercased alias has_macro()
+    // matches is not (see indx_tool_positions_object()).
+    const std::string indx_positions_key =
+        was_indx_candidate ? helix::toolchanger_addon::indx_tool_positions_object(hw)
+                           : std::string{};
 
     client_.send_jsonrpc(
         "printer.objects.subscribe", subscribe_params,
-        [this, seq, num_subscribed, was_indx_candidate](json sub_response) {
+        [this, seq, num_subscribed, was_indx_candidate, indx_positions_key](json sub_response) {
             if (is_stale() || !is_current_sequence(seq))
                 return;
             if (sub_response.contains("result")) {
@@ -1689,7 +1695,9 @@ void MoonrakerDiscoverySequence::complete_discovery_subscription(uint64_t seq) {
             // A missing/malformed snapshot leaves tool_names_ empty: the
             // printer still completes discovery, just with no INDX backend.
             if (was_indx_candidate) {
-                auto tool_positions = initial_status.find("gcode_macro TOOL_POSITIONS");
+                auto tool_positions = indx_positions_key.empty()
+                                          ? initial_status.end()
+                                          : initial_status.find(indx_positions_key);
                 if (tool_positions != initial_status.end()) {
                     if (auto inv = helix::toolchanger_addon::read_indx_inventory(*tool_positions)) {
                         if (inv->valid) {

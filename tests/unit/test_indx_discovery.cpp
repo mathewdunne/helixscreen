@@ -79,6 +79,20 @@ TEST_CASE("PrinterDiscovery: lookalike objects do not trigger indx detection",
     REQUIRE_FALSE(hw.has_indx());
 }
 
+TEST_CASE("PrinterDiscovery: a finalized indx inventory names Bondtech INDX",
+          "[indx][discovery][inventory]") {
+    // The other half of the label: with no klipper-toolchanger, the INDX
+    // commands resolve_tool_commands() hands out ARE what the printer runs.
+    PrinterDiscovery hw;
+    hw.parse_objects(load_fixture("objects_list_six_tool.json"));
+    REQUIRE(hw.detected_ams_systems().empty());
+
+    REQUIRE(hw.finalize_indx_inventory({"0", "1", "2", "3", "4", "5"}));
+    REQUIRE(hw.mmu_type() == AmsType::TOOL_CHANGER);
+    REQUIRE(hw.detected_ams_systems().size() == 1);
+    REQUIRE(hw.detected_ams_systems()[0].name == "Bondtech INDX");
+}
+
 TEST_CASE("PrinterDiscovery: indx alongside a native toolchanger keeps native priority",
           "[indx][discovery][priority]") {
     // A defensive matrix case: object presence is recorded, but detection
@@ -91,6 +105,10 @@ TEST_CASE("PrinterDiscovery: indx alongside a native toolchanger keeps native pr
     REQUIRE(hw.tool_names() == std::vector<std::string>{"T0", "T1"});
     REQUIRE(hw.mmu_type() == AmsType::TOOL_CHANGER);
     REQUIRE(hw.detected_ams_systems().size() == 1);
+    // Named for whoever sends the swap: klipper-toolchanger owns it here
+    // (resolve_tool_commands() returns the native SELECT_TOOL contract), so
+    // calling the system "Bondtech INDX" would name commands never sent.
+    REQUIRE(hw.detected_ams_systems()[0].name == "Tool Changer");
 }
 
 TEST_CASE("PrinterDiscovery: config-only [indx] section with no exact object is not detection",

@@ -477,7 +477,12 @@ std::vector<std::string> required_status_objects(const PrinterDiscovery& hw) {
     // T<n>` objects for this provider.
     if (has_indx(hw)) {
         objects.emplace_back("save_variables");
-        objects.emplace_back("gcode_macro TOOL_POSITIONS");
+        // Config-cased, not the uppercased alias has_macro() matches -- see
+        // indx_tool_positions_object(). Empty means this printer has no such
+        // macro, and subscribing a name nothing answers to buys nothing.
+        if (std::string positions = indx_tool_positions_object(hw); !positions.empty()) {
+            objects.emplace_back(std::move(positions));
+        }
     }
     return objects;
 }
@@ -529,6 +534,11 @@ bool is_indx_inventory_candidate(const PrinterDiscovery& hw) {
         return false;
     }
     return hw.tool_names().empty();
+}
+
+std::string indx_tool_positions_object(const PrinterDiscovery& hw) {
+    const std::string config_name = hw.macro_config_name("TOOL_POSITIONS");
+    return config_name.empty() ? std::string{} : "gcode_macro " + config_name;
 }
 
 std::vector<std::string> indx_tool_ids(int tool_count) {

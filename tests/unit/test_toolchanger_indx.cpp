@@ -107,6 +107,37 @@ TEST_CASE("toolchanger_addon: indx subscribes save_variables and TOOL_POSITIONS 
     }
 }
 
+TEST_CASE("toolchanger_addon: the TOOL_POSITIONS subscription keeps the config's case",
+          "[indx][discovery][subscriptions]") {
+    // has_macro() is case-insensitive, so a mixed-case section passes every
+    // macro check; Klipper keys the STATUS OBJECT on the config spelling, so an
+    // uppercased subscription would leave this printer with no inventory and
+    // therefore no INDX backend at all.
+    PrinterDiscovery hw;
+    hw.parse_objects(nlohmann::json::array(
+        {"indx", "save_variables", "gcode_macro Tool_Positions", "gcode_macro PARK_TOOL",
+         "gcode_macro T0", "gcode_macro T1", "extruder"}));
+    REQUIRE(addon::is_indx_inventory_candidate(hw));
+    REQUIRE(addon::indx_tool_positions_object(hw) == "gcode_macro Tool_Positions");
+
+    auto objects = addon::required_status_objects(hw);
+    REQUIRE(std::find(objects.begin(), objects.end(), "gcode_macro Tool_Positions") !=
+            objects.end());
+    REQUIRE(std::find(objects.begin(), objects.end(), "gcode_macro TOOL_POSITIONS") ==
+            objects.end());
+}
+
+TEST_CASE("toolchanger_addon: an indx printer with no TOOL_POSITIONS macro subscribes none",
+          "[indx][discovery][subscriptions]") {
+    PrinterDiscovery hw;
+    hw.parse_objects(nlohmann::json::array({"indx", "save_variables", "extruder"}));
+    REQUIRE(addon::indx_tool_positions_object(hw).empty());
+    auto objects = addon::required_status_objects(hw);
+    for (const auto& o : objects) {
+        REQUIRE(o.rfind("gcode_macro", 0) != 0);
+    }
+}
+
 TEST_CASE("toolchanger_addon: a non-indx printer requests no indx objects",
           "[indx][discovery][subscriptions]") {
     auto hw = discover("objects_list_lookalikes.json");

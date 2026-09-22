@@ -189,6 +189,15 @@ bool has_indx(const PrinterDiscovery& hw);
 /// and its facts must not be disturbed.
 bool is_indx_inventory_candidate(const PrinterDiscovery& hw);
 
+/// The `gcode_macro <name>` status key carrying INDX's tool count, spelled the
+/// way THIS printer's config spells the section, or empty when it has no such
+/// macro. Klipper keys the status object on the config case while has_macro()
+/// matches the uppercased alias, so subscribing (or looking up) a hardcoded
+/// `gcode_macro TOOL_POSITIONS` silently reads nothing on a printer whose
+/// indx.cfg says `[gcode_macro Tool_Positions]`. Both the subscription and the
+/// reply lookup must derive the key from here, or they name different objects.
+std::string indx_tool_positions_object(const PrinterDiscovery& hw);
+
 /// A validated (or explicitly rejected) INDX tool count.
 struct IndxInventory {
     bool valid = false;
