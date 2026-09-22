@@ -145,6 +145,28 @@ TEST_CASE_METHOD(ToolStateFixture, "an ordinary toolchanger reports no shared ex
     CHECK_FALSE(topo->active_tool_unreported);
 }
 
+TEST_CASE_METHOD(ToolStateFixture,
+                 "a plain multi-extruder printer keeps its T0 default active tool",
+                 "[indx][resources][tool-state][regression]") {
+    // resolve_tool_commands() answers present == true for ANY printer without
+    // [toolchanger], including a dual-extruder/IDEX box with no changer at
+    // all. Nothing there ever writes current_tool, so treating its negative
+    // reading as "unreported" would leave it with no active tool forever.
+    helix::toolchanger_addon::ToolCommands plain;
+    plain.present = true;
+    plain.provider_name = "";
+    plain.select_prefix = "T";
+
+    helix::AmsBackendToolChanger backend(nullptr, nullptr);
+    backend.set_tool_commands(plain);
+    backend.set_discovered_tools(discovered_tools(2));
+
+    auto topo = helix::build_ams_topology(&backend, 0);
+    REQUIRE(topo.has_value());
+    CHECK_FALSE(topo->shared_extruder_name.has_value());
+    CHECK_FALSE(topo->active_tool_unreported);
+}
+
 // =============================================================================
 // No-active-tool / unreported identity through the topology bridge (plan §6,
 // "no automatic T0 default" — before this fix set_ams_topology() converted

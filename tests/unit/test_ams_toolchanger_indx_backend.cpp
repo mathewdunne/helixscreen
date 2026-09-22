@@ -472,6 +472,16 @@ TEST_CASE_METHOD(LiveIndxHarness, "dispatch_operation unwinds on an async timeou
                      "T0") == 1);
 }
 
+TEST_CASE_METHOD(LiveIndxHarness, "dispatch_operation gives the ack-owned swap a longer timeout",
+                 "[indx][backend][toolchanger][error-unwind]") {
+    // With no toolchanger status frames the ack is the only completion signal,
+    // and the tracker drops it the moment the timeout fires -- so the ceiling
+    // must sit above a heat-from-cold swap, not at the generic 5 min.
+    REQUIRE(backend.load_filament(1).success());
+    CHECK(client.last_send_timeout_ms() > helix::IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+}
+
 TEST_CASE_METHOD(LiveIndxHarness,
                  "dispatch_operation sends the payload unhomed instead of a G28 (plan §7.4, "
                  "package D: delegates_homing_to_printer())",

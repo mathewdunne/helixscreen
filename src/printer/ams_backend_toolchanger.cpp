@@ -214,6 +214,15 @@ std::string AmsBackendToolChanger::unload_blocked_reason(int slot_index) const {
 
 namespace {
 
+/// Dispatch timeout for a provider with no klipper-toolchanger object (INDX,
+/// MedusaHC). Nothing there reports a "changing" frame, so the gcode ack is
+/// the ONLY completion signal, and a swap that heats a cold nozzle first runs
+/// well past AMS_OPERATION_TIMEOUT_MS. Once the timeout fires the tracker
+/// drops the request, so the ack can never arrive and IDLE is the only
+/// recovery; the ceiling has to be long enough that a healthy swap never
+/// reaches it.
+constexpr uint32_t ACK_OWNED_DISPATCH_TIMEOUT_MS = 900000; // 15 min
+
 /// One step in a tool changer's operation bar.
 ///
 /// Which steps a machine gets depends on what it reports, so the MODEL and the
@@ -1123,6 +1132,13 @@ void AmsBackendToolChanger::finalize_dispatch_after_macro(uint64_t generation) {
     }
 }
 
+uint32_t AmsBackendToolChanger::dispatch_timeout_ms() const {
+    // klipper-toolchanger hands completion to its own status frames, so the ack
+    // timeout there is advisory. Without it the ack is the whole story.
+    return tool_commands_.present ? ACK_OWNED_DISPATCH_TIMEOUT_MS
+                                  : IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS;
+}
+
 AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction action) {
     // Paused-print precondition (plan §7.4/D6), INDX only: delegates_homing_to_printer()
     // makes ensure_homed_then() skip its own toolhead_homed() check below, deferring
@@ -1181,9 +1197,20 @@ AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction 
         on_error = [this, token, generation](const MoonrakerError& err) {
             // L081 Mechanism C: lands on the libhv response thread. Marshal
             // to main before touching system_info_.
-            token.defer("AmsBackendToolChanger::dispatch_async_error",
-                        [this, generation, err]() {
-                spdlog::error("[AMS ToolChanger] Dispatch #{} failed: {}", generation, err.message);
+            token.defer("AmsBackendToolChanger::dispatch_async_error", [this, generation, err]() {
+                // A timeout is not a rejection: the macro may still be running.
+                // The dispatch is abandoned anyway because the request tracker
+                // has already dropped the ack, so nothing else can ever resolve
+                // it (finalize_dispatch_after_macro is the only completion for a
+                // provider without toolchanger status frames).
+                if (err.type == MoonrakerErrorType::TIMEOUT) {
+                    spdlog::warn("[AMS ToolChanger] Dispatch #{} timed out after {} ms (macro "
+                                 "may still be running); releasing the pending action",
+                                 generation, dispatch_timeout_ms());
+                } else {
+                    spdlog::error("[AMS ToolChanger] Dispatch #{} failed: {}", generation,
+                                  err.message);
+                }
                 abandon_dispatch(generation);
             });
         };
@@ -1197,7 +1224,7 @@ AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction 
             token.defer("AmsBackendToolChanger::dispatch_macro_complete",
                         [this, generation]() { finalize_dispatch_after_macro(generation); });
         },
-        on_error, IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS, /*skip_homing=*/false, /*silent=*/true,
+        on_error, dispatch_timeout_ms(), /*skip_homing=*/false, /*silent=*/true,
         // caller_surfaces_errors=false: on_error above only logs and unwinds
         // local state, so the generic `!!` router keeps ownership of
         // reporting the rejection to the user

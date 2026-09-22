@@ -159,11 +159,12 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// INDX has no klipper-toolchanger object to default a tool number from,
     /// so a negative reading before the first saved active-tool value ever
     /// arrives is an honest "unreported" rather than a fallback ToolState
-    /// should paper over with T0. Scoped to ToolCommands::present generally
-    /// (not just INDX): every such provider swaps tools without a native
-    /// toolchanger.tool_number to establish an initial 0.
+    /// should paper over with T0. Scoped to INDX specifically, like
+    /// shared_extruder_name(): ToolCommands::present is also true for a plain
+    /// multi-extruder printer (provider ""), where nothing ever writes
+    /// current_tool and the T0 default is the only active tool it gets.
     [[nodiscard]] bool negative_active_tool_is_unreported() const override {
-        return tool_commands_.present;
+        return tool_commands_.present && tool_commands_.provider_name == "INDX";
     }
 
     /// The upstream INDX macros home conditionally themselves — `CHANGE_TOOL`
@@ -634,6 +635,11 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// toolchanger never took the operation over. Main thread; must NOT hold
     /// mutex_.
     void finalize_dispatch_after_macro(uint64_t generation);
+
+    /// Ack timeout for dispatch_operation(): longer for a provider whose only
+    /// completion signal IS the ack (ToolCommands::present), where a timeout
+    /// ends the operation in the UI while the swap may still be running.
+    [[nodiscard]] uint32_t dispatch_timeout_ms() const;
 
     /// Send a tool operation: set @p action optimistically, dispatch @p gcode
     /// through ensure_homed_then(), and resolve on the macro's ack. Caller must

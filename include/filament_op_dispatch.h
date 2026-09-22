@@ -157,7 +157,15 @@ struct BackendCaps {
     // not run at all, so its state tracking goes with it (AFC's TOOL_UNLOAD
     // parks the shuttle and marks the lane). That is what overriding means, and
     // it is documented for users in docs/user/guide/filament.md.
-    if (macro_user_configured) {
+    //
+    // The exception is a ToolMount-intent caller on a backend whose Load MOUNTS
+    // A TOOL: the user's Load Filament macro feeds filament, which is a
+    // different physical operation from a tool swap, and the docs tell INDX
+    // users to configure exactly that macro so the Filament panel works. A tap
+    // on the tool grid must still send T<n>, not LOAD_FILAMENT.
+    const bool mount_intent_owns_op =
+        intent == OperationIntent::ToolMount && caps.has_separate_filament_operation;
+    if (macro_user_configured && !mount_intent_owns_op) {
         return {FilamentTier::Macro, FilamentRefusal::None, AmsCall::None, target_slot};
     }
 
@@ -325,8 +333,12 @@ inline constexpr int EXTERNAL_SPOOL_SLOT = -2;
     // the macro tier while plan_unload() gated tier 1 on the backend merely
     // existing, so a user could assign an Unload macro in Settings and have it
     // silently discarded on every AMS printer — a live control whose effect was
-    // thrown away. See plan_load() for why DETECTED macros still lose.
-    if (macro_user_configured) {
+    // thrown away. See plan_load() for why DETECTED macros still lose, and for
+    // why a ToolMount-intent park on a shared-nozzle changer keeps the backend:
+    // the user's Unload Filament macro retracts filament, it does not park.
+    const bool mount_intent_owns_op =
+        intent == OperationIntent::ToolMount && caps.has_separate_filament_operation;
+    if (macro_user_configured && !mount_intent_owns_op) {
         return {FilamentTier::Macro, FilamentRefusal::None, AmsCall::None, target_slot};
     }
 

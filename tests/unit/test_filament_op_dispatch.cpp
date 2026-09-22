@@ -592,13 +592,51 @@ TEST_CASE("plan_load: Filament intent still reaches an auto-detected macro",
     CHECK(plan.tier == FilamentTier::Macro);
 }
 
-TEST_CASE("plan_load: a user-configured macro still outranks everything under either intent",
+TEST_CASE("plan_load: a user-configured macro outranks the backend only under Filament intent",
           "[indx][dispatch]") {
+    // The user guide tells INDX users to configure Load Filament so the
+    // Filament panel works. That macro feeds filament; it must not replace the
+    // T<n> a tool-grid tap sends.
     AmsSystemInfo sys = make_sys(3, /*current_slot=*/-1);
+    auto filament = plan_load(sys, indx_shaped_caps(), /*target_slot=*/1, /*macro_available=*/true,
+                              /*macro_user_configured=*/true, OperationIntent::Filament);
+    CHECK(filament.tier == FilamentTier::Macro);
+
+    auto mount = plan_load(sys, indx_shaped_caps(), /*target_slot=*/1, /*macro_available=*/true,
+                           /*macro_user_configured=*/true, OperationIntent::ToolMount);
+    CHECK(mount.tier == FilamentTier::AmsBackend);
+    CHECK(mount.ams_call == AmsCall::Load);
+}
+
+TEST_CASE("plan_unload: a user-configured macro outranks the backend only under Filament intent",
+          "[indx][dispatch]") {
+    auto filament = plan_unload(indx_shaped_caps(), /*target_slot=*/1, /*target_is_loaded=*/true,
+                                /*macro_available=*/true, /*macro_user_configured=*/true,
+                                OperationIntent::Filament);
+    CHECK(filament.tier == FilamentTier::Macro);
+
+    auto park = plan_unload(indx_shaped_caps(), /*target_slot=*/1, /*target_is_loaded=*/true,
+                            /*macro_available=*/true, /*macro_user_configured=*/true,
+                            OperationIntent::ToolMount);
+    CHECK(park.tier == FilamentTier::AmsBackend);
+    CHECK(park.ams_call == AmsCall::Unload);
+}
+
+TEST_CASE("plan_load/plan_unload: a user-configured macro still wins on an ordinary tool changer",
+          "[indx][dispatch][regression]") {
+    // has_separate_filament_operation is false here, so ToolMount intent
+    // changes nothing: the user's macro override keeps its full authority.
+    AmsSystemInfo sys = make_sys(5, /*current_slot=*/-1);
+    BackendCaps tc = fresh_ams();
+    tc.is_tool_changer = true;
     for (auto intent : {OperationIntent::ToolMount, OperationIntent::Filament}) {
-        auto plan = plan_load(sys, indx_shaped_caps(), /*target_slot=*/1, /*macro_available=*/true,
-                              /*macro_user_configured=*/true, intent);
-        CHECK(plan.tier == FilamentTier::Macro);
+        auto load_plan = plan_load(sys, tc, /*target_slot=*/1, /*macro_available=*/true,
+                                   /*macro_user_configured=*/true, intent);
+        CHECK(load_plan.tier == FilamentTier::Macro);
+        auto unload_plan =
+            plan_unload(tc, /*target_slot=*/1, /*target_is_loaded=*/true,
+                        /*macro_available=*/true, /*macro_user_configured=*/true, intent);
+        CHECK(unload_plan.tier == FilamentTier::Macro);
     }
 }
 
