@@ -104,6 +104,15 @@ class MovementHelper : public LVGLTestFixture, public AmsBackendToolChanger {
         return AmsErrorHelper::success();
     }
 
+    /// Overridden rather than driven through the homed_axes subject: with api_
+    /// null the production answer is an unconditional "homed" (no G28 is ever
+    /// synthesized against a printer we cannot talk to), which would make the
+    /// unhomed override path below untestable. Same shape as
+    /// test_afc_delegates_homing.cpp and test_ams_toolchanger_indx_backend.cpp.
+    bool toolhead_homed() const override {
+        return false;
+    }
+
     [[nodiscard]] const std::vector<std::string>& sent() const {
         return sent_;
     }

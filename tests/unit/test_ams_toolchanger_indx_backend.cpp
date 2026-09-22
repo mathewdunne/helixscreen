@@ -478,7 +478,7 @@ TEST_CASE_METHOD(LiveIndxHarness, "dispatch_operation gives the ack-owned swap a
     // and the tracker drops it the moment the timeout fires -- so the ceiling
     // must sit above a heat-from-cold swap, not at the generic 5 min.
     REQUIRE(backend.load_filament(1).success());
-    CHECK(client.last_send_timeout_ms() > helix::IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS);
+    CHECK(client.last_send_timeout_ms() > IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS);
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
 

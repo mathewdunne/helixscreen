@@ -499,11 +499,14 @@ TEST_CASE_METHOD(IndxConsumptionFixture,
 
     // The first notification after a swap contains real extrusion by the new
     // tool. Rebaseline T3 at the previous aggregate reading (1000), then charge
-    // this notification's 10mm to T3 without including T0's earlier history.
-    lv_subject_set_int(printer.get_print_filament_used_subject(), 1010);
+    // this notification's 30mm to T3 without including T0's earlier history.
+    // 30mm (0.089 g) clears AmsSlotSink's DELTA_WRITE_THRESHOLD_G; a smaller
+    // delta is coalesced rather than written, so it would prove nothing about
+    // WHICH slot the tracker chose.
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 1030);
     UpdateQueue::instance().drain();
     CHECK(remaining(0) == Approx(997.018f).margin(0.05)); // frozen at T0's value
-    CHECK(remaining(3) == Approx(499.970f).margin(0.01)); // first post-swap delta charged
+    CHECK(remaining(3) == Approx(499.911f).margin(0.01)); // first post-swap delta charged
 
     // Further extrusion while T3 stays continuously mounted brings its own
     // total to exactly 1000mm, and slot 0 still does not move.
@@ -521,13 +524,15 @@ TEST_CASE_METHOD(IndxConsumptionFixture,
     CHECK(remaining(3) == Approx(497.018f).margin(0.05));
 
     // Remounting the same tool still starts a new attribution window. The
-    // parked 1000mm remains uncharged, while the first 10mm after remount is
-    // charged to T3.
+    // parked 1000mm remains uncharged, while the first 30mm after remount is
+    // charged to T3. 30mm again, and a margin tighter than the delta: at 10mm
+    // the expected and unchanged values both sit inside a 0.05 g margin, so the
+    // assertion holds whether or not the parked window was excluded.
     set_active_tool(3);
-    lv_subject_set_int(printer.get_print_filament_used_subject(), 3010);
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 3030);
     UpdateQueue::instance().drain();
     CHECK(remaining(0) == Approx(997.018f).margin(0.05));
-    CHECK(remaining(3) == Approx(496.988f).margin(0.05));
+    CHECK(remaining(3) == Approx(496.928f).margin(0.01));
 
     // Reset: print completes and a new one starts. The tracker re-snapshots
     // from each slot's OWN current remaining weight, not a stale running
@@ -548,7 +553,7 @@ TEST_CASE_METHOD(IndxConsumptionFixture,
     // Second print's 1000mm on T0 charges the SAME per-print delta again from
     // slot 0's now-current weight — no leftover catch-up from the first print.
     CHECK(remaining(0) == Approx(994.036f).margin(0.05));
-    CHECK(remaining(3) == Approx(496.988f).margin(0.05)); // untouched this print
+    CHECK(remaining(3) == Approx(496.928f).margin(0.01)); // untouched this print
 
     lv_subject_set_int(printer.get_print_state_enum_subject(),
                        static_cast<int>(helix::PrintJobState::COMPLETE));

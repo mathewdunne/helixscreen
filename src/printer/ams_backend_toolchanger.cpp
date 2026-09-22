@@ -1135,8 +1135,14 @@ void AmsBackendToolChanger::finalize_dispatch_after_macro(uint64_t generation) {
 uint32_t AmsBackendToolChanger::dispatch_timeout_ms() const {
     // klipper-toolchanger hands completion to its own status frames, so the ack
     // timeout there is advisory. Without it the ack is the whole story.
-    return tool_commands_.present ? ACK_OWNED_DISPATCH_TIMEOUT_MS
-                                  : IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS;
+    //
+    // The api_ term is what keeps the null-api fixture route alive: a widened
+    // timeout is one of the three things dispatch_payload() keys its legacy
+    // branch on, and taking that branch is the ONLY way a payload reaches the
+    // execute_gcode() virtuals ~20 fixtures override. Nothing to time out
+    // against without an API anyway -- those dispatches are synchronous.
+    return (api_ && tool_commands_.present) ? ACK_OWNED_DISPATCH_TIMEOUT_MS
+                                            : IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS;
 }
 
 AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction action) {

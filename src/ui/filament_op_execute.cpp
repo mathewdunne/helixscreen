@@ -19,6 +19,7 @@
 #include "safety_settings_manager.h"
 #include "standard_macros.h"
 #include "tool_state.h"
+#include "toolhead_homing.h"
 
 #include <spdlog/spdlog.h>
 
