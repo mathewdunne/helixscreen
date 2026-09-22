@@ -276,7 +276,8 @@ TEST_CASE_METHOD(PresetConfigFixture,
                     {{"hardware",
                       {{"expected",
                         {"heater_bed", "extruder", "fan_generic chamber_fan", "led chamber_light",
-                         "controller_fan driver_fan", "AFC", "mmu", "toolchanger", "ace"}}}}}}};
+                         "controller_fan driver_fan", "AFC", "mmu", "toolchanger", "indx",
+                         "ace"}}}}}}};
     write_preset("expected_preset", preset);
 
     REQUIRE(config.apply_preset_file("expected_preset") == true);
@@ -289,6 +290,7 @@ TEST_CASE_METHOD(PresetConfigFixture,
         REQUIRE(name != "AFC");
         REQUIRE(name != "mmu");
         REQUIRE(name != "toolchanger");
+        REQUIRE(name != "indx");
         REQUIRE(name != "ace");
     }
 

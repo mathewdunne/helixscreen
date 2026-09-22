@@ -1043,6 +1043,25 @@ TEST_CASE_METHOD(
     }
 }
 
+TEST_CASE_METHOD(MmuDetectionFixture,
+                 "HardwareValidator - INDX expectation uses the exact indx object fact",
+                 "[hardware][validator][mmu][indx]") {
+    client.set_heaters({"extruder", "heater_bed"});
+    client.set_additional_objects({"indx"});
+    REQUIRE(client.hardware().has_indx());
+    REQUIRE_FALSE(client.hardware().has_tool_changer());
+
+    setup_config_with_expected({"indx"});
+    HardwareValidator validator;
+    auto present = validator.validate(&config, client.hardware());
+    CHECK_FALSE(is_missing_in_result(present, "indx"));
+
+    client.set_additional_objects({});
+    REQUIRE_FALSE(client.hardware().has_indx());
+    auto missing = validator.validate(&config, client.hardware());
+    CHECK(is_missing_in_result(missing, "indx"));
+}
+
 // ============================================================================
 // "None" Sentinel Value Tests
 //

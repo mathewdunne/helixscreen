@@ -2949,7 +2949,7 @@ bool Config::apply_preset_file(const std::string& preset_name) {
             }
         }
 
-        // Migration 4: hardware/expected union. The four AMS keywords are the only
+        // Migration 4: hardware/expected union. The AMS keywords are the only
         // expected entries that can raise an expected_missing warning ("AMS/MMU system
         // not detected"), so unioning one could invent that warning; every other name
         // only ever suppresses a false "new hardware" report.
@@ -2967,7 +2967,7 @@ bool Config::apply_preset_file(const std::string& preset_name) {
                 }
                 const std::string name = entry.get<std::string>();
                 if (name.empty() || name == "AFC" || name == "mmu" || name == "toolchanger" ||
-                    name == "ace") {
+                    name == "indx" || name == "ace") {
                     continue;
                 }
                 if (std::find(stored.begin(), stored.end(), entry) == stored.end()) {

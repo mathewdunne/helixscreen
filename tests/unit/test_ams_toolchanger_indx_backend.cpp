@@ -114,6 +114,16 @@ class LiveIndxHarness : public LVGLTestFixture {
 // Cross-provider isolation and strict delta/validity handling (plan §5.2, §10)
 // =============================================================================
 
+TEST_CASE("ToolChanger/INDX: expected-hardware marker names the detected provider",
+          "[indx][backend][hardware]") {
+    helix::AmsBackendToolChanger indx(nullptr, nullptr);
+    indx.set_tool_commands(indx_commands(3));
+    CHECK(std::string(indx.get_klipper_object_name()) == "indx");
+
+    helix::AmsBackendToolChanger native(nullptr, nullptr);
+    CHECK(std::string(native.get_klipper_object_name()) == "toolchanger");
+}
+
 TEST_CASE("ToolChanger/INDX: a valid save_variables delta sets the mounted tool",
           "[indx][backend][toolchanger]") {
     helix::AmsBackendToolChanger backend(nullptr, nullptr);

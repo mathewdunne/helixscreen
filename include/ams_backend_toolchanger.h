@@ -90,9 +90,12 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     [[nodiscard]] bool should_hide_slot_tool_badge() const override {
         return true;
     }
-    // Marker for tool-changer expected-hardware recording during wizard setup.
+    // Marker for expected-hardware recording during wizard setup. Providers
+    // without a native toolchanger object identify themselves by the exact
+    // discovery object the validator can check on the next startup.
     [[nodiscard]] const char* get_klipper_object_name() const override {
-        return "toolchanger";
+        return tool_commands_.present && tool_commands_.provider_name == "INDX" ? "indx"
+                                                                                : "toolchanger";
     }
     [[nodiscard]] helix::ui::LaneNoun lane_noun() const override {
         return helix::ui::LaneNoun::Tool;

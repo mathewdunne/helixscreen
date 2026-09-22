@@ -115,6 +115,12 @@ BackendCaps seated_toolchanger() {
     return caps;
 }
 
+BackendCaps shared_nozzle_changer() {
+    BackendCaps caps = seated_toolchanger();
+    caps.has_separate_filament_operation = true;
+    return caps;
+}
+
 } // namespace
 
 // =============================================================================
@@ -288,6 +294,19 @@ TEST_CASE("Load with no backend and no macro falls back to raw gcode",
     CHECK(out.tier == FilamentTier::RawGcode);
 }
 
+TEST_CASE("Load with a separate filament operation names the missing macro",
+          "[filament][dispatch][wiring][indx]") {
+    AmsSystemInfo sys = make_sys(4, /*current_slot=*/-1);
+
+    FilamentPanelOutcome out =
+        load_outcome(sys, shared_nozzle_changer(), /*target_slot=*/2,
+                     /*macro_available=*/false, /*macro_user_configured=*/false);
+    CHECK(out.tier == FilamentTier::Refused);
+    CHECK(out.toast == "Configure a filament load macro in Settings first");
+    CHECK_FALSE(out.navigate_to_ams);
+    CHECK_FALSE(out.guard_armed);
+}
+
 // =============================================================================
 // Unload — deliberately asymmetric with load
 // =============================================================================
@@ -301,6 +320,18 @@ TEST_CASE("Unload with nothing loaded warns and dispatches nothing",
     CHECK_FALSE(out.guard_armed);
     // The unload refusal never redirects — the panel already knows the slot.
     CHECK_FALSE(out.navigate_to_ams);
+}
+
+TEST_CASE("Unload with a separate filament operation names the missing macro",
+          "[filament][dispatch][wiring][indx]") {
+    FilamentPanelOutcome out =
+        unload_outcome(shared_nozzle_changer(), /*target_slot=*/2,
+                       /*target_is_loaded=*/true, /*macro_available=*/false,
+                       /*macro_user_configured=*/false);
+    CHECK(out.tier == FilamentTier::Refused);
+    CHECK(out.toast == "Configure a filament unload macro in Settings first");
+    CHECK_FALSE(out.guard_armed);
+    CHECK_FALSE(out.arm_manual_pull);
 }
 
 TEST_CASE("Unload passes the panel's selected slot to unload_filament",

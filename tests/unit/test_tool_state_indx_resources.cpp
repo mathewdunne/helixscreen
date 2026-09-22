@@ -475,20 +475,17 @@ TEST_CASE_METHOD(IndxConsumptionFixture,
     REQUIRE(backend->get_current_slot() == 3);
     UpdateQueue::instance().drain();
 
-    // The tick immediately after a swap rebaselines the newly-current slot
-    // from HERE — it must not compute a decrement from the whole print's
-    // filament history, which is what a fixed slot-0 mapping (or a tracker
-    // with no per-slot "just became current" memory) would do. A real swap
-    // reports no filament motion of its own, so this nudge stands in for
-    // "the first status frame after the swap, before any new extrusion".
-    lv_subject_set_int(printer.get_print_filament_used_subject(), 1001);
+    // The first notification after a swap contains real extrusion by the new
+    // tool. Rebaseline T3 at the previous aggregate reading (1000), then charge
+    // this notification's 10mm to T3 without including T0's earlier history.
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 1010);
     UpdateQueue::instance().drain();
     CHECK(remaining(0) == Approx(997.018f).margin(0.05)); // frozen at T0's value
-    CHECK(remaining(3) == Approx(500.0f).margin(0.05));   // rebaselined, not yet charged
+    CHECK(remaining(3) == Approx(499.970f).margin(0.01)); // first post-swap delta charged
 
-    // Genuine extrusion while T3 stays continuously mounted: exactly its own
-    // 1000mm decrements slot 3, and slot 0 still does not move.
-    lv_subject_set_int(printer.get_print_filament_used_subject(), 2001);
+    // Further extrusion while T3 stays continuously mounted brings its own
+    // total to exactly 1000mm, and slot 0 still does not move.
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 2000);
     UpdateQueue::instance().drain();
     CHECK(remaining(0) == Approx(997.018f).margin(0.05)); // frozen at T0's value
     CHECK(remaining(3) == Approx(497.018f).margin(0.05)); // T3's OWN delta, not the print's total
@@ -500,6 +497,15 @@ TEST_CASE_METHOD(IndxConsumptionFixture,
     UpdateQueue::instance().drain();
     CHECK(remaining(0) == Approx(997.018f).margin(0.05));
     CHECK(remaining(3) == Approx(497.018f).margin(0.05));
+
+    // Remounting the same tool still starts a new attribution window. The
+    // parked 1000mm remains uncharged, while the first 10mm after remount is
+    // charged to T3.
+    set_active_tool(3);
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 3010);
+    UpdateQueue::instance().drain();
+    CHECK(remaining(0) == Approx(997.018f).margin(0.05));
+    CHECK(remaining(3) == Approx(496.988f).margin(0.05));
 
     // Reset: print completes and a new one starts. The tracker re-snapshots
     // from each slot's OWN current remaining weight, not a stale running
@@ -520,7 +526,7 @@ TEST_CASE_METHOD(IndxConsumptionFixture,
     // Second print's 1000mm on T0 charges the SAME per-print delta again from
     // slot 0's now-current weight — no leftover catch-up from the first print.
     CHECK(remaining(0) == Approx(994.036f).margin(0.05));
-    CHECK(remaining(3) == Approx(497.018f).margin(0.05)); // untouched this print
+    CHECK(remaining(3) == Approx(496.988f).margin(0.05)); // untouched this print
 
     lv_subject_set_int(printer.get_print_state_enum_subject(),
                        static_cast<int>(helix::PrintJobState::COMPLETE));

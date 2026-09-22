@@ -2763,6 +2763,9 @@ FilamentPanelOutcome panel_load_outcome(const FilamentOpPlan& plan) {
             // lane into it would jam the hotend, so say what to do instead.
             out.toast = lv_tr("Remove the bypass spool from the toolhead first");
             break;
+        case FilamentRefusal::NoMacroConfigured:
+            out.toast = lv_tr("Configure a filament load macro in Settings first");
+            break;
         case FilamentRefusal::SelectSlot:
         default:
             out.toast = lv_tr("Select a filament slot to load");
@@ -2801,9 +2804,12 @@ FilamentPanelOutcome panel_unload_outcome(const FilamentOpPlan& plan, bool backe
         break;
 
     case FilamentTier::Refused:
-        // NothingLoaded is plan_unload's only refusal, and it never redirects:
-        // the panel already knows the slot.
-        out.toast = lv_tr("No filament loaded to unload");
+        if (plan.refusal == FilamentRefusal::NoMacroConfigured) {
+            out.toast = lv_tr("Configure a filament unload macro in Settings first");
+        } else {
+            // NothingLoaded never redirects: the panel already knows the slot.
+            out.toast = lv_tr("No filament loaded to unload");
+        }
         break;
 
     case FilamentTier::Macro:
@@ -2983,7 +2989,8 @@ void FilamentPanel::execute_unload() {
     surface.on_refused = [this](const helix::ui::FilamentOpPlan& refused) {
         const helix::ui::FilamentPanelOutcome refusal =
             helix::ui::panel_unload_outcome(refused, false, -1);
-        spdlog::info("[{}] Unload refused — nothing loaded", get_name());
+        spdlog::info("[{}] Unload refused ({})", get_name(),
+                     static_cast<int>(refused.refusal));
         NOTIFY_WARNING(fmt::runtime(refusal.toast.c_str()));
     };
 

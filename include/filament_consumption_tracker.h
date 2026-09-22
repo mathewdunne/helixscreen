@@ -107,6 +107,13 @@ class FilamentConsumptionTracker {
     /// the previous one (or from being parked, which leaves no entry at all).
     std::unordered_map<int, int> last_current_slot_by_backend_;
 
+    /// Previous aggregate filament_used reading. When a backend changes its
+    /// current slot between notifications, the next reading contains the first
+    /// real delta for that slot. Rebaselining at this previous value lets that
+    /// delta be applied to the newly-current slot without charging it for any
+    /// earlier part of the print.
+    float previous_aggregate_filament_used_mm_ = 0.0f;
+
     ObserverGuard print_state_obs_;
     ObserverGuard filament_used_obs_;
 

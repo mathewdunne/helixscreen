@@ -641,8 +641,9 @@ void HardwareValidator::validate_configured_hardware(Config* config,
                     continue;
 
                 // Check if this is AMS/MMU hardware (uses capability flags)
-                bool is_ams_hardware = (hw_name == "AFC" || hw_name == "mmu" ||
-                                        hw_name == "toolchanger" || hw_name == "ace");
+                bool is_ams_hardware =
+                    (hw_name == "AFC" || hw_name == "mmu" || hw_name == "toolchanger" ||
+                     hw_name == "indx" || hw_name == "ace");
 
                 if (is_ams_hardware) {
                     bool found = false;
@@ -652,6 +653,8 @@ void HardwareValidator::validate_configured_hardware(Config* config,
                     } else if (hw_name == "AFC" && hardware.mmu_type() == AmsType::AFC) {
                         found = true;
                     } else if (hw_name == "toolchanger" && hardware.has_tool_changer()) {
+                        found = true;
+                    } else if (hw_name == "indx" && hardware.has_indx()) {
                         found = true;
                     } else if (hw_name == "ace" && hardware.mmu_type() == AmsType::ACE) {
                         found = true;
