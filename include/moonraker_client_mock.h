@@ -1211,6 +1211,16 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// elapses. Call from the same periodic tick that drives MedusaHC/IFS.
     void advance_indx_swap();
 
+    /**
+     * @brief Answer a gcode script only once the INDX swap in flight lands.
+     *
+     * INDX's T<n> and PARK_TOOL block the gcode queue until the carriage is
+     * done, and with no toolchanger status frames the rpc ack is the only
+     * completion signal the backend gets. Takes @p success_cb and returns true
+     * while a swap is armed; returns false (leaving it untouched) otherwise.
+     */
+    bool hold_ack_until_indx_swap_lands(std::function<void(const nlohmann::json&)>& success_cb);
+
   private:
     /**
      * @brief Rebuild hardware from current discovery lists (heaters, fans, sensors, etc.)
@@ -1976,6 +1986,9 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     std::atomic<int> indx_current_tool_sim_{-1}; ///< Physical active tool, -1 parked
     std::atomic<int> indx_target_tool_sim_{-1};  ///< Tool a pending swap will land on
     std::atomic<int> indx_phase_ticks_sim_{0};   ///< Sim ticks left before the swap lands
+    /// Orders a held ack against the swap landing, so none is stranded.
+    std::mutex indx_swap_ack_mutex_;
+    std::vector<std::function<void(const nlohmann::json&)>> indx_swap_acks_;
 
     // Cached chamber heater status key (updated by override_chamber_heater / populate)
     std::string cached_chamber_status_key_;

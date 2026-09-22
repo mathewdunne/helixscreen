@@ -135,7 +135,7 @@ void register_print_handlers(std::unordered_map<std::string, MethodHandler>& reg
                 }
                 error_cb(err);
             }
-        } else if (success_cb) {
+        } else if (success_cb && !self->hold_ack_until_indx_swap_lands(success_cb)) {
             success_cb(json::object()); // Return empty success response
         }
         return true;

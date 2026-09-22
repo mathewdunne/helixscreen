@@ -1879,8 +1879,31 @@ void MoonrakerClientMock::advance_indx_swap() {
         return; // still busy
     }
     const int target = indx_target_tool_sim_.load();
-    indx_current_tool_sim_.store(target);
+    std::vector<std::function<void(const nlohmann::json&)>> acks;
+    {
+        std::lock_guard<std::mutex> lock(indx_swap_ack_mutex_);
+        indx_current_tool_sim_.store(target);
+        acks.swap(indx_swap_acks_);
+    }
     spdlog::info("[MoonrakerClientMock] INDX swap complete: active_tool={}", target);
+    for (auto& ack : acks) {
+        ack(nlohmann::json::object());
+    }
+}
+
+bool MoonrakerClientMock::hold_ack_until_indx_swap_lands(
+    std::function<void(const nlohmann::json&)>& success_cb) {
+    if (!is_mock_indx()) {
+        return false;
+    }
+    // advance_indx_swap() drops the tick count before taking this lock, so a
+    // swap that has landed reads 0 here and a held ack is always collected.
+    std::lock_guard<std::mutex> lock(indx_swap_ack_mutex_);
+    if (indx_phase_ticks_sim_.load() <= 0) {
+        return false;
+    }
+    indx_swap_acks_.push_back(std::move(success_cb));
+    return true;
 }
 
 nlohmann::json MoonrakerClientMock::pin_watch_status_json() const {

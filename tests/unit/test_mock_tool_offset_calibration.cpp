@@ -193,3 +193,32 @@ TEST_CASE("mock: an absurdly long T<n> is refused, not thrown out of",
     // An in-range tool still works, so the bound did not swallow the feature.
     REQUIRE_NOTHROW(client.gcode_script("T1"));
 }
+
+TEST_CASE("mock: an INDX swap answers its rpc only once the swap lands",
+          "[indx][mock][toolchanger]") {
+    // T<n> blocks the gcode queue until the carriage is done, and INDX publishes
+    // no toolchanger status: the ack is the backend's only completion signal, so
+    // an early one ends the dispatch while the swap is still running.
+    helix::ScopedEnv ams_env{"HELIX_MOCK_AMS"};
+    setenv("HELIX_MOCK_AMS", "indx", 1);
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24, 100.0);
+
+    int acks = 0;
+    auto send = [&](const char* script) {
+        client.send_jsonrpc(
+            "printer.gcode.script", json{{"script", script}}, [&](const json&) { ++acks; },
+            [](const MoonrakerError&) {});
+    };
+
+    send("T1");
+    CHECK(acks == 0);
+    client.advance_indx_swap();
+    CHECK(acks == 0);
+    client.advance_indx_swap();
+    CHECK(acks == 1);
+    CHECK(client.indx_save_variables_status_json()["variables"]["active_tool"] == 1);
+
+    // With nothing in flight, ordinary gcode still answers at once.
+    send("G4 P0");
+    CHECK(acks == 2);
+}
