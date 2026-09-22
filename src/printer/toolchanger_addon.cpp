@@ -5,6 +5,8 @@
 #include "operation_patterns.h"
 #include "printer_discovery.h"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cerrno>
@@ -591,6 +593,28 @@ std::optional<IndxInventory> read_indx_inventory(const nlohmann::json& tool_posi
                                  std::to_string(kIndxMaxTools)};
     }
     return IndxInventory{true, static_cast<int>(raw), std::string()};
+}
+
+bool tool_inventory_from_status(const PrinterDiscovery& hw) {
+    return is_indx_inventory_candidate(hw);
+}
+
+void finalize_tool_inventory_from_status(PrinterDiscovery& hw, const nlohmann::json& status) {
+    // Macros are fixed for a discovery pass, so this is the same key
+    // required_status_objects() subscribed.
+    const std::string key = indx_tool_positions_object(hw);
+    if (key.empty() || !status.is_object() || !status.contains(key)) {
+        spdlog::warn("[toolchanger_addon] INDX candidate but the subscription reply carried no "
+                     "TOOL_POSITIONS status - no INDX backend this pass");
+        return;
+    }
+    if (auto inv = read_indx_inventory(status[key])) {
+        if (inv->valid) {
+            hw.finalize_indx_inventory(indx_tool_ids(inv->tool_count));
+        } else {
+            spdlog::warn("[toolchanger_addon] INDX inventory rejected: {}", inv->rejection);
+        }
+    }
 }
 
 IndxActiveTool read_indx_active_tool(const nlohmann::json& save_variables_status,

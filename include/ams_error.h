@@ -4,6 +4,7 @@
 #pragma once
 
 #include "display_numbering.h"
+#include "print_lifecycle_state.h"
 
 // config.cpp and config_storage_file.cpp parse this header in the splash
 // build, whose include path reaches lib/lvgl but not lib/ — the lvgl/lvgl.h
@@ -364,6 +365,30 @@ class AmsErrorHelper {
                             ? lv_tr("Pause the print first, then load, unload, or change filament")
                             : lv_tr("Finish or cancel the print before loading, unloading, or "
                                     "changing filament"));
+    }
+
+    /// The AmsError face of printer_owned_homing_gate(): success for Allow.
+    static AmsError printer_owned_homing_refusal(PrinterOwnedHomingGate gate) {
+        switch (gate) {
+        case PrinterOwnedHomingGate::Allow:
+            break;
+        case PrinterOwnedHomingGate::PrintActive:
+            // Only Preparing and Printing land here. A homed pause is allowed,
+            // so pausing is the recovery to name.
+            return print_active(/*is_paused=*/false, /*pause_allows_ops=*/true);
+        case PrinterOwnedHomingGate::PausedUnhomed:
+            // Homing is refused while a print is active, so there is no
+            // recovery short of cancelling. idle_timeout's M84 is the usual
+            // way a pause ends up here.
+            return AmsError(AmsResult::WRONG_STATE,
+                            "Printer-owned homing command blocked: print paused with toolhead "
+                            "axes not homed",
+                            lv_tr("Can't move filament while the print is paused"),
+                            lv_tr("The motors were turned off during the pause, and homing now "
+                                  "could hit the print. Cancel the print to use filament "
+                                  "controls."));
+        }
+        return success();
     }
 
     /**

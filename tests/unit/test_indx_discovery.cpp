@@ -93,6 +93,22 @@ TEST_CASE("PrinterDiscovery: a finalized indx inventory names Bondtech INDX",
     REQUIRE(hw.detected_ams_systems()[0].name == "Bondtech INDX");
 }
 
+TEST_CASE("PrinterDiscovery: indx alongside several extruder heaters is not named INDX",
+          "[indx][discovery][inventory]") {
+    // The tools here are counted from the hot ends ("T0", "T1") and swap by
+    // plain T<n>; resolve_tool_commands() does not claim INDX for them.
+    PrinterDiscovery hw;
+    hw.parse_objects(
+        nlohmann::json::array({"extruder", "extruder1", "indx", "save_variables",
+                               "gcode_macro TOOL_POSITIONS", "gcode_macro PARK_TOOL"}));
+
+    REQUIRE(hw.has_indx());
+    REQUIRE(hw.tool_names() == std::vector<std::string>{"T0", "T1"});
+    REQUIRE(hw.mmu_type() == AmsType::TOOL_CHANGER);
+    REQUIRE(hw.detected_ams_systems().size() == 1);
+    CHECK(hw.detected_ams_systems()[0].name == "Tool Changer");
+}
+
 TEST_CASE("PrinterDiscovery: indx alongside a native toolchanger keeps native priority",
           "[indx][discovery][priority]") {
     // A defensive matrix case: object presence is recorded, but detection
@@ -117,9 +133,9 @@ TEST_CASE("PrinterDiscovery: config-only [indx] section with no exact object is 
     // list carrying no `indx` status object — even with plausible-looking
     // gcode_macro names — must not detect.
     PrinterDiscovery hw;
-    nlohmann::json objects = nlohmann::json::array(
-        {"webhooks", "configfile", "extruder", "heater_bed", "gcode_macro TOOL_POSITIONS",
-         "gcode_macro T0", "gcode_macro T1"});
+    nlohmann::json objects =
+        nlohmann::json::array({"webhooks", "configfile", "extruder", "heater_bed",
+                               "gcode_macro TOOL_POSITIONS", "gcode_macro T0", "gcode_macro T1"});
     hw.parse_objects(objects);
 
     REQUIRE_FALSE(hw.has_indx());

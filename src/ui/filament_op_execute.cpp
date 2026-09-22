@@ -304,21 +304,11 @@ bool allow_printer_owned_homing(const FilamentOpSurface& surface, const Filament
         return true;
     }
 
-    const auto lifecycle = api.printer_state().get_print_lifecycle();
-    AmsError refusal;
-    switch (helix::printer_owned_homing_gate(lifecycle,
-                                             helix::toolhead_is_homed(api.printer_state()))) {
-    case PrinterOwnedHomingGate::Allow:
+    const AmsError refusal = AmsErrorHelper::printer_owned_homing_refusal(
+        helix::printer_owned_homing_gate(api.printer_state().get_print_lifecycle(),
+                                         helix::toolhead_is_homed(api.printer_state())));
+    if (refusal.success()) {
         return true;
-    case PrinterOwnedHomingGate::PrintActive:
-        refusal = AmsErrorHelper::print_active(lifecycle == PrintState::Paused,
-                                               /*pause_allows_ops=*/false);
-        break;
-    case PrinterOwnedHomingGate::PausedUnhomed:
-        refusal = AmsErrorHelper::wrong_state(
-            "toolhead axes not homed",
-            "home the printer (outside this paused print) before this operation");
-        break;
     }
 
     spdlog::warn("{} Refusing printer-owned homing command: {}", surface.log_tag,

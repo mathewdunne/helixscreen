@@ -3045,6 +3045,8 @@ translations:
   The left RFID reader in this CFS unit may need service: Der linke RFID-Leser dieser CFS-Einheit muss möglicherweise gewartet werden
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : Die geladene Spule ist {}, aber diese Datei wurde für {} gesliced. Gefülltes Filament läuft mit einer niedrigeren Flussrate und erfordert eine gehärtete Düse.
+  ? The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
+  : Die Motoren wurden während der Pause abgeschaltet, und eine Referenzfahrt könnte jetzt den Druck treffen. Brechen Sie den Druck ab, um die Filamentsteuerung zu nutzen.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : Der Druck ist pausiert. Ein Werkzeugwechsel bewegt jetzt den Werkzeugkopf und
     tauscht das Filament an der Düse. Setzen Sie den Druck fort, sobald der Wechsel

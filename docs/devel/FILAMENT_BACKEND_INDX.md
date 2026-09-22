@@ -58,17 +58,21 @@ subscribed. `PrinterDiscovery::finalize_indx_inventory()` re-runs the tool-facts
 derivation with the provider-supplied ids once the subscription snapshot lands, which
 requires ordering the discovery sequence around it (`MoonrakerDiscoverySequence`):
 
-1. Object list confirms `has_indx()` and `is_indx_inventory_candidate()`.
+1. Object list confirms `has_indx()` and `is_indx_inventory_candidate()`, which the
+   discovery sequence asks through the capability question
+   `toolchanger_addon::tool_inventory_from_status()` and so defers its early hardware
+   callback.
 2. `toolchanger_addon::required_status_objects()` adds `save_variables` and
    `gcode_macro TOOL_POSITIONS` to the subscription.
-3. The first subscription snapshot's `TOOL_POSITIONS.tool_count` is read
-   (`read_indx_inventory()`) and validated (1..`kIndxMaxTools` == 16); `indx_tool_ids()`
-   produces the numbered ids in natural order.
-4. Only then is inventory finalized and the deferred hardware-initialization callback
-   released — the same deferred-callback seam `application.cpp`/`printer_discovery.cpp`
-   already provide, extended so an inventory-dependent provider can hold subsystem
-   initialization until its facts exist, without changing the timing of any other
-   printer's discovery.
+3. `toolchanger_addon::finalize_tool_inventory_from_status()` reads the first
+   subscription snapshot's `TOOL_POSITIONS.tool_count` (`read_indx_inventory()`),
+   validates it (1..`kIndxMaxTools` == 16), and finalizes the numbered ids
+   `indx_tool_ids()` produces in natural order. The discovery sequence names no INDX
+   symbol itself.
+4. Only then is the deferred hardware-initialization callback released — the same
+   deferred-callback seam `application.cpp`/`printer_discovery.cpp` already provide,
+   extended so an inventory-dependent provider can hold subsystem initialization until
+   its facts exist, without changing the timing of any other printer's discovery.
 
 A **configured** count can exceed the shortcuts a user's `indx.cfg` actually declares
 (the pinned upstream fixture: 3 configured tools, `T0..T3` shortcuts present — 4). The

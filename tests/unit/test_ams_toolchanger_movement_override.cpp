@@ -146,6 +146,14 @@ std::vector<std::string> options_for(const std::vector<helix::printer::DeviceAct
     return it == actions.end() ? std::vector<std::string>{} : it->options;
 }
 
+/// The value one dropdown action shows as selected, by id.
+std::string value_for(const std::vector<helix::printer::DeviceAction>& actions,
+                      const std::string& id) {
+    auto it =
+        std::find_if(actions.begin(), actions.end(), [&](const auto& a) { return a.id == id; });
+    return it == actions.end() ? std::string{} : std::any_cast<std::string>(it->current_value);
+}
+
 } // namespace
 
 // =============================================================================
@@ -433,6 +441,43 @@ TEST_CASE("Movement override: an invalid stored choice is listed so it can be cl
     CHECK(h.sent().back() == "T1");
 
     helix::SettingsManager::instance().set_tool_select_macro("auto");
+}
+
+TEST_CASE("Movement override: a valid choice stored in other casing is shown selected",
+          "[indx][dispatch]") {
+    // The dropdown selects by exact match against options, which spell the
+    // macro uppercased. Showing the stored spelling would leave "auto"
+    // selected while every swap uses the override.
+    MovementHelper h(3);
+    h.set_tool_commands(indx_commands(3));
+    h.set_tool_movement_override(toolchanger_addon::resolve_tool_movement_override(
+        discovery_with_macro("CUSTOM_TOOL_MACRO"), "custom_tool_macro", "auto"));
+
+    auto actions = h.get_device_actions();
+    auto select_options = options_for(actions, "tool_select_macro");
+    CHECK(value_for(actions, "tool_select_macro") == "CUSTOM_TOOL_MACRO");
+    CHECK(std::count(select_options.begin(), select_options.end(), "CUSTOM_TOOL_MACRO") == 1);
+    CHECK(std::find(select_options.begin(), select_options.end(), "custom_tool_macro") ==
+          select_options.end());
+}
+
+TEST_CASE("Movement override: a valid choice outside the candidate filter is listed",
+          "[indx][dispatch]") {
+    // MY_SWAP names none of the fragments tool_movement_macro_candidates()
+    // matches, yet it resolves and every swap sends it.
+    PrinterDiscovery hw;
+    hw.parse_objects(
+        json::array({"extruder", "gcode_macro CUSTOM_TOOL_MACRO", "gcode_macro MY_SWAP"}));
+    MovementHelper h(3);
+    h.set_tool_commands(indx_commands(3));
+    h.set_tool_movement_override(
+        toolchanger_addon::resolve_tool_movement_override(hw, "MY_SWAP", "auto"));
+
+    auto actions = h.get_device_actions();
+    auto select_options = options_for(actions, "tool_select_macro");
+    CHECK(value_for(actions, "tool_select_macro") == "MY_SWAP");
+    CHECK(std::find(select_options.begin(), select_options.end(), "MY_SWAP") !=
+          select_options.end());
 }
 
 TEST_CASE("Movement override: a printer with no candidate macros still offers Auto to clear one",

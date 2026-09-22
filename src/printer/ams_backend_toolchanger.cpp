@@ -1154,20 +1154,12 @@ AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction 
     // Only the known automatic INDX commands own homing. Custom movement
     // overrides use ensure_homed_then() below like any arbitrary motion macro.
     if (delegates_homing_to_printer() && api_) {
-        const auto lifecycle = api_->printer_state().get_print_lifecycle();
-        switch (helix::printer_owned_homing_gate(lifecycle,
-                                                 helix::toolhead_is_homed(api_->printer_state()))) {
-        case PrinterOwnedHomingGate::PrintActive:
-            return AmsErrorHelper::print_active(lifecycle == PrintState::Paused,
-                                                /*pause_allows_ops=*/false);
-        case PrinterOwnedHomingGate::PausedUnhomed:
-            spdlog::warn("[AMS ToolChanger] Refusing INDX dispatch on a PAUSED print: "
-                         "toolhead axes are not confirmed homed");
-            return AmsErrorHelper::wrong_state(
-                "toolhead axes not homed",
-                "home the printer (outside this paused print) before this operation");
-        case PrinterOwnedHomingGate::Allow:
-            break;
+        const AmsError refusal = AmsErrorHelper::printer_owned_homing_refusal(
+            helix::printer_owned_homing_gate(api_->printer_state().get_print_lifecycle(),
+                                             helix::toolhead_is_homed(api_->printer_state())));
+        if (!refusal.success()) {
+            spdlog::warn("[AMS ToolChanger] Refusing INDX dispatch: {}", refusal.technical_msg);
+            return refusal;
         }
     }
 
@@ -1694,22 +1686,29 @@ bool movement_override_configurable(const ToolMovementOverride& ov) {
            ov.park_choice != ToolMovementOverride::Choice::kAuto;
 }
 
+/// What one override dropdown shows as selected: a valid choice as the macro
+/// it resolved to, which is how the candidates spell it, else the stored text.
+const std::string& override_dropdown_value(ToolMovementOverride::Choice choice,
+                                           const std::string& raw, const std::string& macro) {
+    return choice == ToolMovementOverride::Choice::kValid ? macro : raw;
+}
+
 /// The options one override dropdown offers: the pickable candidates, "auto"
-/// when this printer reported none, and the stored choice itself when its
-/// macro has since disappeared. Without that last entry the renderer finds no
-/// match for current_value, leaves the selection on the first option and so
-/// displays "auto" while the backend refuses every swap -- and picking "auto"
-/// then changes no index, fires no LV_EVENT_VALUE_CHANGED, and clears nothing.
+/// when this printer reported none, and @p shown whenever the list does not
+/// already spell it (a macro that has since disappeared, a stored choice in
+/// other casing, a valid macro the candidate filter leaves out). Without that
+/// entry the renderer finds no match for current_value, leaves the selection
+/// on the first option and so displays "auto" while the override is in force
+/// -- and picking "auto" then changes no index, fires no
+/// LV_EVENT_VALUE_CHANGED, and clears nothing.
 std::vector<std::string> override_dropdown_options(const ToolMovementOverride& ov,
-                                                   ToolMovementOverride::Choice choice,
-                                                   const std::string& raw) {
+                                                   const std::string& shown) {
     std::vector<std::string> options = ov.macro_options;
     if (options.empty()) {
         options.emplace_back(helix::toolchanger_addon::kAutoMacro);
     }
-    if (choice == ToolMovementOverride::Choice::kInvalid &&
-        std::find(options.begin(), options.end(), raw) == options.end()) {
-        options.push_back(raw);
+    if (std::find(options.begin(), options.end(), shown) == options.end()) {
+        options.push_back(shown);
     }
     return options;
 }
@@ -1738,16 +1737,20 @@ std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sec
 std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_actions() const {
     std::vector<helix::printer::DeviceAction> actions;
     if (has_named_tool_provider() && movement_override_configurable(movement_override_)) {
+        const std::string& select_shown = override_dropdown_value(
+            movement_override_.select_choice, movement_override_.select_choice_raw,
+            movement_override_.select_macro);
+        const std::string& park_shown = override_dropdown_value(movement_override_.park_choice,
+                                                                movement_override_.park_choice_raw,
+                                                                movement_override_.park_macro);
         actions.push_back({.id = "tool_select_macro",
                            .label = "Tool select macro",
                            .icon = "",
                            .section = "tool_commands",
                            .description = "Which macro selects a tool (sent as MACRO TOOL=<n>)",
                            .type = helix::printer::ActionType::DROPDOWN,
-                           .current_value = std::any(movement_override_.select_choice_raw),
-                           .options = override_dropdown_options(
-                               movement_override_, movement_override_.select_choice,
-                               movement_override_.select_choice_raw),
+                           .current_value = std::any(select_shown),
+                           .options = override_dropdown_options(movement_override_, select_shown),
                            .min_value = 0,
                            .max_value = 0,
                            .unit = "",
@@ -1760,10 +1763,8 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
                            .section = "tool_commands",
                            .description = "Which macro parks the current tool",
                            .type = helix::printer::ActionType::DROPDOWN,
-                           .current_value = std::any(movement_override_.park_choice_raw),
-                           .options = override_dropdown_options(movement_override_,
-                                                                movement_override_.park_choice,
-                                                                movement_override_.park_choice_raw),
+                           .current_value = std::any(park_shown),
+                           .options = override_dropdown_options(movement_override_, park_shown),
                            .min_value = 0,
                            .max_value = 0,
                            .unit = "",

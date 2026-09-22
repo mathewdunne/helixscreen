@@ -3041,6 +3041,8 @@ translations:
   The left RFID reader in this CFS unit may need service: Puede que el lector RFID izquierdo de esta unidad CFS necesite servicio
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : La bobina cargada es {}, pero este archivo se laminó para {}. El filamento con relleno funciona con un caudal menor y necesita una boquilla endurecida.
+  ? The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
+  : Los motores se apagaron durante la pausa y hacer homing ahora podría golpear la impresión. Cancele la impresión para usar los controles de filamento.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : La impresión está pausada. Cambiar de herramienta ahora mueve el cabezal y cambia
     el filamento en la boquilla. Reanude la impresión una vez que el cambio termine.

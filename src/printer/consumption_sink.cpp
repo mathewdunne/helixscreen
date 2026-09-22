@@ -208,6 +208,7 @@ void AmsSlotSink::snapshot(float filament_used_mm) {
     snapshot_mm_ = filament_used_mm;
     snapshot_weight_g_ = info.remaining_weight_g;
     last_written_weight_g_ = info.remaining_weight_g;
+    computed_remaining_g_ = info.remaining_weight_g;
     last_persist_tick_ms_ = lv_tick_get();
     active_ = true;
     spdlog::info("[ConsumptionSink:{}] Snapshot: material={}, density={} "
@@ -260,11 +261,13 @@ void AmsSlotSink::apply_delta(float filament_used_mm) {
         snapshot_mm_ = filament_used_mm;
         snapshot_weight_g_ = info.remaining_weight_g;
         last_written_weight_g_ = info.remaining_weight_g;
+        computed_remaining_g_ = info.remaining_weight_g;
         return;
     }
 
     float consumed_g = filament::length_to_weight_g(consumed_mm, density_g_cm3_, diameter_mm_);
     float new_remaining_g = std::max(0.0f, snapshot_weight_g_ - consumed_g);
+    computed_remaining_g_ = new_remaining_g;
 
     if (std::abs(new_remaining_g - info.remaining_weight_g) < DELTA_WRITE_THRESHOLD_G) {
         return;
@@ -319,6 +322,23 @@ void AmsSlotSink::rebaseline(float filament_used_mm) {
     snapshot_mm_ = filament_used_mm;
     snapshot_weight_g_ = info_opt->remaining_weight_g;
     last_written_weight_g_ = info_opt->remaining_weight_g;
+    computed_remaining_g_ = info_opt->remaining_weight_g;
+}
+
+void AmsSlotSink::resume(float filament_used_mm) {
+    auto info_opt = current_info();
+    if (!info_opt.has_value()) {
+        active_ = false;
+        return;
+    }
+    // The same external-write test apply_delta() makes: a weight someone else
+    // wrote while this slot sat out replaces what it still owed.
+    const bool untouched =
+        std::abs(info_opt->remaining_weight_g - last_written_weight_g_) <= REBASELINE_THRESHOLD_G;
+    snapshot_mm_ = filament_used_mm;
+    snapshot_weight_g_ = untouched ? computed_remaining_g_ : info_opt->remaining_weight_g;
+    last_written_weight_g_ = info_opt->remaining_weight_g;
+    computed_remaining_g_ = snapshot_weight_g_;
 }
 
 } // namespace helix

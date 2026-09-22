@@ -2983,6 +2983,8 @@ translations:
   The left RFID reader in this CFS unit may need service: The left RFID reader in this CFS unit may need service
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
+  ? The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
+  : The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   The printer halted this print and cannot resume it. Restart from the beginning?: The

@@ -180,6 +180,43 @@ TEST_CASE_METHOD(AmsSlotSinkFixture, "AmsSlotSink: external write mid-tick rebas
     REQUIRE(after.remaining_weight_g > 296.0f);
 }
 
+TEST_CASE_METHOD(AmsSlotSinkFixture, "AmsSlotSink: resume carries consumption not yet written",
+                 "[consumption_sink][ams][indx]") {
+    AmsSlotSink sink(backend_idx, 0);
+    sink.snapshot(0.0f);
+
+    // 10 mm of 1.75mm PLA ≈ 0.03 g: under the write threshold, so held.
+    sink.apply_delta(10.0f);
+    REQUIRE(mock->get_slot_info(0).remaining_weight_g == 500.0f);
+
+    // Another slot feeds the nozzle, then this one becomes current again.
+    // Its next 10 mm brings the total owed to ≈ 0.06 g, which is written;
+    // starting over from the stored 500 g would still be holding ≈ 0.03 g.
+    sink.resume(10.0f);
+    sink.apply_delta(20.0f);
+    const float after = mock->get_slot_info(0).remaining_weight_g;
+    CHECK(after < 500.0f);
+    CHECK(after > 499.9f);
+}
+
+TEST_CASE_METHOD(AmsSlotSinkFixture,
+                 "AmsSlotSink: resume takes a weight written while the slot sat out",
+                 "[consumption_sink][ams][indx]") {
+    AmsSlotSink sink(backend_idx, 0);
+    sink.snapshot(0.0f);
+    sink.apply_delta(10.0f); // held under the write threshold
+
+    helix::SlotInfo info = mock->get_slot_info(0);
+    info.remaining_weight_g = 400.0f;
+    mock->sync_external_identity(0, info);
+
+    sink.resume(10.0f);
+    sink.apply_delta(1010.0f); // 1000 mm past resume ≈ 2.98 g
+    const float after = mock->get_slot_info(0).remaining_weight_g;
+    CHECK(after < 400.0f);
+    CHECK(after > 396.0f);
+}
+
 TEST_CASE_METHOD(AmsSlotSinkFixture,
                  "AmsSlotSink: apply_delta gates mid-stream when spoolman_id appears",
                  "[consumption_sink][ams]") {

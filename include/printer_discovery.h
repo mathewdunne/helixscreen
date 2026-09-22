@@ -751,6 +751,7 @@ class PrinterDiscovery {
             return false;
         }
         tool_names_ = tool_ids;
+        indx_inventory_finalized_ = true;
         select_ams_backend_priority();
         return mmu_type_ == AmsType::TOOL_CHANGER;
     }
@@ -973,6 +974,7 @@ class PrinterDiscovery {
         has_medusahc_ = false;
         medusahc_object_name_.clear();
         has_indx_ = false;
+        indx_inventory_finalized_ = false;
         has_chamber_heater_ = false;
         has_chamber_sensor_ = false;
         chamber_sensor_name_.clear();
@@ -1688,8 +1690,11 @@ class PrinterDiscovery {
             // klipper-toolchanger present, resolve_tool_commands() hands the
             // machine SELECT_TOOL/UNSELECT_TOOL and INDX sends nothing, so
             // "Bondtech INDX" there would name a system whose commands the
-            // printer never sees.
-            const bool indx_owns_swap = has_indx_ && !has_tool_changer_;
+            // printer never sees. The same holds for tools counted from
+            // extruder heaters: those are plain T<n>, and only a finalized
+            // INDX inventory makes resolve_tool_commands() claim the provider.
+            const bool indx_owns_swap =
+                has_indx_ && !has_tool_changer_ && indx_inventory_finalized_;
             detected_ams_systems_.push_back(
                 {AmsType::TOOL_CHANGER, indx_owns_swap ? "Bondtech INDX" : "Tool Changer"});
             mmu_type_ = AmsType::TOOL_CHANGER;
@@ -1804,6 +1809,9 @@ class PrinterDiscovery {
     bool has_medusahc_ = false;
     std::string medusahc_object_name_;
     bool has_indx_ = false;
+    /// tool_names_ is INDX's own inventory (finalize_indx_inventory()), not a
+    /// count of extruder heaters.
+    bool indx_inventory_finalized_ = false;
     bool has_chamber_heater_ = false;
     bool has_chamber_sensor_ = false;
     std::string chamber_sensor_name_;

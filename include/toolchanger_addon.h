@@ -324,6 +324,19 @@ std::vector<std::string> feeder_macro_candidates(const PrinterDiscovery& hw);
 /// return a value. Empty when no provider matches.
 std::vector<std::string> required_status_objects(const PrinterDiscovery& hw);
 
+/// Whether this printer's tool inventory is published only in runtime status,
+/// so the object list cannot describe its tools yet. True means discovery must
+/// hold hardware-dependent initialization until
+/// finalize_tool_inventory_from_status() has read the subscription reply; the
+/// object carrying it is among required_status_objects().
+bool tool_inventory_from_status(const PrinterDiscovery& hw);
+
+/// Read the tool inventory out of the subscription reply's initial @p status
+/// and finalize it into @p hw. Logs and leaves @p hw untouched when the reply
+/// carries no usable inventory; the printer then completes discovery with no
+/// tool-changer backend.
+void finalize_tool_inventory_from_status(PrinterDiscovery& hw, const nlohmann::json& status);
+
 /// Pull an authoritative reading out of a Moonraker status frame. nullopt means
 /// "no news" - either this printer has no add-on, or this frame simply carried
 /// none of its fields. Callers must treat nullopt as no news, never as cleared:

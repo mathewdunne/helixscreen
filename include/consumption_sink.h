@@ -122,6 +122,12 @@ class AmsSlotSink : public IConsumptionSink {
     void flush() override;
     void rebaseline(float filament_used_mm) override;
 
+    /// Rebaseline for a slot becoming current again after another slot fed the
+    /// nozzle. Unlike rebaseline(), consumption the slot's previous stint
+    /// computed but held under the write threshold is carried, not dropped;
+    /// a weight written from elsewhere meanwhile still wins.
+    void resume(float filament_used_mm);
+
     [[nodiscard]] int backend_index() const {
         return backend_index_;
     }
@@ -145,6 +151,9 @@ class AmsSlotSink : public IConsumptionSink {
     float density_g_cm3_ = 0.0f;
     float diameter_mm_ = 1.75f;
     float last_written_weight_g_ = 0.0f;
+    /// The remaining weight apply_delta() last computed, including any
+    /// consumption still under the write threshold.
+    float computed_remaining_g_ = 0.0f;
     uint32_t last_persist_tick_ms_ = 0;
     uint32_t persist_interval_override_ms_ = 0;
 

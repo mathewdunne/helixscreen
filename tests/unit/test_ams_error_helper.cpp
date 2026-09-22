@@ -205,3 +205,26 @@ TEST_CASE_METHOD(LVGLTestFixture, "the enum fallback names translate with the lo
     CHECK(std::string(ams_result_to_string(AmsResult::BUSY)) == lv_tr("Busy"));
     CHECK(std::string(ams_result_to_string(AmsResult::UNKNOWN_ERROR)) == lv_tr("Unknown Error"));
 }
+
+TEST_CASE("printer_owned_homing_refusal names pausing as the recovery while printing",
+          "[ams][indx][homing]") {
+    // A homed pause is allowed through printer_owned_homing_gate(), so
+    // "finish or cancel" would push the user to throw away a print they could
+    // pause and resume.
+    const auto printing =
+        AmsErrorHelper::printer_owned_homing_refusal(PrinterOwnedHomingGate::PrintActive);
+    CHECK(printing.result == AmsResult::WRONG_STATE);
+    CHECK(printing.suggestion == "Pause the print first, then load, unload, or change filament");
+
+    const auto unhomed =
+        AmsErrorHelper::printer_owned_homing_refusal(PrinterOwnedHomingGate::PausedUnhomed);
+    CHECK(unhomed.result == AmsResult::WRONG_STATE);
+    CHECK(unhomed.technical_msg.find("toolhead axes not homed") != std::string::npos);
+    // Homing is refused mid-print, so waiting or homing is no recovery.
+    CHECK(unhomed.user_msg == "Can't move filament while the print is paused");
+    CHECK(unhomed.suggestion ==
+          "The motors were turned off during the pause, and homing now could hit the print. "
+          "Cancel the print to use filament controls.");
+
+    CHECK(AmsErrorHelper::printer_owned_homing_refusal(PrinterOwnedHomingGate::Allow).success());
+}

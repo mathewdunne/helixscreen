@@ -274,11 +274,12 @@ void FilamentConsumptionTracker::on_filament_used_changed(int filament_mm) {
         // through this aggregate path) means the newly-current slot was NOT
         // mounted for the filament used before it became current, so charge
         // it only from the previous aggregate reading — never the whole print's
-        // history or a parked/uncurrent window it sat out. The current reading
-        // already contains the first real extrusion after the slot change, so
-        // apply it after moving the baseline.
+        // history or a parked/uncurrent window it sat out. resume() keeps what
+        // its previous stint consumed but had not yet written. The current
+        // reading already contains the first real extrusion after the slot
+        // change, so apply it after moving the baseline.
         if (changed_it->second) {
-            ams->rebaseline(previous_aggregate_filament_used_mm_);
+            ams->resume(previous_aggregate_filament_used_mm_);
         }
         ams->apply_delta(f_mm);
     }
