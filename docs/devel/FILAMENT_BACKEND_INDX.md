@@ -182,7 +182,9 @@ completion (no firmware phase reporting exists to confirm it).
 The stock `CHANGE_TOOL`/`PARK_TOOL` macros home conditionally themselves, so
 `AmsBackendToolChanger::delegates_homing_to_printer()` answers true for this provider:
 HelixScreen never prompts for home confirmation and never synthesizes a `G28` ahead of a
-Select/Park dispatch. That is safe while idle or printing, where the macro's own
+Select/Park dispatch while both movement commands remain on Auto. An explicit Select or
+Park override is only validated for existence and therefore uses HelixScreen's normal
+homing flow instead. Automatic commands are safe while idle, where the macro's own
 conditional `G28` runs unencumbered — but not safe on a **paused** print, where Layer 1
 (`helix::api::reject_homing_during_active_print`) blocks any HelixScreen-emitted `G28` but
 cannot see one buried inside a macro, and injecting a home into a paused print is exactly
@@ -191,6 +193,9 @@ paused-print precondition specific to this provider: a `PAUSED`-state dispatch r
 known-homed toolhead (all axes), refusing with **zero commands** otherwise. Unhomed or
 partially-homed axes refuse the same way. Ordinary Preparing/Printing-state refusals are
 unchanged, and every other provider's existing pause/homing behavior is untouched.
+Configured filament Load/Unload wrappers use the same final-send lifecycle/homed gate,
+including after a parameter prompt, so they cannot enter a hidden conditional-home path
+after the printer becomes paused and unhomed.
 
 ## Metadata and Spoolman (§8) — an explicit scope boundary
 

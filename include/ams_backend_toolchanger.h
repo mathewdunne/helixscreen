@@ -167,15 +167,15 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         return tool_commands_.present && tool_commands_.provider_name == "INDX";
     }
 
-    /// The upstream INDX macros home conditionally themselves — `CHANGE_TOOL`
-    /// only issues G28 when the toolhead is not already homed — so
-    /// HelixScreen must neither prompt for nor synthesize its own G28 ahead
-    /// of a Select/Park dispatch (plan §7.4/D6: "delegate idle homing to the
-    /// macro"). Scoped to INDX specifically, like shared_extruder_name():
-    /// other ToolCommands::present providers have no such documented
-    /// self-homing contract and keep ensure_homed_then()'s normal prompt.
+    /// The upstream INDX commands home conditionally themselves, so their
+    /// automatic Select/Park paths own homing. An explicit override is an
+    /// arbitrary user macro with no such contract; once either direction is
+    /// overridden, both directions conservatively use the normal homing flow.
     [[nodiscard]] bool delegates_homing_to_printer() const override {
-        return tool_commands_.present && tool_commands_.provider_name == "INDX";
+        using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
+        return tool_commands_.present && tool_commands_.provider_name == "INDX" &&
+               movement_override_.select_choice == Choice::kAuto &&
+               movement_override_.park_choice == Choice::kAuto;
     }
 
     // Path visualization (PARALLEL topology for tool changers)

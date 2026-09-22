@@ -123,6 +123,31 @@ namespace helix {
     return job_holds_machine(lifecycle);
 }
 
+/// Result of checking a command whose printer-side implementation may home.
+enum class PrinterOwnedHomingGate {
+    Allow,
+    PrintActive,
+    PausedUnhomed,
+};
+
+/**
+ * @brief May a printer-owned, conditionally-homing command run now?
+ *
+ * Preparing and Printing always refuse. Paused is allowed only while every
+ * toolhead axis is known homed, so the printer-side command cannot enter its
+ * hidden homing branch. Idle and terminal states are unrestricted.
+ */
+[[nodiscard]] constexpr PrinterOwnedHomingGate printer_owned_homing_gate(PrintState lifecycle,
+                                                                         bool toolhead_homed) {
+    if (lifecycle == PrintState::Preparing || lifecycle == PrintState::Printing) {
+        return PrinterOwnedHomingGate::PrintActive;
+    }
+    if (lifecycle == PrintState::Paused && !toolhead_homed) {
+        return PrinterOwnedHomingGate::PausedUnhomed;
+    }
+    return PrinterOwnedHomingGate::Allow;
+}
+
 } // namespace helix
 
 /**

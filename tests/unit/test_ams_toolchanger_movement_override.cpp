@@ -186,7 +186,8 @@ TEST_CASE("Movement override: a valid Select override outranks the T<n> shortcut
 
     auto err = h.change_tool(2);
     REQUIRE(err.success());
-    REQUIRE_FALSE(h.sent().empty());
+    REQUIRE(h.sent().size() == 2);
+    CHECK(h.sent().front() == "G28");
     CHECK(h.sent().back() == "MY_CHANGE TOOL=2");
 }
 
@@ -220,19 +221,21 @@ TEST_CASE("Movement override: Auto restores the automatic T<n>/CHANGE_TOOL choic
 TEST_CASE("Movement override: a valid Park override outranks PARK_TOOL", "[indx][dispatch]") {
     MovementHelper h(4);
     h.set_tool_commands(indx_commands(4));
-    ToolMovementOverride ov;
-    ov.park_choice = Choice::kValid;
-    ov.park_macro = "MY_PARK";
-    h.set_tool_movement_override(ov);
     REQUIRE(h.change_tool(1).success());
     // finalize_dispatch_after_macro() resolves through UpdateQueue (token.defer()),
     // not synchronously -- drain before the dependent unload or IDLE never lands
     // and is_busy() refuses it.
     helix::ui::UpdateQueue::instance().drain();
 
+    ToolMovementOverride ov;
+    ov.park_choice = Choice::kValid;
+    ov.park_macro = "MY_PARK";
+    h.set_tool_movement_override(ov);
+
     auto err = h.unload_filament(1);
     REQUIRE(err.success());
-    REQUIRE_FALSE(h.sent().empty());
+    REQUIRE(h.sent().size() == 3);
+    CHECK(h.sent()[1] == "G28");
     // Bare macro -- a parking override takes no argument (§7.1).
     CHECK(h.sent().back() == "MY_PARK");
 }

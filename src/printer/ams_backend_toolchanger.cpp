@@ -1140,27 +1140,23 @@ uint32_t AmsBackendToolChanger::dispatch_timeout_ms() const {
 }
 
 AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction action) {
-    // Paused-print precondition (plan §7.4/D6), INDX only: delegates_homing_to_printer()
-    // makes ensure_homed_then() skip its own toolhead_homed() check below, deferring
-    // entirely to the macro's own conditional G28 — correct while idle or printing,
-    // where that G28 runs freely. During a PAUSED print it is not: Layer 1
-    // (helix::api::reject_homing_during_active_print) blocks any HelixScreen-emitted
-    // G28 while paused, but cannot see one buried inside this macro, and injecting a
-    // home into a paused print is exactly what this plan forbids. So a paused
-    // dispatch on this provider requires a KNOWN homed toolhead before the gcode
-    // ever leaves — zero commands and an actionable refusal otherwise, never a
-    // synthesized home. Checked here, immediately before the send: this backend's
-    // Select/Park path has no parameter-prompt step in between to invalidate a
-    // stale answer.
-    if (tool_commands_.present && tool_commands_.provider_name == "INDX" && api_) {
+    // Only the known automatic INDX commands own homing. Custom movement
+    // overrides use ensure_homed_then() below like any arbitrary motion macro.
+    if (delegates_homing_to_printer() && api_) {
         const auto lifecycle = api_->printer_state().get_print_lifecycle();
-        if (lifecycle == PrintState::Paused &&
-            !helix::toolhead_is_homed(api_->printer_state())) {
+        switch (helix::printer_owned_homing_gate(lifecycle,
+                                                 helix::toolhead_is_homed(api_->printer_state()))) {
+        case PrinterOwnedHomingGate::PrintActive:
+            return AmsErrorHelper::print_active(lifecycle == PrintState::Paused,
+                                                /*pause_allows_ops=*/false);
+        case PrinterOwnedHomingGate::PausedUnhomed:
             spdlog::warn("[AMS ToolChanger] Refusing INDX dispatch on a PAUSED print: "
                          "toolhead axes are not confirmed homed");
             return AmsErrorHelper::wrong_state(
                 "toolhead axes not homed",
                 "home the printer (outside this paused print) before this operation");
+        case PrinterOwnedHomingGate::Allow:
+            break;
         }
     }
 

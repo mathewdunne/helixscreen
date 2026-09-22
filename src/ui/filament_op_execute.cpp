@@ -14,6 +14,7 @@
 #include "filament_op_router.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
+#include "print_lifecycle_state.h"
 #include "printer_state.h"
 #include "safety_settings_manager.h"
 #include "standard_macros.h"
@@ -293,6 +294,39 @@ void send_after_before_macro(const FilamentOpSurface& surface, const FilamentOpP
     });
 }
 
+/// Recheck a printer-owned homing command at the final send boundary. The
+/// parameter dialog and before_macro hook can both outlive the state in which
+/// the user first tapped the operation.
+bool allow_printer_owned_homing(const FilamentOpSurface& surface, const FilamentOpPlan& plan,
+                                IMoonrakerAPI& api, bool printer_owns_homing) {
+    if (!printer_owns_homing) {
+        return true;
+    }
+
+    const auto lifecycle = api.printer_state().get_print_lifecycle();
+    AmsError refusal;
+    switch (helix::printer_owned_homing_gate(lifecycle,
+                                             helix::toolhead_is_homed(api.printer_state()))) {
+    case PrinterOwnedHomingGate::Allow:
+        return true;
+    case PrinterOwnedHomingGate::PrintActive:
+        refusal = AmsErrorHelper::print_active(lifecycle == PrintState::Paused,
+                                               /*pause_allows_ops=*/false);
+        break;
+    case PrinterOwnedHomingGate::PausedUnhomed:
+        refusal = AmsErrorHelper::wrong_state(
+            "toolhead axes not homed",
+            "home the printer (outside this paused print) before this operation");
+        break;
+    }
+
+    spdlog::warn("{} Refusing printer-owned homing command: {}", surface.log_tag,
+                 refusal.technical_msg);
+    unwind_async(surface, plan);
+    helix::ui::notify_ams_error(refusal);
+    return false;
+}
+
 } // namespace
 
 // ============================================================================
@@ -314,6 +348,7 @@ void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurfac
 
     const auto& load_info = StandardMacros::instance().get(StandardMacroSlot::LoadFilament);
     const helix::ui::FilamentOpPlan plan = plan_live_load(sys, caps, slot);
+    const bool printer_owns_homing = caps.has_separate_filament_operation;
 
     switch (plan.tier) {
     case helix::ui::FilamentTier::AmsBackend: {
@@ -374,34 +409,38 @@ void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurfac
         const FilamentOpSurface s = surface;
         helix::ui::dispatch_filament_macro(
             macro_name, surface.param_policy,
-            [api, s, plan](const helix::MacroParamResult& result) {
+            [api, s, plan, printer_owns_homing](const helix::MacroParamResult& result) {
                 // Under ParamPolicy::Prompt this lands whenever the user presses
                 // Run, which can be after the asking surface is gone.
-                guarded(s, [api, s, plan, params = result.params]() {
+                guarded(s, [api, s, plan, params = result.params, printer_owns_homing]() {
                     begin(s, plan);
-                    send_after_before_macro(s, plan, "load", [api, s, plan, params]() {
-                        // execute_macro()'s reply lands when the script has RUN, so
-                        // these are completion callbacks, not "started" ones.
-                        const bool dispatched = StandardMacros::instance().execute(
-                            StandardMacroSlot::LoadFilament, api, params,
-                            [s]() {
-                                spdlog::info("{} Load filament finished", s.log_tag);
-                                finished(s, s.on_async_success);
-                            },
-                            [s, plan](const MoonrakerError& err) {
-                                spdlog::error("{} Failed to load filament: {}", s.log_tag,
-                                              err.message);
+                    send_after_before_macro(
+                        s, plan, "load", [api, s, plan, params, printer_owns_homing]() {
+                            if (!allow_printer_owned_homing(s, plan, *api, printer_owns_homing)) {
+                                return;
+                            }
+                            // execute_macro()'s reply lands when the script has RUN, so
+                            // these are completion callbacks, not "started" ones.
+                            const bool dispatched = StandardMacros::instance().execute(
+                                StandardMacroSlot::LoadFilament, api, params,
+                                [s]() {
+                                    spdlog::info("{} Load filament finished", s.log_tag);
+                                    finished(s, s.on_async_success);
+                                },
+                                [s, plan](const MoonrakerError& err) {
+                                    spdlog::error("{} Failed to load filament: {}", s.log_tag,
+                                                  err.message);
+                                    unwind_async(s, plan);
+                                    report_op_error(err, "load");
+                                },
+                                IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+                            if (!dispatched) {
+                                // Empty slot or no API: neither callback will ever fire,
+                                // so nothing else would release what begin() armed.
+                                spdlog::warn("{} Load macro did not dispatch", s.log_tag);
                                 unwind_async(s, plan);
-                                report_op_error(err, "load");
-                            },
-                            IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
-                        if (!dispatched) {
-                            // Empty slot or no API: neither callback will ever fire,
-                            // so nothing else would release what begin() armed.
-                            spdlog::warn("{} Load macro did not dispatch", s.log_tag);
-                            unwind_async(s, plan);
-                        }
-                    });
+                            }
+                        });
                 });
             },
             known_values(surface, FilamentMacroOp::Load));
@@ -465,6 +504,7 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
 
     const auto& unload_info = StandardMacros::instance().get(StandardMacroSlot::UnloadFilament);
     const helix::ui::FilamentOpPlan plan = plan_live_unload(caps, slot, target_is_loaded);
+    const bool printer_owns_homing = caps.has_separate_filament_operation;
 
     switch (plan.tier) {
     case helix::ui::FilamentTier::AmsBackend: {
@@ -508,28 +548,32 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
         const FilamentOpSurface s = surface;
         helix::ui::dispatch_filament_macro(
             macro_name, surface.param_policy,
-            [api, s, plan](const helix::MacroParamResult& result) {
-                guarded(s, [api, s, plan, params = result.params]() {
+            [api, s, plan, printer_owns_homing](const helix::MacroParamResult& result) {
+                guarded(s, [api, s, plan, params = result.params, printer_owns_homing]() {
                     begin(s, plan);
-                    send_after_before_macro(s, plan, "unload", [api, s, plan, params]() {
-                        const bool dispatched = StandardMacros::instance().execute(
-                            StandardMacroSlot::UnloadFilament, api, params,
-                            [s]() {
-                                spdlog::info("{} Unload filament finished", s.log_tag);
-                                finished(s, s.on_async_success);
-                            },
-                            [s, plan](const MoonrakerError& err) {
-                                spdlog::error("{} Failed to unload filament: {}", s.log_tag,
-                                              err.message);
+                    send_after_before_macro(
+                        s, plan, "unload", [api, s, plan, params, printer_owns_homing]() {
+                            if (!allow_printer_owned_homing(s, plan, *api, printer_owns_homing)) {
+                                return;
+                            }
+                            const bool dispatched = StandardMacros::instance().execute(
+                                StandardMacroSlot::UnloadFilament, api, params,
+                                [s]() {
+                                    spdlog::info("{} Unload filament finished", s.log_tag);
+                                    finished(s, s.on_async_success);
+                                },
+                                [s, plan](const MoonrakerError& err) {
+                                    spdlog::error("{} Failed to unload filament: {}", s.log_tag,
+                                                  err.message);
+                                    unwind_async(s, plan);
+                                    report_op_error(err, "unload");
+                                },
+                                IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+                            if (!dispatched) {
+                                spdlog::warn("{} Unload macro did not dispatch", s.log_tag);
                                 unwind_async(s, plan);
-                                report_op_error(err, "unload");
-                            },
-                            IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
-                        if (!dispatched) {
-                            spdlog::warn("{} Unload macro did not dispatch", s.log_tag);
-                            unwind_async(s, plan);
-                        }
-                    });
+                            }
+                        });
                 });
             },
             known_values(surface, FilamentMacroOp::Unload));
