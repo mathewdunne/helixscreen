@@ -445,6 +445,19 @@ std::vector<std::string> tool_movement_macro_candidates(const PrinterDiscovery& 
     return out;
 }
 
+namespace {
+
+bool movement_macro_matches_direction(const std::string& macro, bool select) {
+    // These known commands have fixed argument and movement contracts. Other
+    // macros can be printer-specific overrides for either direction.
+    if (select) {
+        return macro != "PARK_TOOL" && macro != "UNSELECT_TOOL" && macro != "DROP_TOOL";
+    }
+    return macro != "CHANGE_TOOL" && macro != "SELECT_TOOL";
+}
+
+} // namespace
+
 ToolMovementOverride resolve_tool_movement_override(const PrinterDiscovery& hw,
                                                     const std::string& select_choice,
                                                     const std::string& park_choice) {
@@ -457,36 +470,51 @@ ToolMovementOverride resolve_tool_movement_override(const PrinterDiscovery& hw,
     // command, so a hand-edited settings.json in any casing still resolves.
     // The macro sent is that alias, not the raw spelling.
     if (result.select_choice_raw != kAutoMacro) {
-        if (hw.has_macro(result.select_choice_raw)) {
+        const std::string macro = to_upper(result.select_choice_raw);
+        if (hw.has_macro(result.select_choice_raw) &&
+            movement_macro_matches_direction(macro, true)) {
             result.select_choice = ToolMovementOverride::Choice::kValid;
-            result.select_macro = to_upper(result.select_choice_raw);
+            result.select_macro = macro;
         } else {
             result.select_choice = ToolMovementOverride::Choice::kInvalid;
         }
     }
     if (result.park_choice_raw != kAutoMacro) {
-        if (hw.has_macro(result.park_choice_raw)) {
+        const std::string macro = to_upper(result.park_choice_raw);
+        if (hw.has_macro(result.park_choice_raw) &&
+            movement_macro_matches_direction(macro, false)) {
             result.park_choice = ToolMovementOverride::Choice::kValid;
-            result.park_macro = to_upper(result.park_choice_raw);
+            result.park_macro = macro;
         } else {
             result.park_choice = ToolMovementOverride::Choice::kInvalid;
         }
     }
 
     auto candidates = tool_movement_macro_candidates(hw);
-    if (!candidates.empty()) {
-        result.macro_options.emplace_back(kAutoMacro);
-        result.macro_options.insert(result.macro_options.end(), candidates.begin(),
-                                    candidates.end());
-    }
-    result.accepted_macros = candidates;
-    for (const std::string* macro : {&result.select_macro, &result.park_macro}) {
-        if (!macro->empty() &&
-            std::find(result.accepted_macros.begin(), result.accepted_macros.end(), *macro) ==
-                result.accepted_macros.end()) {
-            result.accepted_macros.push_back(*macro);
+    for (const auto& macro : candidates) {
+        if (movement_macro_matches_direction(macro, true)) {
+            if (result.select_macro_options.empty()) {
+                result.select_macro_options.emplace_back(kAutoMacro);
+            }
+            result.select_macro_options.push_back(macro);
+            result.select_accepted_macros.push_back(macro);
+        }
+        if (movement_macro_matches_direction(macro, false)) {
+            if (result.park_macro_options.empty()) {
+                result.park_macro_options.emplace_back(kAutoMacro);
+            }
+            result.park_macro_options.push_back(macro);
+            result.park_accepted_macros.push_back(macro);
         }
     }
+    auto add_stored_choice = [](const std::string& macro, std::vector<std::string>& accepted) {
+        if (!macro.empty() &&
+            std::find(accepted.begin(), accepted.end(), macro) == accepted.end()) {
+            accepted.push_back(macro);
+        }
+    };
+    add_stored_choice(result.select_macro, result.select_accepted_macros);
+    add_stored_choice(result.park_macro, result.park_accepted_macros);
     return result;
 }
 

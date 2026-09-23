@@ -274,14 +274,15 @@ struct ToolMovementOverride {
     /// override takes no argument.
     std::string park_macro;
 
-    /// Options for the settings picker: kAutoMacro followed by the plausible
-    /// macros this printer reports. Empty when there is nothing to choose from.
-    std::vector<std::string> macro_options;
+    /// Options for each settings picker: kAutoMacro followed by plausible
+    /// macros for that direction. Empty when there is nothing to choose from.
+    std::vector<std::string> select_macro_options;
+    std::vector<std::string> park_macro_options;
 
-    /// Uppercased macros a later pick may name and still be valid: every
-    /// candidate plus each choice that resolved valid, which the picker lists
-    /// even when the candidate filter leaves it out.
-    std::vector<std::string> accepted_macros;
+    /// Uppercased macros a later pick may name and still be valid for that
+    /// direction: candidates plus a valid stored choice outside the filter.
+    std::vector<std::string> select_accepted_macros;
+    std::vector<std::string> park_accepted_macros;
 };
 
 /// Resolve the stored Select/Park overrides against this printer's actual

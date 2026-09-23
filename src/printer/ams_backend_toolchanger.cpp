@@ -1682,7 +1682,8 @@ using ToolMovementOverride = helix::toolchanger_addon::ToolMovementOverride;
 /// a stored choice this printer no longer reports is refused by do_change_tool
 /// ()/do_unload_filament() and the picker is the only way back to "auto".
 bool movement_override_configurable(const ToolMovementOverride& ov) {
-    return !ov.macro_options.empty() || ov.select_choice != ToolMovementOverride::Choice::kAuto ||
+    return !ov.select_macro_options.empty() || !ov.park_macro_options.empty() ||
+           ov.select_choice != ToolMovementOverride::Choice::kAuto ||
            ov.park_choice != ToolMovementOverride::Choice::kAuto;
 }
 
@@ -1701,9 +1702,9 @@ const std::string& override_dropdown_value(ToolMovementOverride::Choice choice,
 /// on the first option and so displays "auto" while the override is in force
 /// -- and picking "auto" then changes no index, fires no
 /// LV_EVENT_VALUE_CHANGED, and clears nothing.
-std::vector<std::string> override_dropdown_options(const ToolMovementOverride& ov,
+std::vector<std::string> override_dropdown_options(const std::vector<std::string>& candidates,
                                                    const std::string& shown) {
-    std::vector<std::string> options = ov.macro_options;
+    std::vector<std::string> options = candidates;
     if (options.empty()) {
         options.emplace_back(helix::toolchanger_addon::kAutoMacro);
     }
@@ -1750,7 +1751,8 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
                            .description = "Which macro selects a tool (sent as MACRO TOOL=<n>)",
                            .type = helix::printer::ActionType::DROPDOWN,
                            .current_value = std::any(select_shown),
-                           .options = override_dropdown_options(movement_override_, select_shown),
+                           .options = override_dropdown_options(
+                               movement_override_.select_macro_options, select_shown),
                            .min_value = 0,
                            .max_value = 0,
                            .unit = "",
@@ -1764,7 +1766,8 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
                            .description = "Which macro parks the current tool",
                            .type = helix::printer::ActionType::DROPDOWN,
                            .current_value = std::any(park_shown),
-                           .options = override_dropdown_options(movement_override_, park_shown),
+                           .options = override_dropdown_options(
+                               movement_override_.park_macro_options, park_shown),
                            .min_value = 0,
                            .max_value = 0,
                            .unit = "",
@@ -1863,7 +1866,18 @@ AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_
         const std::string macro = helix::to_upper(*chosen);
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            const auto& accepted = movement_override_.accepted_macros;
+            const auto& accepted = is_select ? movement_override_.select_accepted_macros
+                                             : movement_override_.park_accepted_macros;
+            const auto& options = is_select ? movement_override_.select_macro_options
+                                            : movement_override_.park_macro_options;
+            const auto& opposite_options = is_select ? movement_override_.park_macro_options
+                                                     : movement_override_.select_macro_options;
+            if (!is_auto && std::find(options.begin(), options.end(), macro) == options.end() &&
+                std::find(opposite_options.begin(), opposite_options.end(), macro) !=
+                    opposite_options.end()) {
+                return AmsErrorHelper::invalid_parameter(
+                    "Macro moves the tool in the opposite direction");
+            }
             const bool is_known =
                 is_auto || std::find(accepted.begin(), accepted.end(), macro) != accepted.end();
             const Choice resolved =

@@ -204,9 +204,14 @@ TEST_CASE("mock: an INDX swap answers its rpc only once the swap lands",
     MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24, 100.0);
 
     int acks = 0;
+    int tool_at_ack = -2;
     auto send = [&](const char* script) {
         client.send_jsonrpc(
-            "printer.gcode.script", json{{"script", script}}, [&](const json&) { ++acks; },
+            "printer.gcode.script", json{{"script", script}},
+            [&](const json&) {
+                tool_at_ack = client.indx_save_variables_status_json()["variables"]["active_tool"];
+                ++acks;
+            },
             [](const MoonrakerError&) {});
     };
 
@@ -216,6 +221,7 @@ TEST_CASE("mock: an INDX swap answers its rpc only once the swap lands",
     CHECK(acks == 0);
     client.advance_indx_swap();
     CHECK(acks == 1);
+    CHECK(tool_at_ack == 1);
     CHECK(client.indx_save_variables_status_json()["variables"]["active_tool"] == 1);
 
     // With nothing in flight, ordinary gcode still answers at once.

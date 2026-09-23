@@ -445,15 +445,20 @@ TEST_CASE_METHOD(NozzleTempsFixture,
     REQUIRE(tools.size() == 3);
     REQUIRE(tools[0].display_label != tools[2].display_label);
     CHECK(row_text("tool_label_short") == tools[0].display_label);
+    CHECK(row_text("tool_label_long") == "Nozzle 1");
+    CHECK(row_text("tool_label_number") == "1");
 
     mount_indx_tool(backend, 2);
     CHECK(row_text("tool_label_short") == ToolState::instance().tools()[2].display_label);
+    CHECK(row_text("tool_label_long") == "Nozzle 3");
+    CHECK(row_text("tool_label_number") == "3");
 
     // Parked: no tool is mounted, so the row names the nozzle, never the raw
     // klipper object.
     mount_indx_tool(backend, -1);
     CHECK(row_text("tool_label_short") != "extruder");
-    CHECK(row_text("tool_label_long") != "extruder");
+    CHECK(row_text("tool_label_long") == "Nozzle");
+    CHECK(row_text("tool_label_number").empty());
 }
 
 TEST_CASE_METHOD(NozzleTempsFixture,

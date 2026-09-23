@@ -1862,24 +1862,31 @@ nlohmann::json MoonrakerClientMock::indx_save_variables_status_json() const {
 static constexpr int kIndxSwapNotifications = 2;
 
 void MoonrakerClientMock::start_indx_swap(int tool) {
-    indx_target_tool_sim_.store(tool);
-    indx_phase_ticks_sim_.store(kIndxSwapNotifications);
+    {
+        std::lock_guard<std::mutex> lock(indx_swap_mutex_);
+        indx_target_tool_sim_.store(tool);
+        indx_phase_ticks_sim_.store(kIndxSwapNotifications);
+    }
     spdlog::info("[MoonrakerClientMock] INDX swap armed: {} -> {}", indx_current_tool_sim_.load(),
                  tool);
 }
 
 void MoonrakerClientMock::advance_indx_swap() {
-    if (indx_phase_ticks_sim_.load() <= 0) {
-        return;
-    }
-    if (indx_phase_ticks_sim_.fetch_sub(1) > 1) {
-        return; // still busy
-    }
-    const int target = indx_target_tool_sim_.load();
     std::vector<std::function<void(const nlohmann::json&)>> acks;
+    int target;
     {
-        std::lock_guard<std::mutex> lock(indx_swap_ack_mutex_);
+        std::lock_guard<std::mutex> lock(indx_swap_mutex_);
+        const int ticks = indx_phase_ticks_sim_.load();
+        if (ticks <= 0) {
+            return;
+        }
+        if (ticks > 1) {
+            indx_phase_ticks_sim_.store(ticks - 1);
+            return; // still busy
+        }
+        target = indx_target_tool_sim_.load();
         indx_current_tool_sim_.store(target);
+        indx_phase_ticks_sim_.store(0);
         acks.swap(indx_swap_acks_);
     }
     spdlog::info("[MoonrakerClientMock] INDX swap complete: active_tool={}", target);
@@ -1893,9 +1900,9 @@ bool MoonrakerClientMock::hold_ack_until_indx_swap_lands(
     if (!is_mock_indx()) {
         return false;
     }
-    // advance_indx_swap() drops the tick count before taking this lock, so a
-    // swap that has landed reads 0 here and a held ack is always collected.
-    std::lock_guard<std::mutex> lock(indx_swap_ack_mutex_);
+    // The final tick and active tool update happen under this lock, so an ack
+    // is either held for the swap or released after the new tool is reported.
+    std::lock_guard<std::mutex> lock(indx_swap_mutex_);
     if (indx_phase_ticks_sim_.load() <= 0) {
         return false;
     }

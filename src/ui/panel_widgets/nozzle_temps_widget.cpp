@@ -579,19 +579,27 @@ void NozzleTempsWidget::create_extruder_row(lv_obj_t* container, ExtruderRow& ro
     if (short_name.empty())
         short_name = unnamed;
 
-    // Long label: prefer the user-friendly "Nozzle N" from PrinterTemperatureState
-    // when the tool's gcode identity is just the default Tn pattern. For
-    // toolchangers with viesturz-named tools (e.g. "Left", "Right"), the
-    // configured tool name is already meaningful — keep it.
-    std::string long_name = gcode_name.empty() ? unnamed : gcode_name;
-    if (helix::ui::is_generated_tool_name(gcode_name) && extruder_display)
-        long_name = *extruder_display;
+    // A shared extruder has one display name regardless of which nozzle is
+    // mounted. Its long and numeric labels must identify the active tool.
+    std::string long_name;
+    if (shared_nozzle) {
+        long_name = tool_state.nozzle_label();
+    } else {
+        // Separate extruders keep their friendly "Nozzle N" names for default
+        // Tn tools and their configured names for named tools.
+        long_name = gcode_name.empty() ? unnamed : gcode_name;
+        if (helix::ui::is_generated_tool_name(gcode_name) && extruder_display)
+            long_name = *extruder_display;
+    }
 
     row.short_name = std::move(short_name);
     row.long_name = std::move(long_name);
-    // The number rung: the 1-based display number, the one label that fits
-    // where no spelling does and still tells four icon rows apart.
-    row.number_name = helix::ui::lane_number_text(static_cast<int>(extruder_rows_.size()));
+    // The number rung follows the mounted tool on a shared nozzle. A parked
+    // nozzle has no tool number to show.
+    const auto* active_tool = shared_nozzle ? tool_state.active_tool() : nullptr;
+    row.number_name = shared_nozzle
+                          ? (active_tool ? helix::ui::lane_number_text(active_tool->index) : "")
+                          : helix::ui::lane_number_text(static_cast<int>(extruder_rows_.size()));
 
     // Create row from XML template. All three spellings are written once as
     // data; which one shows, the row width and the font are bound off the

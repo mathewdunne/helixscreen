@@ -131,7 +131,7 @@ PrinterDiscovery discovery_with_macro(const std::string& macro_name) {
 }
 
 /// A printer whose macros none of tool_movement_macro_candidates()' name
-/// fragments match, so macro_options comes back empty.
+/// fragments match, so both movement option lists come back empty.
 PrinterDiscovery discovery_without_candidates() {
     PrinterDiscovery hw;
     hw.parse_objects(json::array({"extruder", "gcode_macro HEAT_SOAK"}));
@@ -209,15 +209,82 @@ TEST_CASE("Movement override: a stored choice this printer does not report is in
     CHECK(ov.select_choice_raw == "GHOST_MACRO");
 }
 
-TEST_CASE("Movement override: macro_options lists Auto plus plausible candidates",
+TEST_CASE("Movement override: direction options list Auto plus plausible candidates",
           "[indx][dispatch]") {
     auto hw = discovery_with_macro("CUSTOM_PARK_TOOL");
     auto ov = toolchanger_addon::resolve_tool_movement_override(hw);
 
-    REQUIRE_FALSE(ov.macro_options.empty());
-    CHECK(ov.macro_options.front() == toolchanger_addon::kAutoMacro);
-    CHECK(std::find(ov.macro_options.begin(), ov.macro_options.end(), "CUSTOM_PARK_TOOL") !=
-          ov.macro_options.end());
+    REQUIRE_FALSE(ov.park_macro_options.empty());
+    CHECK(ov.park_macro_options.front() == toolchanger_addon::kAutoMacro);
+    CHECK(std::find(ov.park_macro_options.begin(), ov.park_macro_options.end(),
+                    "CUSTOM_PARK_TOOL") != ov.park_macro_options.end());
+}
+
+TEST_CASE("Movement override: stock commands appear only in their movement picker",
+          "[indx][dispatch]") {
+    PrinterDiscovery hw;
+    hw.parse_objects(json::array({"extruder", "gcode_macro PARK_TOOL", "gcode_macro CHANGE_TOOL",
+                                  "gcode_macro CUSTOM_TOOL_MACRO"}));
+    auto ov = toolchanger_addon::resolve_tool_movement_override(hw);
+
+    CHECK(std::find(ov.select_macro_options.begin(), ov.select_macro_options.end(), "PARK_TOOL") ==
+          ov.select_macro_options.end());
+    CHECK(std::find(ov.park_macro_options.begin(), ov.park_macro_options.end(), "CHANGE_TOOL") ==
+          ov.park_macro_options.end());
+    CHECK(std::find(ov.select_macro_options.begin(), ov.select_macro_options.end(),
+                    "CHANGE_TOOL") != ov.select_macro_options.end());
+    CHECK(std::find(ov.park_macro_options.begin(), ov.park_macro_options.end(), "PARK_TOOL") !=
+          ov.park_macro_options.end());
+    CHECK(std::find(ov.select_macro_options.begin(), ov.select_macro_options.end(),
+                    "CUSTOM_TOOL_MACRO") != ov.select_macro_options.end());
+    CHECK(std::find(ov.park_macro_options.begin(), ov.park_macro_options.end(),
+                    "CUSTOM_TOOL_MACRO") != ov.park_macro_options.end());
+
+    MovementHelper h(3);
+    h.set_tool_commands(indx_commands(3));
+    h.set_tool_movement_override(ov);
+    auto actions = h.get_device_actions();
+    CHECK(options_for(actions, "tool_select_macro") == ov.select_macro_options);
+    CHECK(options_for(actions, "tool_park_macro") == ov.park_macro_options);
+
+    CHECK_FALSE(
+        h.execute_device_action("tool_select_macro", std::any(std::string("PARK_TOOL"))).success());
+    CHECK_FALSE(
+        h.execute_device_action("tool_park_macro", std::any(std::string("CHANGE_TOOL"))).success());
+    CHECK(h.change_tool(1).success());
+    CHECK(h.sent().back() == "T1");
+}
+
+TEST_CASE("Movement override: stored opposite-direction commands refuse movement",
+          "[indx][dispatch]") {
+    PrinterDiscovery hw;
+    hw.parse_objects(json::array({"extruder", "gcode_macro PARK_TOOL", "gcode_macro CHANGE_TOOL"}));
+    auto ov = toolchanger_addon::resolve_tool_movement_override(hw, "park_tool", "change_tool");
+
+    CHECK(ov.select_choice == Choice::kInvalid);
+    CHECK(ov.park_choice == Choice::kInvalid);
+    MovementHelper h(3);
+    h.set_tool_commands(indx_commands(3));
+    h.set_tool_movement_override(ov);
+    CHECK_FALSE(h.change_tool(1).success());
+    CHECK(h.sent().empty());
+
+    auto actions = h.get_device_actions();
+    CHECK(value_for(actions, "tool_select_macro") == "park_tool");
+    CHECK(value_for(actions, "tool_park_macro") == "change_tool");
+    const auto select_options = options_for(actions, "tool_select_macro");
+    const auto park_options = options_for(actions, "tool_park_macro");
+    CHECK(std::find(select_options.begin(), select_options.end(), "park_tool") !=
+          select_options.end());
+    CHECK(std::find(park_options.begin(), park_options.end(), "change_tool") != park_options.end());
+
+    h.set_tool_movement_override(
+        toolchanger_addon::resolve_tool_movement_override(hw, "auto", "change_tool"));
+    REQUIRE(h.change_tool(1).success());
+    helix::ui::UpdateQueue::instance().drain();
+    const size_t before_park = h.sent().size();
+    CHECK_FALSE(h.unload_filament(1).success());
+    CHECK(h.sent().size() == before_park);
 }
 
 // =============================================================================
@@ -362,7 +429,7 @@ TEST_CASE("Movement override: a plain tool changer with no candidate macros expo
           "[indx][dispatch]") {
     MovementHelper h(2);
     h.set_tool_commands(indx_commands(2));
-    // No set_tool_movement_override() call -> macro_options stays empty.
+    // No set_tool_movement_override() call -> both option lists stay empty.
     CHECK(h.get_device_actions().empty());
     CHECK(h.get_device_sections().empty());
 }
@@ -395,7 +462,7 @@ TEST_CASE("Movement override: execute_device_action rejects an unknown macro nam
     h.set_tool_movement_override(toolchanger_addon::resolve_tool_movement_override(
         discovery_with_macro("CUSTOM_TOOL_MACRO")));
 
-    // Not among the resolved macro_options -- an unrecognized choice reaching
+    // Not among the resolved options -- an unrecognized choice reaching
     // execute_device_action() through anything other than the offered
     // dropdown values still resolves to Invalid, not a silent accept.
     auto err =
@@ -523,7 +590,7 @@ TEST_CASE("Movement override: re-picking a valid park choice outside the candida
 
 TEST_CASE("Movement override: a printer with no candidate macros still offers Auto to clear one",
           "[indx][dispatch]") {
-    // macro_options is empty here, which previously hid the whole section --
+    // Both movement option lists are empty here, which can hide the section --
     // leaving a stored choice this printer cannot resolve with no way back.
     MovementHelper h(2);
     h.set_tool_commands(indx_commands(2));

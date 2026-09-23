@@ -1986,8 +1986,8 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     std::atomic<int> indx_current_tool_sim_{-1}; ///< Physical active tool, -1 parked
     std::atomic<int> indx_target_tool_sim_{-1};  ///< Tool a pending swap will land on
     std::atomic<int> indx_phase_ticks_sim_{0};   ///< Sim ticks left before the swap lands
-    /// Orders a held ack against the swap landing, so none is stranded.
-    std::mutex indx_swap_ack_mutex_;
+    /// Serializes swap start/completion with held ack registration.
+    std::mutex indx_swap_mutex_;
     std::vector<std::function<void(const nlohmann::json&)>> indx_swap_acks_;
 
     // Cached chamber heater status key (updated by override_chamber_heater / populate)
