@@ -173,6 +173,12 @@ void FilamentConsumptionTracker::on_print_state_changed(PrintJobState state) {
     case PrintJobState::PRINTING:
         if (!print_in_progress_) {
             snapshot_all_sinks(mm);
+            previous_aggregate_filament_used_mm_ = mm;
+            // A fresh print's aggregate-path baseline is what snapshot_all_sinks()
+            // just established; a slot remembered from the PREVIOUS print (or
+            // from having been parked, which leaves no entry) must not make
+            // this print's own first tick look like a mid-print slot change.
+            last_current_slot_by_backend_.clear();
             warn_unreported_extruder_mappings();
             print_in_progress_ = true;
             // active_ is true iff at least one sink is tracking so that
@@ -209,6 +215,7 @@ void FilamentConsumptionTracker::on_filament_used_changed(int filament_mm) {
         return;
     }
     const float f_mm = static_cast<float>(filament_mm);
+    std::unordered_map<int, bool> became_current_by_backend;
 
     // Aggregate path: drives the ExternalSpoolSink always, and drives
     // AmsSlotSinks whose backend does NOT declare any per-extruder mapping
@@ -241,11 +248,50 @@ void FilamentConsumptionTracker::on_filament_used_changed(int filament_mm) {
         }
 
         // Single-extruder multi-slot backend: only the currently-loaded slot
-        // accrues the delta.
-        if (ams->slot_index() == backend->get_current_slot()) {
-            ams->apply_delta(f_mm);
+        // accrues the delta. Lanes feeding one ordinary extruder charge the
+        // current slot from its print-start snapshot, so an unload/reload of
+        // the same lane keeps every mm extruded in between.
+        if (!backend->shared_extruder_name().has_value()) {
+            if (ams->slot_index() == backend->get_current_slot()) {
+                ams->apply_delta(f_mm);
+            }
+            continue;
         }
+
+        // Record the backend's current slot once per aggregate notification,
+        // including -1 while parked. Every slot sink for this backend must see
+        // the same transition answer; updating it independently would let the
+        // first non-current sink consume the transition before the current sink.
+        const int current_slot = backend->get_current_slot();
+        auto [changed_it, inserted] =
+            became_current_by_backend.emplace(ams->backend_index(), false);
+        if (inserted) {
+            auto last_it = last_current_slot_by_backend_.find(ams->backend_index());
+            changed_it->second =
+                last_it != last_current_slot_by_backend_.end() && last_it->second != current_slot;
+            last_current_slot_by_backend_[ams->backend_index()] = current_slot;
+        }
+
+        if (ams->slot_index() != current_slot) {
+            continue;
+        }
+        // apply_delta() computes its decrement from the TOTAL filament used
+        // since ITS OWN snapshot, which is only correct while this slot has
+        // been continuously current since then. A shared-resource tool changer
+        // swapping tools mid-print means the newly-current slot was NOT
+        // mounted for the filament used before it became current, so charge
+        // it only from the previous aggregate reading — never the whole print's
+        // history or a parked/uncurrent window it sat out. resume() keeps what
+        // its previous stint consumed but had not yet written. The current
+        // reading already contains the first real extrusion after the slot
+        // change, so apply it after moving the baseline.
+        if (changed_it->second) {
+            ams->resume(previous_aggregate_filament_used_mm_);
+        }
+        ams->apply_delta(f_mm);
     }
+
+    previous_aggregate_filament_used_mm_ = f_mm;
 
     // Sinks may have toggled trackability on this tick (e.g. external write
     // made a previously untrackable sink trackable). Keep is_active() in sync.

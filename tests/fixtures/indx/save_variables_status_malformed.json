@@ -1,0 +1,36 @@
+{
+    "boolean_active_tool": {
+        "variables": {
+            "active_tool": true
+        }
+    },
+    "fractional_active_tool": {
+        "variables": {
+            "active_tool": 1.5
+        }
+    },
+    "non_numeric_string": {
+        "variables": {
+            "active_tool": "3junk"
+        }
+    },
+    "huge_number": {
+        "variables": {
+            "active_tool": 99999999999
+        }
+    },
+    "below_sentinel": {
+        "variables": {
+            "active_tool": -5
+        }
+    },
+    "out_of_range_for_six_tools": {
+        "variables": {
+            "active_tool": 6
+        }
+    },
+    "no_variables_key": {},
+    "empty_delta": {
+        "variables": {}
+    }
+}

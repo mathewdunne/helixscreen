@@ -1,0 +1,14 @@
+{
+    "six_tool": {
+        "tool_count": 6
+    },
+    "three_tool": {
+        "tool_count": 3
+    },
+    "one_tool": {
+        "tool_count": 1
+    },
+    "sixteen_tool": {
+        "tool_count": 16
+    }
+}

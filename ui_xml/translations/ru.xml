@@ -573,6 +573,8 @@
   <translation tag="Configure PRINT_START" ru="Настроить PRINT_START"/>
   <translation tag="Configure Spoolman integration and weight sync settings." ru="Настройте интеграцию со Spoolman и синхронизацию веса."/>
   <translation tag="Configure WiFi for this device, or skip if you&apos;re using Ethernet" ru="Настройте WiFi для этого устройства или пропустите, если используете Ethernet"/>
+  <translation tag="Configure a filament load macro in Settings first" ru="Сначала настройте макрос загрузки филамента в Настройках"/>
+  <translation tag="Configure a filament unload macro in Settings first" ru="Сначала настройте макрос выгрузки филамента в Настройках"/>
   <translation tag="Configure devices in Moonraker" ru="Настроить устройства в Moonraker"/>
   <translation tag="Configure label printer and auto-discovery" ru="Настройка принтера этикеток и автообнаружение"/>
   <translation tag="Configure printer sensors" ru="Настроить датчики принтера"/>
@@ -2737,6 +2739,7 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." ru="Вспомогательные макросы установлены и активируются после перезапуска Klipper."/>
   <translation tag="The left RFID reader in this CFS unit may need service" ru="Левому RFID-считывателю этого блока CFS может требоваться обслуживание"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." ru="Загружена катушка {}, но файл нарезан для {}. Филамент с наполнителем печатается с меньшим потоком и требует закалённого сопла."/>
+  <translation tag="The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls." ru="Моторы были отключены во время паузы, и парковка сейчас может задеть печать. Отмените печать, чтобы использовать управление филаментом."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." ru="Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" ru="Принтер остановил эту печать и не может её возобновить. Начать с начала?"/>
   <translation tag="The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear." ru="Принтер не запаркован. Продолжение выполнит парковку всех осей, печатающая головка переместится. Убедитесь, что стол свободен."/>
@@ -2858,9 +2861,12 @@
   <translation tag="Tool Switcher" ru="Переключатель инструментов"/>
   <translation tag="Tool change failed: {}" ru="Ошибка смены инструмента: {}"/>
   <translation tag="Tool change to T{}" ru="Смена инструмента на T{}"/>
+  <translation tag="Tool commands" ru="Команды инструмента"/>
   <translation tag="Tool mapping failed" ru="Ошибка сопоставления инструмента"/>
   <translation tag="Tool offsets (mm)" ru="Смещения инструментов (мм)"/>
   <translation tag="Tool offsets saved" ru="Смещения инструментов сохранены"/>
+  <translation tag="Tool park macro" ru="Макрос для парковки инструмента"/>
+  <translation tag="Tool select macro" ru="Макрос для выбора инструмента"/>
   <translation tag="Tool swap" ru="Смена инструмента"/>
   <translation tag="Toolhead" ru="Печатающая головка"/>
   <translation tag="Toolhead LED" ru="LED печатающей головки"/>
@@ -3047,6 +3053,9 @@
   <translation tag="When starting a print, you&apos;ll be able to choose whether to run %s. This saves time when you&apos;ve already done it recently or want more control over your print preparation." ru="При запуске печати вы сможете выбрать, запускать ли %s. Это экономит время, если вы уже делали это недавно или хотите больше контроля над подготовкой печати."/>
   <translation tag="Where UI sounds play" ru="Где воспроизводятся звуки интерфейса"/>
   <translation tag="Whether filament is loaded" ru="Загружен ли филамент"/>
+  <translation tag="Which macro parks the current tool" ru="Какой макрос паркует текущий инструмент"/>
+  <translation tag="Which macro selects a tool (sent as MACRO TOOL=&lt;n&gt;)" ru="Какой макрос выбирает инструмент (отправляется как MACRO TOOL=&lt;n&gt;)"/>
+  <translation tag="Which macro selects and parks a tool" ru="Какой макрос выбирает и паркует инструмент"/>
   <translation tag="Which macro the Close feeder button sends" ru="Какой макрос отправляет кнопка «Закрыть фидер»"/>
   <translation tag="Which macro the Open feeder button sends" ru="Какой макрос отправляет кнопка «Открыть фидер»"/>
   <translation tag="White" ru="Белый"/>

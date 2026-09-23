@@ -87,9 +87,13 @@ class NozzleTempsWidget : public PanelWidget {
     int cached_bed_target_ = 0;
 
     ObserverGuard version_observer_;
-    int rebuild_gen_ = 0;     // Generation counter to break infinite rebuild cycles (L074)
-    bool rebuilding_ = false; // Re-entrancy guard: drain() inside clear_rows() can fire
-                              // version_observer_ which calls rebuild_rows() again (#723)
+    /// Rebuilds rows when a shared-nozzle changer mounts another tool: its one
+    /// row is labelled after whichever tool is mounted.
+    ObserverGuard active_tool_observer_;
+    int observed_active_tool_ = -1; ///< Last active tool active_tool_observer_ saw
+    int rebuild_gen_ = 0;           // Generation counter to break infinite rebuild cycles (L074)
+    bool rebuilding_ = false;       // Re-entrancy guard: drain() inside clear_rows() can fire
+                                    // version_observer_ which calls rebuild_rows() again (#723)
 
     // MUST stay declared LAST: reverse-declaration destruction makes this the
     // first member torn down, invalidating every captured token before any

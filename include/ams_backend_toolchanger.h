@@ -90,9 +90,11 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     [[nodiscard]] bool should_hide_slot_tool_badge() const override {
         return true;
     }
-    // Marker for tool-changer expected-hardware recording during wizard setup.
+    // Marker for expected-hardware recording during wizard setup. Providers
+    // without a native toolchanger object identify themselves by the exact
+    // discovery object the validator can check on the next startup.
     [[nodiscard]] const char* get_klipper_object_name() const override {
-        return "toolchanger";
+        return is_indx_provider() ? "indx" : "toolchanger";
     }
     [[nodiscard]] helix::ui::LaneNoun lane_noun() const override {
         return helix::ui::LaneNoun::Tool;
@@ -124,11 +126,65 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// Klipper tool-changers have one extruder per tool. Tool N sources slot N
     /// directly — identity mapping — which activates per-extruder consumption
     /// tracking in FilamentConsumptionTracker.
+    ///
+    /// A shared-resource nozzle changer (shared_extruder_name() set) has no
+    /// such per-extruder identity: every tool reports the SAME physical
+    /// extruder, so an identity mapping here would double-count or
+    /// misattribute consumption across whichever tools share it. Returning
+    /// nullopt for every extruder in that case lets the aggregate
+    /// `filament_used` path — keyed on this backend's own current slot —
+    /// own consumption instead.
     [[nodiscard]] std::optional<int> slot_for_extruder(int extruder_idx) const override {
+        if (shared_extruder_name()) {
+            return std::nullopt;
+        }
         if (extruder_idx < 0 || extruder_idx >= static_cast<int>(get_system_info().total_slots)) {
             return std::nullopt;
         }
         return extruder_idx;
+    }
+
+    /// Bondtech INDX is the one provider on this backend whose tools all
+    /// drive one physical hot end: its own T<n>/PARK_TOOL commands swap only
+    /// the nozzle, never the whole toolhead, so there is exactly one Klipper
+    /// `extruder` object regardless of configured tool count.
+    [[nodiscard]] std::optional<std::string> shared_extruder_name() const override {
+        if (is_indx_provider()) {
+            return std::string("extruder");
+        }
+        return std::nullopt;
+    }
+
+    /// INDX has no klipper-toolchanger object to default a tool number from,
+    /// so a negative reading before the first saved active-tool value ever
+    /// arrives is an honest "unreported" rather than a fallback ToolState
+    /// should paper over with T0. Scoped to INDX specifically, like
+    /// shared_extruder_name(): ToolCommands::present is also true for a plain
+    /// multi-extruder printer (provider ""), where nothing ever writes
+    /// current_tool and the T0 default is the only active tool it gets.
+    [[nodiscard]] bool negative_active_tool_is_unreported() const override {
+        return is_indx_provider();
+    }
+
+    /// Whether a recognized changer extra drives this machine's swaps, as
+    /// opposed to a plain multi-extruder printer whose T<n> is Klipper's own
+    /// ACTIVATE_EXTRUDER. ToolCommands::present answers only "no
+    /// klipper-toolchanger", which both shapes share; a provider name is what
+    /// separates them. Everything written for a changer extra's own swap
+    /// contract - the ack-owned dispatch ceiling, the Select/Park override
+    /// pickers - scopes on this, never on present alone.
+    [[nodiscard]] bool has_named_tool_provider() const {
+        return tool_commands_.present && !tool_commands_.provider_name.empty();
+    }
+
+    /// The upstream INDX commands home conditionally themselves, so their
+    /// automatic Select/Park paths own homing. An explicit override is an
+    /// arbitrary user macro with no such contract; once either direction is
+    /// overridden, both directions conservatively use the normal homing flow.
+    [[nodiscard]] bool delegates_homing_to_printer() const override {
+        using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
+        return is_indx_provider() && movement_override_.select_choice == Choice::kAuto &&
+               movement_override_.park_choice == Choice::kAuto;
     }
 
     // Path visualization (PARALLEL topology for tool changers)
@@ -327,6 +383,15 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         tool_commands_ = std::move(commands);
     }
 
+    /// Per-printer Select/Park overrides. Only consulted when
+    /// has_named_tool_provider() — a plain klipper-toolchanger has nothing to
+    /// override, and a plain multi-extruder printer is never offered the
+    /// picker that stores one.
+    void
+    set_tool_movement_override(helix::toolchanger_addon::ToolMovementOverride override) override {
+        movement_override_ = std::move(override);
+    }
+
     // Device Actions -- the feeder, when the machine has one.
     [[nodiscard]] std::vector<helix::printer::DeviceSection> get_device_sections() const override;
     [[nodiscard]] std::vector<helix::printer::DeviceAction> get_device_actions() const override;
@@ -360,12 +425,21 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     void on_home_confirmation_declined() override;
 
   private:
+    /// Bondtech INDX resolved as this machine's swap provider.
+    [[nodiscard]] bool is_indx_provider() const {
+        return tool_commands_.present &&
+               tool_commands_.provider_name == helix::toolchanger_addon::kIndxProviderName;
+    }
+
     /// Feeder this machine exposes; absent unless set_feeder() said otherwise.
     helix::toolchanger_addon::Feeder feeder_;
     /// Absent on every tool changer without dock sensors.
     helix::toolchanger_addon::ToolSensor tool_sensor_;
     /// Absent whenever klipper-toolchanger owns the swap.
     helix::toolchanger_addon::ToolCommands tool_commands_;
+    /// Per-printer Select/Park overrides. Every field defaults to
+    /// "auto" until set_tool_movement_override() runs.
+    helix::toolchanger_addon::ToolMovementOverride movement_override_;
     /// Latest per-dock occupancy from the dock sensors, indexed by slot: true
     /// seated, false empty, nullopt never reported. Kept across frames, because
     /// Moonraker republishes only what CHANGED and a frame carrying just the
@@ -577,6 +651,12 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// toolchanger never took the operation over. Main thread; must NOT hold
     /// mutex_.
     void finalize_dispatch_after_macro(uint64_t generation);
+
+    /// Ack timeout for dispatch_operation(): longer for a changer extra whose
+    /// only completion signal IS the ack (has_named_tool_provider()), where a
+    /// timeout ends the operation in the UI while the swap may still be
+    /// running.
+    [[nodiscard]] uint32_t dispatch_timeout_ms() const;
 
     /// Send a tool operation: set @p action optimistically, dispatch @p gcode
     /// through ensure_homed_then(), and resolve on the macro's ack. Caller must

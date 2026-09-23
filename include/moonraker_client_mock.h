@@ -561,6 +561,31 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     }
 
     /**
+     * @brief Test-only override for INDX's `gcode_macro TOOL_POSITIONS.tool_count`.
+     * Combine with
+     * set_additional_objects() including "indx" and "gcode_macro TOOL_POSITIONS" so
+     * a controlled-transport test exercises the real MoonrakerDiscoverySequence's
+     * deferred-inventory finalization through an actual subscription reply.
+     * nullopt (the default) means the subscription reply carries no
+     * TOOL_POSITIONS status at all, matching an unconfigured printer.
+     */
+    void set_indx_tool_count(std::optional<int> tool_count) {
+        indx_tool_count_ = tool_count;
+    }
+    [[nodiscard]] std::optional<int> test_indx_tool_count() const {
+        return indx_tool_count_;
+    }
+
+    /// Test-only override for INDX's saved `save_variables.variables.active_tool`.
+    /// See set_indx_tool_count().
+    void set_indx_active_tool(std::optional<int> active_tool) {
+        indx_active_tool_ = active_tool;
+    }
+    [[nodiscard]] std::optional<int> test_indx_active_tool() const {
+        return indx_active_tool_;
+    }
+
+    /**
      * @brief Set MMU availability for testing
      *
      * Controls whether the mock includes "mmu" in its printer objects,
@@ -1143,6 +1168,58 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
 
     /// Convenience: mock_medusa_variant() != MedusaVariant::NONE.
     bool is_mock_medusahc() const;
+
+    /**
+     * @brief Detect the Bondtech INDX mock mode from HELIX_MOCK_AMS=indx.
+     *
+     * Unlike is_mock_toolchanger(), this does NOT build an AmsBackendMock:
+     * try_create_mock() declines it (ams_backend.cpp) so real discovery runs
+     * and the production AmsBackendToolChanger + toolchanger_addon path drives
+     * the objects this mode publishes - the same shape as is_mock_medusahc().
+     */
+    bool is_mock_indx() const;
+
+    /**
+     * @brief `gcode_macro TOOL_POSITIONS` status: `{"tool_count": int}`.
+     *
+     * A unit test's set_indx_tool_count() override always wins (preserves the
+     * existing controlled-transport test seam); otherwise, in
+     * HELIX_MOCK_AMS=indx mode, reports the mock's configured tool count.
+     * Empty object when neither applies, so callers skip publishing the key.
+     */
+    nlohmann::json indx_tool_positions_status_json() const;
+
+    /**
+     * @brief `save_variables` status: `{"variables": {"active_tool": int}}`.
+     *
+     * Same override precedence as indx_tool_positions_status_json(). The
+     * simulated value is the swap simulation's current physical tool, -1 when
+     * parked.
+     */
+    nlohmann::json indx_save_variables_status_json() const;
+
+    /**
+     * @brief Arm an INDX tool swap: `tool` selects that tool, -1 parks.
+     *
+     * Mirrors start_medusa_swap()'s phase-ticks shape but INDX has no
+     * dropping/picking distinction to report - the delay alone is what lets a
+     * caller observe "busy" before the reported active tool changes.
+     */
+    void start_indx_swap(int tool);
+
+    /// Advance one simulation tick; completes the armed swap once its delay
+    /// elapses. Call from the same periodic tick that drives MedusaHC/IFS.
+    void advance_indx_swap();
+
+    /**
+     * @brief Answer a gcode script only once the INDX swap in flight lands.
+     *
+     * INDX's T<n> and PARK_TOOL block the gcode queue until the carriage is
+     * done, and with no toolchanger status frames the rpc ack is the only
+     * completion signal the backend gets. Takes @p success_cb and returns true
+     * while a swap is armed; returns false (leaving it untouched) otherwise.
+     */
+    bool hold_ack_until_indx_swap_lands(std::function<void(const nlohmann::json&)>& success_cb);
 
   private:
     /**
@@ -1894,6 +1971,24 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
 
     // Additional objects for testing (e.g., "mmu", "AFC", "toolchanger")
     std::vector<std::string> additional_objects_;
+
+    // Test-only INDX subscription-reply overrides — see set_indx_tool_count()/
+    // set_indx_active_tool().
+    std::optional<int> indx_tool_count_;
+    std::optional<int> indx_active_tool_;
+
+    // --- HELIX_MOCK_AMS=indx swap simulation --------------------------------
+    // Default tool count deliberately not a round number: large enough that a
+    // lexicographic sort ("10" before "2") would visibly misorder the tool
+    // grid, and within kIndxMaxTools (16). Overridable for focused UI checks.
+    static constexpr int kIndxDefaultToolCount = 12;
+    std::atomic<int> indx_configured_tool_count_{kIndxDefaultToolCount};
+    std::atomic<int> indx_current_tool_sim_{-1}; ///< Physical active tool, -1 parked
+    std::atomic<int> indx_target_tool_sim_{-1};  ///< Tool a pending swap will land on
+    std::atomic<int> indx_phase_ticks_sim_{0};   ///< Sim ticks left before the swap lands
+    /// Serializes swap start/completion with held ack registration.
+    std::mutex indx_swap_mutex_;
+    std::vector<std::function<void(const nlohmann::json&)>> indx_swap_acks_;
 
     // Cached chamber heater status key (updated by override_chamber_heater / populate)
     std::string cached_chamber_status_key_;

@@ -146,12 +146,32 @@ void NozzleTempsWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         },
         printer_state_.get_subjects_lifetime());
 
+    // Several nozzles on one extruder (has_multiple_nozzles() without
+    // has_multiple_extruders()) share one row named after the mounted tool, so
+    // a swap renames it. Every other topology names its rows by extruder and
+    // must not rebuild on a tool change. Same safety model as the version
+    // observer above.
+    auto& tool_state = ToolState::instance();
+    observed_active_tool_ = lv_subject_get_int(tool_state.get_active_tool_subject());
+    active_tool_observer_ = helix::ui::observe_int_sync<NozzleTempsWidget>(
+        tool_state.get_active_tool_subject(), this,
+        [](NozzleTempsWidget* self, int tool) {
+            if (tool == self->observed_active_tool_)
+                return; // The initial callback: rows already built in attach()
+            self->observed_active_tool_ = tool;
+            const auto& ts = ToolState::instance();
+            if (ts.has_multiple_nozzles() && !ts.has_multiple_extruders())
+                self->rebuild_rows();
+        },
+        tool_state.get_subjects_lifetime());
+
     spdlog::debug("[NozzleTempsWidget] Attached with {} extruder rows", extruder_rows_.size());
 }
 
 void NozzleTempsWidget::detach() {
     lifetime_.invalidate();
     version_observer_.reset();
+    active_tool_observer_.reset();
     clear_rows();
     uninstall_delete_hook();
     widget_obj_ = nullptr;
@@ -536,32 +556,50 @@ void NozzleTempsWidget::on_size_changed(int colspan, int rowspan, int width_px, 
 
 void NozzleTempsWidget::create_extruder_row(lv_obj_t* container, ExtruderRow& row) {
     auto& tool_state = ToolState::instance();
+    const auto& exts = printer_state_.temperature_state().extruders();
+    auto ext_it = exts.find(row.name);
+    const std::string* extruder_display =
+        (ext_it != exts.end() && !ext_it->second.display_name.empty())
+            ? &ext_it->second.display_name
+            : nullptr;
+
+    // No tool answers for an extruder several tools share while none is
+    // mounted (a parked shared-nozzle changer): name the nozzle, not the
+    // klipper object.
+    std::string gcode_name = tool_state.tool_name_for_extruder(row.name);
+    const bool shared_nozzle =
+        tool_state.has_multiple_nozzles() && !tool_state.has_multiple_extruders();
+    const std::string& unnamed =
+        (shared_nozzle && gcode_name.empty() && extruder_display) ? *extruder_display : row.name;
 
     // Short label: the tool's physical position (e.g. "Tool 1"); falls back to
     // the klipper extruder name when no tool is mapped (multi-extruder, no
     // toolchanger).
     std::string short_name = tool_state.display_label_for_extruder(row.name);
     if (short_name.empty())
-        short_name = row.name;
+        short_name = unnamed;
 
-    // Long label: prefer the user-friendly "Nozzle N" from PrinterTemperatureState
-    // when the tool's gcode identity is just the default Tn pattern. For
-    // toolchangers with viesturz-named tools (e.g. "Left", "Right"), the
-    // configured tool name is already meaningful — keep it.
-    std::string gcode_name = tool_state.tool_name_for_extruder(row.name);
-    std::string long_name = gcode_name.empty() ? row.name : gcode_name;
-    if (helix::ui::is_generated_tool_name(gcode_name)) {
-        const auto& exts = printer_state_.temperature_state().extruders();
-        auto it = exts.find(row.name);
-        if (it != exts.end() && !it->second.display_name.empty())
-            long_name = it->second.display_name;
+    // A shared extruder has one display name regardless of which nozzle is
+    // mounted. Its long and numeric labels must identify the active tool.
+    std::string long_name;
+    if (shared_nozzle) {
+        long_name = tool_state.nozzle_label();
+    } else {
+        // Separate extruders keep their friendly "Nozzle N" names for default
+        // Tn tools and their configured names for named tools.
+        long_name = gcode_name.empty() ? unnamed : gcode_name;
+        if (helix::ui::is_generated_tool_name(gcode_name) && extruder_display)
+            long_name = *extruder_display;
     }
 
     row.short_name = std::move(short_name);
     row.long_name = std::move(long_name);
-    // The number rung: the 1-based display number, the one label that fits
-    // where no spelling does and still tells four icon rows apart.
-    row.number_name = helix::ui::lane_number_text(static_cast<int>(extruder_rows_.size()));
+    // The number rung follows the mounted tool on a shared nozzle. A parked
+    // nozzle has no tool number to show.
+    const auto* active_tool = shared_nozzle ? tool_state.active_tool() : nullptr;
+    row.number_name = shared_nozzle
+                          ? (active_tool ? helix::ui::lane_number_text(active_tool->index) : "")
+                          : helix::ui::lane_number_text(static_cast<int>(extruder_rows_.size()));
 
     // Create row from XML template. All three spellings are written once as
     // data; which one shows, the row width and the font are bound off the

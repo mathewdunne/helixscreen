@@ -1,0 +1,7 @@
+{
+    "variables": {
+        "active_tool": -1,
+        "t0_fil_density": 1.24,
+        "t0_fil_hc": 2100
+    }
+}

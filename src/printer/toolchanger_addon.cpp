@@ -2,10 +2,15 @@
 
 #include "toolchanger_addon.h"
 
+#include "operation_patterns.h"
 #include "printer_discovery.h"
+
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
+#include <cstdlib>
 #include <string_view>
 
 namespace helix::toolchanger_addon {
@@ -332,6 +337,30 @@ ToolCommands resolve_tool_commands(const PrinterDiscovery& hw) {
     c.provider_name = p ? p->name : std::string();
     c.select_prefix = (p && p->select_prefix) ? p->select_prefix : "T";
     c.unselect = (p && p->unselect_gcode) ? p->unselect_gcode : "";
+    // Bondtech INDX ships PARK_TOOL as its default parking command; the
+    // MedusaHC-shaped table above never matches it (see the comment on
+    // has_indx() in toolchanger_addon.h), so this is the one place its
+    // command default is recorded. Both PARK_TOOL and the per-tool T<n>
+    // shortcut are gated on the macro actually existing: a
+    // missing command is an explicit unsupported capability, never a
+    // successful no-op - unlike the MedusaHC-shaped providers above, whose
+    // extra registers T<n>/its unmount unconditionally the moment it is
+    // detected at all.
+    // ...and only against INDX's OWN numbered inventory, which is what the
+    // T<n> shortcut probe and the "TOOL=<n>" argument contract below are
+    // defined against. Tools counted from extruder heaters keep plain T<n>.
+    const auto& tools = hw.tool_names();
+    if (!p && has_indx(hw) && hw.indx_inventory_finalized()) {
+        c.provider_name = kIndxProviderName;
+        c.unselect = hw.has_macro("PARK_TOOL") ? "PARK_TOOL" : "";
+        c.select_shortcut_available.reserve(tools.size());
+        for (const auto& id : tools) {
+            c.select_shortcut_available.push_back(hw.has_macro("T" + id));
+        }
+        if (hw.has_macro("CHANGE_TOOL")) {
+            c.change_tool_macro = "CHANGE_TOOL";
+        }
+    }
     return c;
 }
 
@@ -385,9 +414,130 @@ std::vector<std::string> feeder_macro_candidates(const PrinterDiscovery& hw) {
     return out;
 }
 
+std::vector<std::string> tool_movement_macro_candidates(const PrinterDiscovery& hw) {
+    std::vector<std::string> out;
+    // A movement override macro is one whose name says what it does. Unlike
+    // feeder_macro_candidates(), there is no native-prefix shortcut here — the
+    // machines this serves have no shared vendor prefix.
+    // INDX's TOOL_POSITIONS only holds variables: "TOOL_POSITIONS TOOL=<n>"
+    // moves nothing, so it is never offered.
+    std::string variables_only;
+    if (has_indx(hw)) {
+        constexpr std::string_view kMacroPrefix = "gcode_macro ";
+        const std::string positions = indx_tool_positions_object(hw);
+        if (positions.rfind(kMacroPrefix, 0) == 0) {
+            variables_only = to_upper(positions.substr(kMacroPrefix.size()));
+        }
+    }
+    for (const auto& macro : hw.macros()) {
+        if (!variables_only.empty() && macro == variables_only) {
+            continue;
+        }
+        const bool named =
+            macro.find("TOOL") != std::string::npos || macro.find("PARK") != std::string::npos ||
+            macro.find("CHANGE") != std::string::npos ||
+            macro.find("SELECT") != std::string::npos || macro.find("MOUNT") != std::string::npos;
+        if (named) {
+            out.push_back(macro);
+        }
+    }
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
+namespace {
+
+bool movement_macro_matches_direction(const std::string& macro, bool select) {
+    // These known commands have fixed argument and movement contracts. Other
+    // macros can be printer-specific overrides for either direction.
+    if (select) {
+        return macro != "PARK_TOOL" && macro != "UNSELECT_TOOL" && macro != "DROP_TOOL";
+    }
+    return macro != "CHANGE_TOOL" && macro != "SELECT_TOOL";
+}
+
+} // namespace
+
+ToolMovementOverride resolve_tool_movement_override(const PrinterDiscovery& hw,
+                                                    const std::string& select_choice,
+                                                    const std::string& park_choice) {
+    ToolMovementOverride result;
+    result.select_choice_raw = select_choice.empty() ? kAutoMacro : select_choice;
+    result.park_choice_raw = park_choice.empty() ? kAutoMacro : park_choice;
+
+    // A stored choice is matched the way has_macro() matches everywhere else
+    // in this module: by the uppercased alias the macro registers as a gcode
+    // command, so a hand-edited settings.json in any casing still resolves.
+    // The macro sent is that alias, not the raw spelling.
+    if (result.select_choice_raw != kAutoMacro) {
+        const std::string macro = to_upper(result.select_choice_raw);
+        if (hw.has_macro(result.select_choice_raw) &&
+            movement_macro_matches_direction(macro, true)) {
+            result.select_choice = ToolMovementOverride::Choice::kValid;
+            result.select_macro = macro;
+        } else {
+            result.select_choice = ToolMovementOverride::Choice::kInvalid;
+        }
+    }
+    if (result.park_choice_raw != kAutoMacro) {
+        const std::string macro = to_upper(result.park_choice_raw);
+        if (hw.has_macro(result.park_choice_raw) &&
+            movement_macro_matches_direction(macro, false)) {
+            result.park_choice = ToolMovementOverride::Choice::kValid;
+            result.park_macro = macro;
+        } else {
+            result.park_choice = ToolMovementOverride::Choice::kInvalid;
+        }
+    }
+
+    auto candidates = tool_movement_macro_candidates(hw);
+    for (const auto& macro : candidates) {
+        if (movement_macro_matches_direction(macro, true)) {
+            if (result.select_macro_options.empty()) {
+                result.select_macro_options.emplace_back(kAutoMacro);
+            }
+            result.select_macro_options.push_back(macro);
+            result.select_accepted_macros.push_back(macro);
+        }
+        if (movement_macro_matches_direction(macro, false)) {
+            if (result.park_macro_options.empty()) {
+                result.park_macro_options.emplace_back(kAutoMacro);
+            }
+            result.park_macro_options.push_back(macro);
+            result.park_accepted_macros.push_back(macro);
+        }
+    }
+    auto add_stored_choice = [](const std::string& macro, std::vector<std::string>& accepted) {
+        if (!macro.empty() &&
+            std::find(accepted.begin(), accepted.end(), macro) == accepted.end()) {
+            accepted.push_back(macro);
+        }
+    };
+    add_stored_choice(result.select_macro, result.select_accepted_macros);
+    add_stored_choice(result.park_macro, result.park_accepted_macros);
+    return result;
+}
+
 std::vector<std::string> required_status_objects(const PrinterDiscovery& hw) {
-    const Provider* p = match(hw);
-    return p ? p->status_objects(hw) : std::vector<std::string>{};
+    std::vector<std::string> objects;
+    if (const Provider* p = match(hw)) {
+        objects = p->status_objects(hw);
+    }
+    // INDX's inventory and active-tool identity both live in objects the
+    // MedusaHC-shaped table above never names (see the comment on has_indx()
+    // in toolchanger_addon.h). Subscribing real `TOOL_POSITIONS`/
+    // `save_variables` is what breaks the discovery/subscription cycle --
+    // never fabricated `toolchanger`/`tool T<n>` objects for this provider.
+    if (has_indx(hw)) {
+        objects.emplace_back("save_variables");
+        // Config-cased, not the uppercased alias has_macro() matches -- see
+        // indx_tool_positions_object(). Empty means this printer has no such
+        // macro, and subscribing a name nothing answers to buys nothing.
+        if (std::string positions = indx_tool_positions_object(hw); !positions.empty()) {
+            objects.emplace_back(std::move(positions));
+        }
+    }
+    return objects;
 }
 
 std::optional<ToolReading> read_tool(const nlohmann::json& status) {
@@ -417,6 +567,129 @@ bool sensor_error_is_fault(const ToolReading& reading, bool swap_in_flight) {
         return false;
     }
     return reading.sensor_error_reported || !swap_in_flight;
+}
+
+// --- Bondtech INDX ----------------------------------------------------------
+
+bool has_indx(const PrinterDiscovery& hw) {
+    return hw.has_indx();
+}
+
+bool is_indx_inventory_candidate(const PrinterDiscovery& hw) {
+    if (!has_indx(hw)) {
+        return false;
+    }
+    // A real klipper-toolchanger, an already-claimed MMU/filament backend, or
+    // an auto-detected multi-extruder tool list all outrank an INDX facts-only
+    // guess. Recording the candidate must never disturb their selection.
+    if (hw.has_tool_changer() || hw.has_mmu() || hw.has_snapmaker()) {
+        return false;
+    }
+    return hw.tool_names().empty();
+}
+
+std::string indx_tool_positions_object(const PrinterDiscovery& hw) {
+    const std::string config_name = hw.macro_config_name("TOOL_POSITIONS");
+    return config_name.empty() ? std::string{} : "gcode_macro " + config_name;
+}
+
+std::vector<std::string> indx_tool_ids(int tool_count) {
+    std::vector<std::string> ids;
+    if (tool_count < 1) {
+        return ids;
+    }
+    ids.reserve(static_cast<std::size_t>(tool_count));
+    for (int i = 0; i < tool_count; ++i) {
+        ids.push_back(std::to_string(i));
+    }
+    return ids;
+}
+
+std::optional<IndxInventory> read_indx_inventory(const nlohmann::json& tool_positions_status) {
+    if (!tool_positions_status.is_object()) {
+        return std::nullopt;
+    }
+    auto it = tool_positions_status.find("tool_count");
+    if (it == tool_positions_status.end()) {
+        return std::nullopt; // no news this frame
+    }
+    // is_number_integer() is false for JSON booleans and floats, so both are
+    // already rejected here without a separate check - only a genuine integer
+    // reaches the bounds test. No config-string fallback: this is the runtime
+    // field this needs, not configfile.config's string-typed sibling.
+    if (!it->is_number_integer()) {
+        return IndxInventory{false, 0, "tool_count is not an integer"};
+    }
+    const long long raw = it->get<long long>();
+    if (raw < 1 || raw > kIndxMaxTools) {
+        return IndxInventory{false, 0,
+                             "tool_count " + std::to_string(raw) + " out of range 1.." +
+                                 std::to_string(kIndxMaxTools)};
+    }
+    return IndxInventory{true, static_cast<int>(raw), std::string()};
+}
+
+bool tool_inventory_from_status(const PrinterDiscovery& hw) {
+    return is_indx_inventory_candidate(hw);
+}
+
+void finalize_tool_inventory_from_status(PrinterDiscovery& hw, const nlohmann::json& status) {
+    // Macros are fixed for a discovery pass, so this is the same key
+    // required_status_objects() subscribed.
+    const std::string key = indx_tool_positions_object(hw);
+    if (key.empty() || !status.is_object() || !status.contains(key)) {
+        spdlog::warn("[toolchanger_addon] INDX candidate but the subscription reply carried no "
+                     "TOOL_POSITIONS status - no INDX backend this pass");
+        return;
+    }
+    if (auto inv = read_indx_inventory(status[key])) {
+        if (inv->valid) {
+            hw.finalize_indx_inventory(indx_tool_ids(inv->tool_count));
+        } else {
+            spdlog::warn("[toolchanger_addon] INDX inventory rejected: {}", inv->rejection);
+        }
+    }
+}
+
+IndxActiveTool read_indx_active_tool(const nlohmann::json& save_variables_status,
+                                     int configured_tool_count) {
+    if (!save_variables_status.is_object()) {
+        return {};
+    }
+    auto vars = save_variables_status.find("variables");
+    if (vars == save_variables_status.end() || !vars->is_object()) {
+        return {}; // no news: this delta carried no variables at all
+    }
+    auto it = vars->find("active_tool");
+    if (it == vars->end()) {
+        return {}; // no news: fresh install, active_tool never saved
+    }
+
+    std::optional<long long> parsed;
+    if (it->is_number_integer()) {
+        parsed = it->get<long long>();
+    } else if (it->is_string()) {
+        // Compatibility: strictly parsed integer strings only. A partial
+        // parse ("3junk") or an empty string is malformed, not truncated.
+        const std::string& s = it->get_ref<const std::string&>();
+        if (!s.empty()) {
+            errno = 0;
+            char* end = nullptr;
+            long long v = std::strtoll(s.c_str(), &end, 10);
+            if (end == s.c_str() + s.size() && errno == 0) {
+                parsed = v;
+            }
+        }
+    }
+    // Booleans, fractional values, unparseable/partial strings, huge numbers
+    // already fail to parse above; explicit rejection, never a guess.
+    if (!parsed || *parsed < -1) {
+        return {IndxActiveToolStatus::kMalformed, -1};
+    }
+    if (*parsed >= 0 && configured_tool_count > 0 && *parsed >= configured_tool_count) {
+        return {IndxActiveToolStatus::kMalformed, -1}; // outside the finalized inventory
+    }
+    return {IndxActiveToolStatus::kValid, static_cast<int>(*parsed)};
 }
 
 } // namespace helix::toolchanger_addon

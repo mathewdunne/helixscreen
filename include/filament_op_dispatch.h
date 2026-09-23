@@ -25,11 +25,32 @@ enum class FilamentTier {
 /// Why a plan declined to dispatch. Each maps to different caller-side copy.
 enum class FilamentRefusal {
     None,
-    SelectSlot,     ///< Load: the backend wants a slot and none resolved
-    NothingLoaded,  ///< Unload: the selected slot has no filament to pull
-    AlreadyMounted, ///< The requested tool is already on the carriage
-    BypassLoaded,   ///< Load: a lane was asked for, but the bypass spool still
-                    ///< crosses the toolhead and only a hand can clear it
+    SelectSlot,        ///< Load: the backend wants a slot and none resolved
+    NothingLoaded,     ///< Unload: the selected slot has no filament to pull
+    AlreadyMounted,    ///< The requested tool is already on the carriage
+    BypassLoaded,      ///< Load: a lane was asked for, but the bypass spool still
+                       ///< crosses the toolhead and only a hand can clear it
+    NoMacroConfigured, ///< A Filament-intent op on a backend with a separate
+                       ///< filament capability (BackendCaps::has_separate_filament_operation),
+                       ///< but no Load/Unload macro is configured or detected.
+                       ///< Never falls back to raw extrusion/retraction for
+                       ///< this capability.
+};
+
+/// Which physical action a dispatch surface is asking for. Distinguishes two
+/// operations that can share ONE backend on a shared-nozzle-changer (Bondtech
+/// INDX): mounting/parking a tool (AMS tool-grid, sidebar select/park, the home
+/// tool-switcher) versus feeding/retracting filament through it (the
+/// Filament panel, filament/runout controls). Carried explicitly rather than
+/// inferred from a UI label or widget id — the same backend answers both
+/// questions differently depending on which surface is asking.
+///
+/// Inert everywhere BackendCaps::has_separate_filament_operation is false:
+/// every other backend's Load/Unload IS the one operation its callers already
+/// agree on, so passing either value there changes nothing.
+enum class OperationIntent {
+    ToolMount, ///< Mount/park a physical tool — backend tool commands only.
+    Filament,  ///< Feed/retract filament — the StandardMacros/router path.
 };
 
 /// Which backend entry point tier 1 should call. Load is NOT always
@@ -70,6 +91,14 @@ struct BackendCaps {
     /// backend that simply does not need a slot, and the two want opposite
     /// treatment when the user has named a specific lane.
     bool bypass_active = false;
+    /// AmsBackend::shared_extruder_name().has_value() — true only for a
+    /// shared-nozzle-changer backend (Bondtech INDX) whose Load/Unload MOUNTS
+    /// or PARKS a tool rather than feeding filament. Such a backend's tool
+    /// mount/park stays tier 1 for OperationIntent::ToolMount callers, but a
+    /// Filament-intent caller must never reach tier 1 (mounting a tool is not
+    /// feeding filament) and must never fall back to raw extrusion either —
+    /// see plan_load()/plan_unload()'s OperationIntent handling.
+    bool has_separate_filament_operation = false;
 };
 
 /**
@@ -90,10 +119,26 @@ struct BackendCaps {
  * @param caps          Backend capability answers.
  * @param target_slot   Slot the user asked for; < 0 when none resolved.
  * @param macro_available StandardMacros LoadFilament slot is non-empty.
+ * @param intent OperationIntent::Filament (default) unless the caller is the
+ *        AMS tool-grid/sidebar select or the home tool-switcher, which pass
+ *        ToolMount. See BackendCaps::has_separate_filament_operation.
  */
 [[nodiscard]] inline FilamentOpPlan plan_load(const AmsSystemInfo& sys, const BackendCaps& caps,
                                               int target_slot, bool macro_available,
-                                              bool macro_user_configured) {
+                                              bool macro_user_configured,
+                                              OperationIntent intent = OperationIntent::Filament) {
+    // A Filament-intent caller on a backend whose Load MOUNTS A TOOL rather
+    // than feeds filament (has_separate_filament_operation) never reaches
+    // tier 1: tool mount and filament feed are different physical operations
+    // there, and only the ToolMount-intent surfaces may use the backend call
+    // below. Degrading `present` lets the rest of this function's
+    // macro/raw-gcode ladder answer as it does for every other backend.
+    const bool filament_op_has_no_backend_tier =
+        intent == OperationIntent::Filament && caps.has_separate_filament_operation;
+    BackendCaps effective = caps;
+    if (filament_op_has_no_backend_tier) {
+        effective.present = false;
+    }
     // A macro the USER assigned in Settings > Macro Buttons outranks everything,
     // including a filament system that would otherwise own this op. That is the
     // entire point of the setting: someone with extra steps to run — a purge
@@ -111,7 +156,15 @@ struct BackendCaps {
     // not run at all, so its state tracking goes with it (AFC's TOOL_UNLOAD
     // parks the shuttle and marks the lane). That is what overriding means, and
     // it is documented for users in docs/user/guide/filament.md.
-    if (macro_user_configured) {
+    //
+    // The exception is a ToolMount-intent caller on a backend whose Load MOUNTS
+    // A TOOL: the user's Load Filament macro feeds filament, which is a
+    // different physical operation from a tool swap, and the docs tell INDX
+    // users to configure exactly that macro so the Filament panel works. A tap
+    // on the tool grid must still send T<n>, not LOAD_FILAMENT.
+    const bool mount_intent_owns_op =
+        intent == OperationIntent::ToolMount && caps.has_separate_filament_operation;
+    if (macro_user_configured && !mount_intent_owns_op) {
         return {FilamentTier::Macro, FilamentRefusal::None, AmsCall::None, target_slot};
     }
 
@@ -127,7 +180,7 @@ struct BackendCaps {
     // still crossing the toolhead: its switch sits above the cutter and reads
     // the upstream piece, which no gcode can retract — only the user's hand
     // clears it (36205eb27). Feeding a lane into that is what we refuse.
-    if (caps.present && caps.bypass_active && target_slot >= 0) {
+    if (effective.present && effective.bypass_active && target_slot >= 0) {
         if (sys.filament_loaded) {
             return {FilamentTier::Refused, FilamentRefusal::BypassLoaded, AmsCall::None,
                     target_slot};
@@ -135,11 +188,11 @@ struct BackendCaps {
         return {FilamentTier::AmsBackend, FilamentRefusal::None, AmsCall::Load, target_slot};
     }
 
-    if (caps.present && caps.requires_slot_selection_for_load) {
+    if (effective.present && effective.requires_slot_selection_for_load) {
         if (target_slot < 0) {
             return {FilamentTier::Refused, FilamentRefusal::SelectSlot, AmsCall::None, -1};
         }
-        if (caps.is_tool_changer && sys.current_slot >= 0 && sys.current_slot == target_slot) {
+        if (effective.is_tool_changer && sys.current_slot >= 0 && sys.current_slot == target_slot) {
             return {FilamentTier::Refused, FilamentRefusal::AlreadyMounted, AmsCall::None, -1};
         }
         // Load-vs-swap: a machine that already has filament seated cannot simply
@@ -167,7 +220,7 @@ struct BackendCaps {
         // one command per user action and lets the firmware refuse (#1229). An
         // unasked-for eject is the harm that rule exists to prevent, and it is
         // exactly what the old arm did.
-        if (caps.needs_unload_before_load && sys.current_slot != target_slot) {
+        if (effective.needs_unload_before_load && sys.current_slot != target_slot) {
             const SlotInfo* slot_info = sys.get_slot_global(target_slot);
             if (slot_info && slot_info->mapped_tool >= 0) {
                 return {FilamentTier::AmsBackend, FilamentRefusal::None, AmsCall::ChangeTool,
@@ -179,6 +232,13 @@ struct BackendCaps {
 
     if (macro_available) {
         return {FilamentTier::Macro, FilamentRefusal::None, AmsCall::None, target_slot};
+    }
+    if (filament_op_has_no_backend_tier) {
+        // Never a generic extrusion fallback for this capability: a
+        // shared-nozzle-changer with no configured/detected Load
+        // macro has no stock command to send at all.
+        return {FilamentTier::Refused, FilamentRefusal::NoMacroConfigured, AmsCall::None,
+                target_slot};
     }
     return {FilamentTier::RawGcode, FilamentRefusal::None, AmsCall::None, target_slot};
 }
@@ -253,20 +313,34 @@ inline constexpr int EXTERNAL_SPOOL_SLOT = -2;
  *
  * @param target_is_loaded  slot_is_actively_loaded(slot) || slot_has_filament_at_toolhead(slot)
  */
-[[nodiscard]] inline FilamentOpPlan plan_unload(const BackendCaps& caps, int target_slot,
-                                                bool target_is_loaded, bool macro_available,
-                                                bool macro_user_configured) {
+[[nodiscard]] inline FilamentOpPlan
+plan_unload(const BackendCaps& caps, int target_slot, bool target_is_loaded, bool macro_available,
+            bool macro_user_configured, OperationIntent intent = OperationIntent::Filament) {
+    // See plan_load()'s identical guard: a Filament-intent caller on a
+    // shared-nozzle-changer backend never reaches tier 1 (parking is not
+    // retracting filament) and never falls back to raw retraction either.
+    const bool filament_op_has_no_backend_tier =
+        intent == OperationIntent::Filament && caps.has_separate_filament_operation;
+    BackendCaps effective = caps;
+    if (filament_op_has_no_backend_tier) {
+        effective.present = false;
+    }
+
     // Same first rule as plan_load(), and the reason this parameter exists: the
     // two planners used to disagree here. plan_load() let bypass fall through to
     // the macro tier while plan_unload() gated tier 1 on the backend merely
     // existing, so a user could assign an Unload macro in Settings and have it
     // silently discarded on every AMS printer — a live control whose effect was
-    // thrown away. See plan_load() for why DETECTED macros still lose.
-    if (macro_user_configured) {
+    // thrown away. See plan_load() for why DETECTED macros still lose, and for
+    // why a ToolMount-intent park on a shared-nozzle changer keeps the backend:
+    // the user's Unload Filament macro retracts filament, it does not park.
+    const bool mount_intent_owns_op =
+        intent == OperationIntent::ToolMount && caps.has_separate_filament_operation;
+    if (macro_user_configured && !mount_intent_owns_op) {
         return {FilamentTier::Macro, FilamentRefusal::None, AmsCall::None, target_slot};
     }
 
-    if (caps.present) {
+    if (effective.present) {
         // EXTERNAL_SPOOL_SLOT is a target, not an absence: the backends all
         // handle it (CFS ignores the slot and runs its unload script, AFC
         // resolves the lane name to "" and sends a bare TOOL_UNLOAD, Happy Hare
@@ -282,6 +356,10 @@ inline constexpr int EXTERNAL_SPOOL_SLOT = -2;
 
     if (macro_available) {
         return {FilamentTier::Macro, FilamentRefusal::None, AmsCall::None, target_slot};
+    }
+    if (filament_op_has_no_backend_tier) {
+        return {FilamentTier::Refused, FilamentRefusal::NoMacroConfigured, AmsCall::None,
+                target_slot};
     }
     return {FilamentTier::RawGcode, FilamentRefusal::None, AmsCall::None, target_slot};
 }

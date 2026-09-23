@@ -37,6 +37,9 @@ namespace helix::toolchanger_addon {
 /// Sentinel meaning "use the detected default" in the settings picker.
 inline constexpr const char* kAutoMacro = "auto";
 
+/// ToolCommands::provider_name resolve_tool_commands() gives Bondtech INDX.
+inline constexpr const char* kIndxProviderName = "INDX";
+
 /// Filament feeder on the frame. Default-constructed is the "no feeder" answer,
 /// so a tool changer nobody told anything exposes nothing.
 struct Feeder {
@@ -127,6 +130,19 @@ struct ToolCommands {
     /// Unmounts whatever is on the head. Empty when the machine has no such
     /// command and the tool can only be swapped for another.
     std::string unselect;
+    /// Numbered tools (0..N-1, indexed to match) with a working `T<n>`
+    /// shortcut macro on THIS printer. Empty means every numbered tool has
+    /// one -- true by construction for the MedusaHC-shaped providers above,
+    /// whose extra registers T<n> unconditionally. Bondtech INDX is the one
+    /// provider where this can differ: a configured tool count can exceed
+    /// the shortcuts a user's indx.cfg declares, so a numbered tool can have
+    /// no working T<n> and must fall back to change_tool_macro.
+    std::vector<bool> select_shortcut_available;
+    /// The verified upstream fallback selection macro accepting a bare
+    /// `TOOL=<n>` parameter (e.g. "CHANGE_TOOL"), or empty when this printer
+    /// has none. Only consulted for a tool select_shortcut_available marks
+    /// unavailable.
+    std::string change_tool_macro;
 };
 
 /// Presence of an add-on dock sensor. When set, read_tool() is worth calling on
@@ -138,6 +154,152 @@ struct ToolSensor {
 
 /// Whether any provider claims this printer.
 bool present(const PrinterDiscovery& hw);
+
+// --- Bondtech INDX ----------------------------------------------------------
+//
+// A nozzle changer with its own T<n>/PARK_TOOL commands and no
+// klipper-toolchanger, several tools sharing one physical extruder/heater.
+// Its inventory is not in printer.objects.list at all: the configured tool
+// count lives in a runtime macro variable, discovered only once that macro's
+// status is subscribed and read. This is why INDX is NOT folded into the
+// MedusaHC-shaped Provider table above - that table answers "does this
+// printer have a DOCK SENSOR / FEEDER add-on", which INDX has neither of, and
+// its identity signal (`save_variables.active_tool`) is deliberately never
+// merged into the shared read_tool() dispatch (see read_indx_active_tool()).
+// Only resolve_tool_commands()'s existing generic seam gains an INDX default;
+// resolve_tool_sensor()/resolve_feeder() correctly stay absent for it.
+
+/// Bounds on INDX's provider-supplied tool inventory. Mirrors
+/// `AmsState::MAX_SLOTS` (currently 16); kept as its own constant so this
+/// low-level module does not depend on the UI-facing AmsState header.
+inline constexpr int kIndxMaxTools = 16;
+
+/// Whether the exact `indx` status object is present. The sole detection
+/// signal for this delivery - see PrinterDiscovery::has_indx().
+bool has_indx(const PrinterDiscovery& hw);
+
+/// Whether this printer is an unresolved INDX inventory candidate: the exact
+/// `indx` object is present and no other filament-management or tool-changer
+/// backend has already claimed it from object-list facts alone. `parse_objects()`
+/// cannot pick INDX's slot count itself - it lives in a runtime macro value,
+/// not the object list - so a true result means the caller must subscribe
+/// required_status_objects() and finalize inventory (read_indx_inventory())
+/// before this printer's AMS backend can be selected. A false result here
+/// with has_indx() true means a different backend legitimately outranks INDX
+/// and its facts must not be disturbed.
+bool is_indx_inventory_candidate(const PrinterDiscovery& hw);
+
+/// The `gcode_macro <name>` status key carrying INDX's tool count, spelled the
+/// way THIS printer's config spells the section, or empty when it has no such
+/// macro. Klipper keys the status object on the config case while has_macro()
+/// matches the uppercased alias, so subscribing (or looking up) a hardcoded
+/// `gcode_macro TOOL_POSITIONS` silently reads nothing on a printer whose
+/// indx.cfg says `[gcode_macro Tool_Positions]`. Both the subscription and the
+/// reply lookup must derive the key from here, or they name different objects.
+std::string indx_tool_positions_object(const PrinterDiscovery& hw);
+
+/// A validated (or explicitly rejected) INDX tool count.
+struct IndxInventory {
+    bool valid = false;
+    int tool_count = 0;    ///< 1..kIndxMaxTools when valid, 0 otherwise
+    std::string rejection; ///< populated only when !valid, for diagnostics
+};
+
+/// Numbered tool ids "0".."tool_count-1" a valid inventory produces, already
+/// in the natural/numeric order finalization must preserve. Empty for a
+/// non-positive count.
+std::vector<std::string> indx_tool_ids(int tool_count);
+
+/// Parse and bounds-validate the runtime tool count out of a
+/// `gcode_macro TOOL_POSITIONS` status object (pass the object itself, e.g.
+/// `status["gcode_macro TOOL_POSITIONS"]`).
+///
+/// nullopt means "no news": the object or its `tool_count` field was absent
+/// from this frame (Moonraker republishes only fields that changed), which
+/// callers must not treat as a rejection. A non-nullopt result with
+/// `valid == false` means the field WAS present this frame but is not usable
+/// (wrong JSON type, non-positive, or over kIndxMaxTools) - config text,
+/// shortcut count and saved offsets are never a fallback for this value.
+std::optional<IndxInventory> read_indx_inventory(const nlohmann::json& tool_positions_status);
+
+/// Outcome of reading INDX's saved active-tool identity.
+enum class IndxActiveToolStatus {
+    kAbsent,    ///< no news this frame - preserve the last known identity
+    kValid,     ///< `value` is a numbered tool (0..count-1) or -1 (parked)
+    kMalformed, ///< the field was present but unusable - report unavailable,
+                ///< never silently preserved as fresh truth nor treated as "no news"
+};
+
+struct IndxActiveTool {
+    IndxActiveToolStatus status = IndxActiveToolStatus::kAbsent;
+    int value = -1; ///< meaningful only when status == kValid
+};
+
+/// Read INDX's saved active-tool identity out of a `save_variables` status
+/// object (pass the object itself, e.g. `status["save_variables"]`).
+/// `active_tool` is a saved macro assertion, never physical seating proof.
+///
+/// @param configured_tool_count the finalized inventory size; a positive
+///        value bounds-checks the id. 0 (inventory not yet finalized) accepts
+///        any -1 or non-negative integer without an upper bound.
+IndxActiveTool read_indx_active_tool(const nlohmann::json& save_variables_status,
+                                     int configured_tool_count);
+
+/// Per-printer override for the Select/Park commands a `ToolCommands::present`
+/// provider uses. Distinct from `Feeder`'s "honour any stored
+/// name" contract: an invalid stored macro here must stay visibly invalid and
+/// send nothing, never silently substitute a different physical movement
+/// command. Three states per direction, not two — "auto" (detected default),
+/// a validated explicit choice, and a stored choice this printer no longer
+/// reports.
+struct ToolMovementOverride {
+    enum class Choice {
+        kAuto,    ///< use the detected default (T<n> shortcut / change_tool_macro, PARK_TOOL)
+        kValid,   ///< explicit choice; the macro is present on this printer
+        kInvalid, ///< explicit choice naming a macro this printer does not have
+    };
+
+    Choice select_choice = Choice::kAuto;
+    /// The raw stored setting value, for the settings dropdown's current
+    /// selection — kAutoMacro, or the (possibly invalid) macro name.
+    std::string select_choice_raw{kAutoMacro};
+    /// Populated only when select_choice == kValid. Sent as
+    /// "<select_macro> TOOL=<n>" — the fixed contract for this override,
+    /// never an arbitrary template.
+    std::string select_macro;
+
+    Choice park_choice = Choice::kAuto;
+    std::string park_choice_raw{kAutoMacro};
+    /// Populated only when park_choice == kValid. Sent bare — a parking
+    /// override takes no argument.
+    std::string park_macro;
+
+    /// Options for each settings picker: kAutoMacro followed by plausible
+    /// macros for that direction. Empty when there is nothing to choose from.
+    std::vector<std::string> select_macro_options;
+    std::vector<std::string> park_macro_options;
+
+    /// Uppercased macros a later pick may name and still be valid for that
+    /// direction: candidates plus a valid stored choice outside the filter.
+    std::vector<std::string> select_accepted_macros;
+    std::vector<std::string> park_accepted_macros;
+};
+
+/// Resolve the stored Select/Park overrides against this printer's actual
+/// macros. "auto" (or empty) keeps the detected default. A non-"auto" choice
+/// naming a macro this printer does not report resolves to kInvalid — the
+/// caller must send nothing for that direction rather than falling back to
+/// the automatic command: an invalid configured command stays visibly
+/// invalid and sends nothing.
+ToolMovementOverride resolve_tool_movement_override(const PrinterDiscovery& hw,
+                                                    const std::string& select_choice = kAutoMacro,
+                                                    const std::string& park_choice = kAutoMacro);
+
+/// Macros on this printer that could plausibly select or park a tool, for the
+/// picker in ToolChanger device-action settings. Sorted, and deliberately
+/// filtered like feeder_macro_candidates() — a printer has hundreds of macros
+/// and a raw list is unusable.
+std::vector<std::string> tool_movement_macro_candidates(const PrinterDiscovery& hw);
 
 /// The dock sensor this printer exposes, or an absent capability.
 ToolSensor resolve_tool_sensor(const PrinterDiscovery& hw);
@@ -167,6 +329,19 @@ std::vector<std::string> feeder_macro_candidates(const PrinterDiscovery& hw);
 /// Klipper status objects that must be subscribed for read_tool() to ever
 /// return a value. Empty when no provider matches.
 std::vector<std::string> required_status_objects(const PrinterDiscovery& hw);
+
+/// Whether this printer's tool inventory is published only in runtime status,
+/// so the object list cannot describe its tools yet. True means discovery must
+/// hold hardware-dependent initialization until
+/// finalize_tool_inventory_from_status() has read the subscription reply; the
+/// object carrying it is among required_status_objects().
+bool tool_inventory_from_status(const PrinterDiscovery& hw);
+
+/// Read the tool inventory out of the subscription reply's initial @p status
+/// and finalize it into @p hw. Logs and leaves @p hw untouched when the reply
+/// carries no usable inventory; the printer then completes discovery with no
+/// tool-changer backend.
+void finalize_tool_inventory_from_status(PrinterDiscovery& hw, const nlohmann::json& status);
 
 /// Pull an authoritative reading out of a Moonraker status frame. nullopt means
 /// "no news" - either this printer has no add-on, or this frame simply carried

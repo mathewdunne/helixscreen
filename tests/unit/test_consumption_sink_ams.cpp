@@ -180,6 +180,43 @@ TEST_CASE_METHOD(AmsSlotSinkFixture, "AmsSlotSink: external write mid-tick rebas
     REQUIRE(after.remaining_weight_g > 296.0f);
 }
 
+TEST_CASE_METHOD(AmsSlotSinkFixture, "AmsSlotSink: resume carries consumption not yet written",
+                 "[consumption_sink][ams][indx]") {
+    AmsSlotSink sink(backend_idx, 0);
+    sink.snapshot(0.0f);
+
+    // 10 mm of 1.75mm PLA ≈ 0.03 g: under the write threshold, so held.
+    sink.apply_delta(10.0f);
+    REQUIRE(mock->get_slot_info(0).remaining_weight_g == 500.0f);
+
+    // Another slot feeds the nozzle, then this one becomes current again.
+    // Its next 10 mm brings the total owed to ≈ 0.06 g, which is written;
+    // starting over from the stored 500 g would still be holding ≈ 0.03 g.
+    sink.resume(10.0f);
+    sink.apply_delta(20.0f);
+    const float after = mock->get_slot_info(0).remaining_weight_g;
+    CHECK(after < 500.0f);
+    CHECK(after > 499.9f);
+}
+
+TEST_CASE_METHOD(AmsSlotSinkFixture,
+                 "AmsSlotSink: resume takes a weight written while the slot sat out",
+                 "[consumption_sink][ams][indx]") {
+    AmsSlotSink sink(backend_idx, 0);
+    sink.snapshot(0.0f);
+    sink.apply_delta(10.0f); // held under the write threshold
+
+    helix::SlotInfo info = mock->get_slot_info(0);
+    info.remaining_weight_g = 400.0f;
+    mock->sync_external_identity(0, info);
+
+    sink.resume(10.0f);
+    sink.apply_delta(1010.0f); // 1000 mm past resume ≈ 2.98 g
+    const float after = mock->get_slot_info(0).remaining_weight_g;
+    CHECK(after < 400.0f);
+    CHECK(after > 396.0f);
+}
+
 TEST_CASE_METHOD(AmsSlotSinkFixture,
                  "AmsSlotSink: apply_delta gates mid-stream when spoolman_id appears",
                  "[consumption_sink][ams]") {
@@ -373,4 +410,44 @@ TEST_CASE_METHOD(AmsSlotSinkFixture, "the PRINTING transition is what reports de
                        static_cast<int>(helix::PrintJobState::COMPLETE));
     helix::ui::UpdateQueue::instance().drain();
     tracker.stop();
+}
+
+TEST_CASE_METHOD(AmsSlotSinkFixture,
+                 "an unload and reload of the same lane charges every mm the print used",
+                 "[filament][tracker][ams_slot]") {
+    // A lane backend feeding one ordinary extruder charges the current slot from
+    // its print-start snapshot; a brief -1 excursion (unload, then reload of the
+    // same lane) must not drop what was extruded meanwhile.
+    auto& tracker = FilamentConsumptionTracker::instance();
+    auto& printer = get_printer_state();
+    REQUIRE_FALSE(mock->shared_extruder_name().has_value());
+    mock->set_current_slot_for_testing(0);
+
+    tracker.start();
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 0);
+    lv_subject_set_int(printer.get_print_state_enum_subject(),
+                       static_cast<int>(helix::PrintJobState::PRINTING));
+    helix::ui::UpdateQueue::instance().drain();
+
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 1000);
+    helix::ui::UpdateQueue::instance().drain();
+    mock->set_current_slot_for_testing(-1);
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 2000);
+    helix::ui::UpdateQueue::instance().drain();
+    mock->set_current_slot_for_testing(0);
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 3000);
+    helix::ui::UpdateQueue::instance().drain();
+
+    // 3000mm PLA @ 1.75mm / 1.24 g/cm^3 ≈ 8.95 g.
+    CHECK(mock->get_slot_info(0).remaining_weight_g == Catch::Approx(491.05f).margin(0.05f));
+
+    lv_subject_set_int(printer.get_print_state_enum_subject(),
+                       static_cast<int>(helix::PrintJobState::COMPLETE));
+    helix::ui::UpdateQueue::instance().drain();
+    tracker.stop();
+    // A later start() replays this subject's value to its fresh observer; a
+    // terminal state there would end that test's print as it begins.
+    lv_subject_set_int(printer.get_print_state_enum_subject(),
+                       static_cast<int>(helix::PrintJobState::STANDBY));
+    helix::ui::UpdateQueue::instance().drain();
 }

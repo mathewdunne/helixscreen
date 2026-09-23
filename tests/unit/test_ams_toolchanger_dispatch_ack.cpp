@@ -36,8 +36,14 @@
 
 #include "ui_update_queue.h"
 
+#include "../test_helpers/toolchanger_test_access.h"
 #include "ams_backend_toolchanger.h"
 #include "ams_types.h"
+#include "i_moonraker_api.h"
+#include "moonraker_api_mock.h"
+#include "moonraker_client_mock.h"
+#include "printer_state.h"
+#include "toolchanger_addon.h"
 
 #include <algorithm>
 #include <functional>
@@ -257,4 +263,42 @@ TEST_CASE("Toolchanger dispatch failure reverts the optimistic action",
     CHECK(h.sent().empty());
     CHECK(h.action() == helix::AmsAction::IDLE);
     CHECK_FALSE(h.get_system_info().is_busy());
+}
+
+// =============================================================================
+// The ack-owned dispatch ceiling belongs to a changer extra, not to every
+// printer without [toolchanger]
+// =============================================================================
+
+TEST_CASE("Toolchanger ack timeout widens only for a named provider",
+          "[ams][toolchanger][dispatch][indx]") {
+    // Once the timeout fires the request tracker drops the ack, so nothing can
+    // ever resolve the pending action and is_busy() refuses every later
+    // operation until it does. A changer extra's swap can heat a cold nozzle
+    // first and needs the room; a plain multi-extruder printer's T<n> is
+    // ACTIVATE_EXTRUDER, which cannot, and holding it for 15 minutes on a lost
+    // ack is the whole cost with none of the benefit.
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
+    helix::PrinterState state;
+    state.init_subjects(false);
+    MoonrakerAPIMock api(client, state);
+
+    helix::toolchanger_addon::ToolCommands commands;
+    commands.present = true; // no [toolchanger] on either machine
+    commands.select_prefix = "T";
+
+    SECTION("a plain multi-extruder printer keeps the normal operation timeout") {
+        helix::AmsBackendToolChanger plain(&api, nullptr);
+        plain.set_tool_commands(commands);
+        CHECK(helix::ToolChangerTestAccess::dispatch_timeout_ms(plain) ==
+              IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS);
+    }
+
+    SECTION("a named provider gets the widened ceiling") {
+        commands.provider_name = "INDX";
+        helix::AmsBackendToolChanger indx(&api, nullptr);
+        indx.set_tool_commands(commands);
+        CHECK(helix::ToolChangerTestAccess::dispatch_timeout_ms(indx) >
+              IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS);
+    }
 }

@@ -99,6 +99,40 @@ def test_device_section_rows_survive_a_namespace_qualified_return_type():
     assert "maintenance" not in found
 
 
+def test_device_section_row_with_a_computed_display_order_is_scanned():
+    # A section appended after a conditional one counts what is already there
+    # instead of writing a literal. Requiring a literal dropped the whole row,
+    # so its label and description were never offered for translation.
+    found = extract_table_strings(dedent("""\
+        std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sections()
+            const {
+            using DS = helix::printer::DeviceSection;
+            std::vector<DS> sections;
+            sections.push_back(DS{"tool_commands", "Tool commands",
+                                  static_cast<int>(sections.size()),
+                                  "Which macro selects and parks a tool"});
+            return sections;
+        }
+    """))
+    assert "Tool commands" in found
+    assert "Which macro selects and parks a tool" in found
+    assert "tool_commands" not in found
+
+
+def test_device_section_display_order_stays_narrow():
+    # Only a literal or that one cast shape counts. An arbitrary expression in
+    # the display_order slot means this four-field brace is not a section row.
+    found = extract_table_strings(dedent("""\
+        std::vector<helix::printer::DeviceSection> sections() {
+            return {
+                {"id", "Not A Section Label", next_order(), "Nor this description"},
+            };
+        }
+    """))
+    assert "Not A Section Label" not in found
+    assert "Nor this description" not in found
+
+
 def test_device_section_declaration_in_a_header_is_not_scanned():
     # A header DECLARATION has no body. Matching it made the extractor walk to
     # the next unrelated brace block and read it as if it held section rows.

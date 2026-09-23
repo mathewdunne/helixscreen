@@ -159,6 +159,17 @@ def _is_number(field: str) -> bool:
     return bool(re.fullmatch(r"[-+]?\d+(\.\d+)?f?", field.strip()))
 
 
+# A section whose predecessors are conditional cannot write its display_order as
+# a literal; it counts what is already there. Requiring a literal there silently
+# dropped such a section's label and description from the scan -- no row matched,
+# so nothing objected and the strings reached the device untranslated.
+_CASTED_ORDER_RE = re.compile(r"static_cast\s*<\s*int\s*>\s*\(")
+
+
+def _is_display_order(field: str) -> bool:
+    return _is_number(field) or bool(_CASTED_ORDER_RE.match(field.strip()))
+
+
 def _positional(record: str, indices) -> Set[str]:
     """Literals at the given positional field indices of one record."""
     found: Set[str] = set()
@@ -224,7 +235,7 @@ def _is_section_row(fields: List[str]) -> bool:
         len(fields) == 4
         and _literal_at(fields[0]) is not None
         and _literal_at(fields[1]) is not None
-        and _is_number(fields[2])
+        and _is_display_order(fields[2])
         and _literal_at(fields[3]) is not None
     )
 

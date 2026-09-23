@@ -622,6 +622,8 @@ translations:
     and weight sync settings.
   Configure WiFi for this device, or skip if you're using Ethernet: Configure WiFi
     for this device, or skip if you're using Ethernet
+  Configure a filament load macro in Settings first: Configure a filament load macro in Settings first
+  Configure a filament unload macro in Settings first: Configure a filament unload macro in Settings first
   Configure devices in Moonraker: Configure devices in Moonraker
   Configure label printer and auto-discovery: Configure label printer and auto-discovery
   Configure printer sensors: Configure printer sensors
@@ -2981,6 +2983,8 @@ translations:
   The left RFID reader in this CFS unit may need service: The left RFID reader in this CFS unit may need service
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
+  ? The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
+  : The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   The printer halted this print and cannot resume it. Restart from the beginning?: The
@@ -3143,9 +3147,12 @@ translations:
   Tool Switcher: Tool Switcher
   'Tool change failed: {}': 'Tool change failed: {}'
   Tool change to T{}: Tool change to T{}
+  Tool commands: Tool commands
   Tool mapping failed: Tool mapping failed
   Tool offsets (mm): Tool offsets (mm)
   Tool offsets saved: Tool offsets saved
+  Tool park macro: Tool park macro
+  Tool select macro: Tool select macro
   Tool swap: Tool swap
   Toolhead: Toolhead
   Toolhead LED: Toolhead LED
@@ -3351,6 +3358,9 @@ translations:
     preparation.
   Where UI sounds play: Where UI sounds play
   Whether filament is loaded: Whether filament is loaded
+  Which macro parks the current tool: Which macro parks the current tool
+  Which macro selects a tool (sent as MACRO TOOL=<n>): Which macro selects a tool (sent as MACRO TOOL=<n>)
+  Which macro selects and parks a tool: Which macro selects and parks a tool
   Which macro the Close feeder button sends: Which macro the Close feeder button sends
   Which macro the Open feeder button sends: Which macro the Open feeder button sends
   White: White

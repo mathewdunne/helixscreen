@@ -11,7 +11,11 @@
 #include "lane_legacy_migration.h"
 #include "lane_source_store.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "operation_patterns.h"
+#include "print_lifecycle_state.h"
+#include "printer_state.h"
 #include "settings_manager.h"
+#include "toolhead_homing.h"
 
 #include <spdlog/spdlog.h>
 
@@ -210,6 +214,15 @@ std::string AmsBackendToolChanger::unload_blocked_reason(int slot_index) const {
 // ============================================================================
 
 namespace {
+
+/// Dispatch timeout for a provider with no klipper-toolchanger object (INDX,
+/// MedusaHC). Nothing there reports a "changing" frame, so the gcode ack is
+/// the ONLY completion signal, and a swap that heats a cold nozzle first runs
+/// well past AMS_OPERATION_TIMEOUT_MS. Once the timeout fires the tracker
+/// drops the request, so the ack can never arrive and IDLE is the only
+/// recovery; the ceiling has to be long enough that a healthy swap never
+/// reaches it.
+constexpr uint32_t ACK_OWNED_DISPATCH_TIMEOUT_MS = 900000; // 15 min
 
 /// One step in a tool changer's operation bar.
 ///
@@ -497,6 +510,51 @@ void AmsBackendToolChanger::handle_status_update(const nlohmann::json& notificat
             if (auto reading = helix::toolchanger_addon::read_tool(params)) {
                 apply_tool_sensor_locked(*reading);
                 state_changed = true;
+            }
+        }
+
+        // Bondtech INDX's own active-tool identity, in `save_variables`. Bound
+        // to THIS backend's own resolved provider -- never the global
+        // toolchanger_addon::read_tool() dispatch -- so an unrelated
+        // printer's save_variables.active_tool can never reach a MedusaHC (or
+        // plain klipper-toolchanger) instance, and MedusaHC's dock-sensor
+        // reading can never reach an INDX one. See
+        // toolchanger_addon::read_indx_active_tool().
+        if (is_indx_provider() && params.contains("save_variables")) {
+            const auto& sv = params["save_variables"];
+            if (sv.is_object()) {
+                const auto reading = helix::toolchanger_addon::read_indx_active_tool(
+                    sv, static_cast<int>(tool_names_.size()));
+                if (reading.status == helix::toolchanger_addon::IndxActiveToolStatus::kValid) {
+                    const int tool = reading.value;
+                    int seated_slot = -1;
+                    if (tool >= 0) {
+                        seated_slot = tool < static_cast<int>(system_info_.tool_to_slot_map.size())
+                                          ? system_info_.tool_to_slot_map[static_cast<size_t>(tool)]
+                                          : -1;
+                        if (seated_slot < 0) {
+                            seated_slot = tool;
+                        }
+                    }
+                    system_info_.current_tool = tool;
+                    system_info_.current_slot = seated_slot;
+                    system_info_.filament_loaded = (tool >= 0);
+                    refresh_slot_statuses_locked();
+                    state_changed = true;
+                } else if (reading.status ==
+                           helix::toolchanger_addon::IndxActiveToolStatus::kMalformed) {
+                    // Present but unusable this frame (wrong type, out of
+                    // range, below -1): report and HOLD the last known
+                    // identity. Never guess a park, and never treat this as
+                    // fresh truth the way a valid delta would be.
+                    spdlog::warn("{} save_variables.active_tool is malformed this frame; "
+                                 "holding last known identity",
+                                 backend_log_tag());
+                }
+                // kAbsent: no news -- this delta said nothing about
+                // active_tool (including the fresh-install case where it was
+                // never saved at all), so the last known identity is
+                // preserved untouched rather than advertised as T0.
             }
         }
 
@@ -1073,7 +1131,38 @@ void AmsBackendToolChanger::finalize_dispatch_after_macro(uint64_t generation) {
     }
 }
 
+uint32_t AmsBackendToolChanger::dispatch_timeout_ms() const {
+    // klipper-toolchanger hands completion to its own status frames, so the ack
+    // timeout there is advisory. Without it the ack is the whole story -- but
+    // only a changer extra's swap can run long enough to need the wider
+    // ceiling, so this asks has_named_tool_provider() rather than
+    // ToolCommands::present. A plain multi-extruder printer's T<n> is
+    // ACTIVATE_EXTRUDER, which never heats or moves anything, and holding its
+    // pending action for 15 minutes on a lost ack would lock every later
+    // operation out behind is_busy().
+    //
+    // The api_ term is what keeps the null-api fixture route alive: a widened
+    // timeout is one of the three things dispatch_payload() keys its legacy
+    // branch on, and taking that branch is the ONLY way a payload reaches the
+    // execute_gcode() virtuals ~20 fixtures override. Nothing to time out
+    // against without an API anyway -- those dispatches are synchronous.
+    return (api_ && has_named_tool_provider()) ? ACK_OWNED_DISPATCH_TIMEOUT_MS
+                                               : IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS;
+}
+
 AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction action) {
+    // Only the known automatic INDX commands own homing. Custom movement
+    // overrides use ensure_homed_then() below like any arbitrary motion macro.
+    if (delegates_homing_to_printer() && api_) {
+        const AmsError refusal = AmsErrorHelper::printer_owned_homing_refusal(
+            helix::printer_owned_homing_gate(api_->printer_state().get_print_lifecycle(),
+                                             helix::toolhead_is_homed(api_->printer_state())));
+        if (!refusal.success()) {
+            spdlog::warn("[AMS ToolChanger] Refusing INDX dispatch: {}", refusal.technical_msg);
+            return refusal;
+        }
+    }
+
     uint64_t generation;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -1086,12 +1175,60 @@ AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction 
     emit_event(EVENT_STATE_CHANGED);
 
     auto token = lifetime_.token();
-    AmsError result = ensure_homed_then(std::move(gcode), [this, token, generation]() {
-        // L081 Mechanism C: the gcode ack lands on a background thread and the
-        // handler writes system_info_ under mutex_. Marshal to main.
-        token.defer("AmsBackendToolChanger::dispatch_macro_complete",
-                    [this, generation]() { finalize_dispatch_after_macro(generation); });
-    });
+
+    // Async-failure unwind: a rejected/timed-out G28 or payload
+    // must clear exactly what begin_dispatch_locked() armed, through the same
+    // generation-guarded abandon_dispatch() the synchronous "never sent" leg
+    // below already uses -- otherwise pending_dispatch_action_ stays latched
+    // on a generation nothing is tracking, is_busy() refuses every later
+    // operation, and the user is left looking at a permanent spinner with no
+    // visible error.
+    //
+    // Only reachable with a live api_: with none, ensure_homed_then()/
+    // dispatch_payload() dispatch synchronously through the 1-arg/2-arg
+    // execute_gcode() virtuals for fixture compatibility (its own doc
+    // comment), and a null on_error keeps that route intact -- a failure
+    // there is already caught by the `if (!result)` net below.
+    std::function<void(const MoonrakerError&)> on_error = nullptr;
+    if (api_) {
+        on_error = [this, token, generation](const MoonrakerError& err) {
+            // L081 Mechanism C: lands on the libhv response thread. Marshal
+            // to main before touching system_info_.
+            token.defer("AmsBackendToolChanger::dispatch_async_error", [this, generation, err]() {
+                // A timeout is not a rejection: the macro may still be running.
+                // The dispatch is abandoned anyway because the request tracker
+                // has already dropped the ack, so nothing else can ever resolve
+                // it (finalize_dispatch_after_macro is the only completion for a
+                // provider without toolchanger status frames).
+                if (err.type == MoonrakerErrorType::TIMEOUT) {
+                    spdlog::warn("[AMS ToolChanger] Dispatch #{} timed out after {} ms (macro "
+                                 "may still be running); releasing the pending action",
+                                 generation, dispatch_timeout_ms());
+                } else {
+                    spdlog::error("[AMS ToolChanger] Dispatch #{} failed: {}", generation,
+                                  err.message);
+                }
+                abandon_dispatch(generation);
+            });
+        };
+    }
+
+    AmsError result = ensure_homed_then(
+        std::move(gcode),
+        [this, token, generation]() {
+            // L081 Mechanism C: the gcode ack lands on a background thread and the
+            // handler writes system_info_ under mutex_. Marshal to main.
+            token.defer("AmsBackendToolChanger::dispatch_macro_complete",
+                        [this, generation]() { finalize_dispatch_after_macro(generation); });
+        },
+        on_error, dispatch_timeout_ms(), /*skip_homing=*/false, /*silent=*/true,
+        // caller_surfaces_errors=false: on_error above only logs and unwinds
+        // local state, so the generic `!!` router keeps ownership of
+        // reporting the rejection to the user
+        // (docs/devel/RPC_ERROR_OWNERSHIP.md). std::nullopt (derive from
+        // on_error == nullptr) with no live api_, keeping the fixture route's
+        // synchronous shape.
+        api_ ? std::optional<bool>(false) : std::nullopt);
 
     if (!result) {
         // The gcode never left: no IMoonrakerAPI, or the send was refused. No ack
@@ -1131,6 +1268,23 @@ AmsError AmsBackendToolChanger::do_unload_filament(int slot_index) {
     // its unmount takes no tool argument, because there is only ever one tool on
     // the head to drop.
     if (tool_commands_.present) {
+        // An explicit Park override outranks PARK_TOOL/unselect.
+        // A stored choice this printer no longer reports is an explicit
+        // unsupported capability — zero sends, never a silent substitution.
+        // The override applies only when a named provider is present: the
+        // picker exists only for a named provider, so a choice stored while
+        // one was present would otherwise have no UI to clear it once the
+        // printer no longer reports that provider.
+        using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
+        const bool override_applies = has_named_tool_provider();
+        if (override_applies && movement_override_.park_choice == Choice::kInvalid) {
+            return AmsErrorHelper::not_supported("unmount (configured macro not found)");
+        }
+        if (override_applies && movement_override_.park_choice == Choice::kValid) {
+            spdlog::info("[AMS ToolChanger] Parking via configured override: {}",
+                         movement_override_.park_macro);
+            return dispatch_operation(movement_override_.park_macro, AmsAction::UNLOADING);
+        }
         if (tool_commands_.unselect.empty()) {
             return AmsErrorHelper::not_supported("unmount");
         }
@@ -1158,6 +1312,7 @@ AmsError AmsBackendToolChanger::do_select_slot(int slot_index) {
 }
 
 AmsError AmsBackendToolChanger::do_change_tool(int tool_number) {
+    std::string cmd;
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
@@ -1165,23 +1320,61 @@ AmsError AmsBackendToolChanger::do_change_tool(int tool_number) {
         if (!slot_valid) {
             return slot_valid;
         }
+
+        if (tool_commands_.present) {
+            // An explicit Select override outranks both the
+            // T<n> shortcut and the CHANGE_TOOL fallback. A stored choice
+            // this printer no longer reports (kInvalid) is an explicit
+            // unsupported capability — zero sends, never a silent fall
+            // through to the automatic command.
+            // Scoped like the Park override above: the picker exists only for
+            // a named provider, so a choice stored while one was present
+            // would otherwise have no UI to clear it once the printer no
+            // longer reports that provider.
+            using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
+            const bool override_applies = has_named_tool_provider();
+            if (override_applies && movement_override_.select_choice == Choice::kInvalid) {
+                return AmsErrorHelper::not_supported("Tool selection (configured macro not found)");
+            }
+            if (override_applies && movement_override_.select_choice == Choice::kValid) {
+                cmd = movement_override_.select_macro + " TOOL=" + std::to_string(tool_number);
+            } else {
+                // select_shortcut_available is only populated for a provider
+                // whose configured tool count can exceed its T<n> shortcuts
+                // (Bondtech INDX); empty means every numbered tool has one, true
+                // by construction for the MedusaHC-shaped providers this table
+                // also serves. Missing BOTH the shortcut and the verified
+                // fallback macro is an explicit unsupported capability,
+                // never a silent substitution.
+                const bool shortcut_available =
+                    tool_commands_.select_shortcut_available.empty() ||
+                    (tool_number <
+                         static_cast<int>(tool_commands_.select_shortcut_available.size()) &&
+                     tool_commands_.select_shortcut_available[static_cast<size_t>(tool_number)]);
+                if (shortcut_available) {
+                    cmd = tool_commands_.select_prefix + std::to_string(tool_number);
+                } else if (!tool_commands_.change_tool_macro.empty()) {
+                    cmd = tool_commands_.change_tool_macro + " TOOL=" + std::to_string(tool_number);
+                } else {
+                    return AmsErrorHelper::not_supported("Tool selection");
+                }
+            }
+        } else {
+            // Use SELECT_TOOL T={n} to select by tool number via the
+            // toolchanger's internal lookup, bypassing any ASSIGN_TOOL
+            // T-command remapping. This ensures we mount the physical tool
+            // the user tapped, not whatever the slicer's T{n} command was
+            // remapped to. Without klipper-toolchanger there is no
+            // SELECT_TOOL and no ASSIGN_TOOL either, so that remap concern
+            // cannot arise on the branch above.
+            cmd = "SELECT_TOOL T=" + std::to_string(tool_number);
+        }
     }
 
-    // Use SELECT_TOOL T={n} to select by tool number via the toolchanger's
-    // internal lookup, bypassing any ASSIGN_TOOL T-command remapping.
-    // This ensures we mount the physical tool the user tapped, not whatever
-    // the slicer's T{n} command was remapped to.
-    //
     // dispatch_operation() sets SELECTING before the send — which also closes
     // the race window where a second tap could arrive before Klipper's status
     // update changes the action — and resolves it on the macro's ack when the
     // toolchanger never claims the operation (#1183).
-    // Without klipper-toolchanger there is no SELECT_TOOL: the extra registers
-    // its own T<n> commands and those ARE the swap. ASSIGN_TOOL does not exist
-    // on such a machine either, so the remap concern above cannot arise.
-    std::string cmd = tool_commands_.present
-                          ? tool_commands_.select_prefix + std::to_string(tool_number)
-                          : "SELECT_TOOL T=" + std::to_string(tool_number);
     spdlog::info("[AMS ToolChanger] Mounting tool {}: {}", tool_number, cmd);
     return dispatch_operation(std::move(cmd), AmsAction::SELECTING);
 }
@@ -1191,6 +1384,15 @@ AmsError AmsBackendToolChanger::do_change_tool(int tool_number) {
 // ============================================================================
 
 AmsError AmsBackendToolChanger::recover() {
+    // tool_commands_.present means a machine WITHOUT klipper-toolchanger --
+    // its own extra (Bondtech INDX, or a MedusaHC fork with no [toolchanger])
+    // drives swaps, so there is no toolchanger object for
+    // INITIALIZE_TOOLCHANGER to act on and no equivalent automatic
+    // reset/recovery contract. Never substitute INDX_FORCE_STATE, a firmware
+    // restart, or a latch operation.
+    if (tool_commands_.present) {
+        return AmsErrorHelper::not_supported("Recovery");
+    }
     spdlog::info("[AMS ToolChanger] Attempting recovery");
     // klipper-toolchanger doesn't have a dedicated recovery command
     // Try to reinitialize the toolchanger
@@ -1198,6 +1400,9 @@ AmsError AmsBackendToolChanger::recover() {
 }
 
 AmsError AmsBackendToolChanger::reset() {
+    if (tool_commands_.present) {
+        return AmsErrorHelper::not_supported("Reset");
+    }
     spdlog::info("[AMS ToolChanger] Resetting toolchanger");
     return execute_gcode("INITIALIZE_TOOLCHANGER");
 }
@@ -1468,20 +1673,108 @@ bool AmsBackendToolChanger::is_bypass_active() const {
 // Device Actions (stub - not applicable for tool changers)
 // ============================================================================
 
-std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sections() const {
-    // A toolhead changer carries its own extruder and has nothing to expose.
-    // Only a machine with a frame-side feeder gets a section.
-    if (!feeder_.present) {
-        return {};
+namespace {
+
+using ToolMovementOverride = helix::toolchanger_addon::ToolMovementOverride;
+
+/// Whether the Select/Park override has anything to show. A printer reporting
+/// no plausible macro still gets the section once a choice is stored, because
+/// a stored choice this printer no longer reports is refused by do_change_tool
+/// ()/do_unload_filament() and the picker is the only way back to "auto".
+bool movement_override_configurable(const ToolMovementOverride& ov) {
+    return !ov.select_macro_options.empty() || !ov.park_macro_options.empty() ||
+           ov.select_choice != ToolMovementOverride::Choice::kAuto ||
+           ov.park_choice != ToolMovementOverride::Choice::kAuto;
+}
+
+/// What one override dropdown shows as selected: a valid choice as the macro
+/// it resolved to, which is how the candidates spell it, else the stored text.
+const std::string& override_dropdown_value(ToolMovementOverride::Choice choice,
+                                           const std::string& raw, const std::string& macro) {
+    return choice == ToolMovementOverride::Choice::kValid ? macro : raw;
+}
+
+/// The options one override dropdown offers: the pickable candidates, "auto"
+/// when this printer reported none, and @p shown whenever the list does not
+/// already spell it (a macro that has since disappeared, a stored choice in
+/// other casing, a valid macro the candidate filter leaves out). Without that
+/// entry the renderer finds no match for current_value, leaves the selection
+/// on the first option and so displays "auto" while the override is in force
+/// -- and picking "auto" then changes no index, fires no
+/// LV_EVENT_VALUE_CHANGED, and clears nothing.
+std::vector<std::string> override_dropdown_options(const std::vector<std::string>& candidates,
+                                                   const std::string& shown) {
+    std::vector<std::string> options = candidates;
+    if (options.empty()) {
+        options.emplace_back(helix::toolchanger_addon::kAutoMacro);
     }
+    if (std::find(options.begin(), options.end(), shown) == options.end()) {
+        options.push_back(shown);
+    }
+    return options;
+}
+
+} // namespace
+
+std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sections() const {
     using DS = helix::printer::DeviceSection;
-    return {
-        DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"},
-    };
+    std::vector<DS> sections;
+    // A toolhead changer carries its own extruder and has nothing to expose.
+    // Only a machine with a frame-side feeder gets a feeder section.
+    if (feeder_.present) {
+        sections.push_back(
+            DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"});
+    }
+    // Select/Park overrides need no feeder — the provider owns
+    // applicability, which here is "a recognized changer extra drives the
+    // swaps, and there is either a macro to pick or a stored choice to clear".
+    if (has_named_tool_provider() && movement_override_configurable(movement_override_)) {
+        sections.push_back(DS{"tool_commands", "Tool commands", static_cast<int>(sections.size()),
+                              "Which macro selects and parks a tool"});
+    }
+    return sections;
 }
 
 std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_actions() const {
     std::vector<helix::printer::DeviceAction> actions;
+    if (has_named_tool_provider() && movement_override_configurable(movement_override_)) {
+        const std::string& select_shown = override_dropdown_value(
+            movement_override_.select_choice, movement_override_.select_choice_raw,
+            movement_override_.select_macro);
+        const std::string& park_shown = override_dropdown_value(movement_override_.park_choice,
+                                                                movement_override_.park_choice_raw,
+                                                                movement_override_.park_macro);
+        actions.push_back({.id = "tool_select_macro",
+                           .label = "Tool select macro",
+                           .icon = "",
+                           .section = "tool_commands",
+                           .description = "Which macro selects a tool (sent as MACRO TOOL=<n>)",
+                           .type = helix::printer::ActionType::DROPDOWN,
+                           .current_value = std::any(select_shown),
+                           .options = override_dropdown_options(
+                               movement_override_.select_macro_options, select_shown),
+                           .min_value = 0,
+                           .max_value = 0,
+                           .unit = "",
+                           .slot_index = -1,
+                           .enabled = true,
+                           .disable_reason = ""});
+        actions.push_back({.id = "tool_park_macro",
+                           .label = "Tool park macro",
+                           .icon = "",
+                           .section = "tool_commands",
+                           .description = "Which macro parks the current tool",
+                           .type = helix::printer::ActionType::DROPDOWN,
+                           .current_value = std::any(park_shown),
+                           .options = override_dropdown_options(
+                               movement_override_.park_macro_options, park_shown),
+                           .min_value = 0,
+                           .max_value = 0,
+                           .unit = "",
+                           .slot_index = -1,
+                           .enabled = true,
+                           .disable_reason = ""});
+    }
     if (!feeder_.present) {
         return actions;
     }
@@ -1561,6 +1854,53 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
 
 AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_id,
                                                       const std::any& value) {
+    if (has_named_tool_provider() &&
+        (action_id == "tool_select_macro" || action_id == "tool_park_macro")) {
+        const auto* chosen = std::any_cast<std::string>(&value);
+        if (!chosen || chosen->empty()) {
+            return AmsErrorHelper::invalid_parameter("No macro selected");
+        }
+        using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
+        const bool is_select = (action_id == "tool_select_macro");
+        const bool is_auto = (*chosen == helix::toolchanger_addon::kAutoMacro);
+        const std::string macro = helix::to_upper(*chosen);
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            const auto& accepted = is_select ? movement_override_.select_accepted_macros
+                                             : movement_override_.park_accepted_macros;
+            const auto& options = is_select ? movement_override_.select_macro_options
+                                            : movement_override_.park_macro_options;
+            const auto& opposite_options = is_select ? movement_override_.park_macro_options
+                                                     : movement_override_.select_macro_options;
+            if (!is_auto && std::find(options.begin(), options.end(), macro) == options.end() &&
+                std::find(opposite_options.begin(), opposite_options.end(), macro) !=
+                    opposite_options.end()) {
+                return AmsErrorHelper::invalid_parameter(
+                    "Macro moves the tool in the opposite direction");
+            }
+            const bool is_known =
+                is_auto || std::find(accepted.begin(), accepted.end(), macro) != accepted.end();
+            const Choice resolved =
+                is_auto ? Choice::kAuto : (is_known ? Choice::kValid : Choice::kInvalid);
+            if (is_select) {
+                movement_override_.select_choice_raw = *chosen;
+                movement_override_.select_choice = resolved;
+                movement_override_.select_macro = (resolved == Choice::kValid) ? macro : "";
+            } else {
+                movement_override_.park_choice_raw = *chosen;
+                movement_override_.park_choice = resolved;
+                movement_override_.park_macro = (resolved == Choice::kValid) ? macro : "";
+            }
+        }
+        if (is_select) {
+            helix::SettingsManager::instance().set_tool_select_macro(*chosen);
+        } else {
+            helix::SettingsManager::instance().set_tool_park_macro(*chosen);
+        }
+        spdlog::info("{} Tool {} macro set to {}", backend_log_tag(), is_select ? "select" : "park",
+                     *chosen);
+        return AmsErrorHelper::success();
+    }
     (void)value;
     if (feeder_.present && (action_id == "open_feeder" || action_id == "close_feeder")) {
         // On a hotend changer the feeder gripper is the only thing holding the

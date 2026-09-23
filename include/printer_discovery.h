@@ -484,6 +484,15 @@ class PrinterDiscovery {
                 has_medusahc_ = true;
                 medusahc_object_name_ = name;
             }
+            // Bondtech INDX: a nozzle-changer status object, recorded as the
+            // same kind of plain object fact as pin_watch/medusahc above. What
+            // it means (candidate inventory source, command defaults) is
+            // helix::toolchanger_addon's business. Matched exactly - an
+            // `mcu indxmcu`, `angle indx` or `neopixel indx` component object
+            // is not this status object and is not sufficient detection.
+            else if (name == "indx") {
+                has_indx_ = true;
+            }
             // Tool object discovery
             else if (name.rfind("tool ", 0) == 0) {
                 std::string tool_name = name.substr(5); // Remove "tool " prefix
@@ -709,45 +718,41 @@ class PrinterDiscovery {
                          "the printer and its four toolheads.");
         }
 
-        // Collect all detected AMS systems
-        detected_ams_systems_.clear();
+        select_ams_backend_priority();
+    }
 
-        // Register the filament management backend. When a real MMU (AFC, Happy
-        // Hare, etc.) is present, it always wins — even on Snapmaker U1 hardware
-        // that also reports filament_detect. The Snapmaker backend is a basic
-        // 4-slot fallback for U1s without an aftermarket MMU, and for a U1 whose
-        // MMU is one we cannot read. Toolchanger alone only handles tool
-        // switching, not filament management.
-        if (has_mmu_) {
-            if (mmu_type_ == AmsType::HAPPY_HARE) {
-                detected_ams_systems_.push_back({AmsType::HAPPY_HARE, "Happy Hare"});
-            } else if (mmu_type_ == AmsType::AFC) {
-                detected_ams_systems_.push_back({AmsType::AFC, "AFC"});
-            } else if (mmu_type_ == AmsType::AD5X_IFS) {
-                detected_ams_systems_.push_back({AmsType::AD5X_IFS, "AD5X IFS"});
-            } else if (mmu_type_ == AmsType::CFS) {
-                detected_ams_systems_.push_back({AmsType::CFS, "CFS"});
-            } else if (mmu_type_ == AmsType::ACE) {
-                detected_ams_systems_.push_back({AmsType::ACE, "ACE"});
-            } else if (mmu_type_ == AmsType::QIDI_BOX) {
-                // i18n: do not translate - product name
-                detected_ams_systems_.push_back({AmsType::QIDI_BOX, "QIDI Box"});
-            }
-        } else if (has_snapmaker_) {
-            // Native Snapmaker filament system (no aftermarket MMU)
-            detected_ams_systems_.push_back({AmsType::SNAPMAKER, "Snapmaker"});
-            mmu_type_ = AmsType::SNAPMAKER;
-        } else if (!tool_names_.empty() && (has_tool_changer_ || tool_names_.size() > 1)) {
-            // More than one hot end, and no filament system managing them:
-            // parallel topology, one slot per tool. Registering it is what gives
-            // these printers slots, per-tool spool identity and the filament
-            // panel's tool selector instead of the single-extruder UI
-            // (prestonbrown/helixscreen#1350). klipper-toolchanger is a changer
-            // on its own word even with a single tool declared.
-            // Still last in the chain, so a real MMU always keeps its backend.
-            detected_ams_systems_.push_back({AmsType::TOOL_CHANGER, "Tool Changer"});
-            mmu_type_ = AmsType::TOOL_CHANGER;
+    /**
+     * @brief Finalize a Bondtech INDX candidate's inventory and re-run backend
+     * selection with it.
+     *
+     * `parse_objects()` cannot pick INDX's slot count itself — it lives in a
+     * runtime macro value (`gcode_macro TOOL_POSITIONS.tool_count`), not the
+     * object list — so the discovery sequence calls this once that value is
+     * read from the subscription reply. Reuses the SAME priority helper
+     * `parse_objects()` itself calls, so this can never become a second
+     * independent chain.
+     *
+     * The caller is responsible for checking candidacy first
+     * (`helix::toolchanger_addon::is_indx_inventory_candidate()`) — this
+     * method trusts `tool_ids` and applies it unconditionally. Populating
+     * `tool_names_` this way (rather than a separate field) follows the same
+     * "count hot ends, not native tool objects" shape as parse_objects(); it
+     * does not, by itself, subscribe fabricated `tool <n>` objects, since that
+     * subscription is separately gated on `has_tool_changer()`, which INDX
+     * never sets.
+     *
+     * @param tool_ids Numbered tool ids from `helix::toolchanger_addon::indx_tool_ids()`.
+     *                 A non-empty vector is required; an empty one is a no-op.
+     * @return true when the finalized inventory resulted in a Tool Changer backend selection.
+     */
+    bool finalize_indx_inventory(const std::vector<std::string>& tool_ids) {
+        if (tool_ids.empty()) {
+            return false;
         }
+        tool_names_ = tool_ids;
+        indx_inventory_finalized_ = true;
+        select_ams_backend_priority();
+        return mmu_type_ == AmsType::TOOL_CHANGER;
     }
 
     /**
@@ -967,6 +972,8 @@ class PrinterDiscovery {
         pin_watch_object_name_.clear();
         has_medusahc_ = false;
         medusahc_object_name_.clear();
+        has_indx_ = false;
+        indx_inventory_finalized_ = false;
         has_chamber_heater_ = false;
         has_chamber_sensor_ = false;
         chamber_sensor_name_.clear();
@@ -1097,6 +1104,19 @@ class PrinterDiscovery {
 
     [[nodiscard]] const std::string& pin_watch_object_name() const {
         return pin_watch_object_name_;
+    }
+
+    /// The exact `indx` status object is present. This delivery's sole
+    /// detection signal for Bondtech INDX - never inferred from config keys
+    /// or `T<n>` shortcut macros.
+    [[nodiscard]] bool has_indx() const {
+        return has_indx_;
+    }
+
+    /// tool_names() is INDX's own numbered inventory (finalize_indx_inventory()
+    /// ran since the last clear()), not a count of extruder heaters.
+    [[nodiscard]] bool indx_inventory_finalized() const {
+        return indx_inventory_finalized_;
     }
 
     [[nodiscard]] bool has_chamber_heater() const {
@@ -1627,6 +1647,64 @@ class PrinterDiscovery {
     }
 
   private:
+    /// Factored out of parse_objects() so finalize_indx_inventory() can rerun
+    /// it after tool_names_ changes without a second, independent priority
+    /// chain. Idempotent: clears and rebuilds detected_ams_systems_/mmu_type_
+    /// purely from the current object facts each call.
+    void select_ams_backend_priority() {
+        detected_ams_systems_.clear();
+
+        // Register the filament management backend. When a real MMU (AFC, Happy
+        // Hare, etc.) is present, it always wins — even on Snapmaker U1 hardware
+        // that also reports filament_detect. The Snapmaker backend is a basic
+        // 4-slot fallback for U1s without an aftermarket MMU, and for a U1 whose
+        // MMU is one we cannot read. Toolchanger alone only handles tool
+        // switching, not filament management.
+        if (has_mmu_) {
+            if (mmu_type_ == AmsType::HAPPY_HARE) {
+                detected_ams_systems_.push_back({AmsType::HAPPY_HARE, "Happy Hare"});
+            } else if (mmu_type_ == AmsType::AFC) {
+                detected_ams_systems_.push_back({AmsType::AFC, "AFC"});
+            } else if (mmu_type_ == AmsType::AD5X_IFS) {
+                detected_ams_systems_.push_back({AmsType::AD5X_IFS, "AD5X IFS"});
+            } else if (mmu_type_ == AmsType::CFS) {
+                detected_ams_systems_.push_back({AmsType::CFS, "CFS"});
+            } else if (mmu_type_ == AmsType::ACE) {
+                detected_ams_systems_.push_back({AmsType::ACE, "ACE"});
+            } else if (mmu_type_ == AmsType::QIDI_BOX) {
+                // i18n: do not translate - product name
+                detected_ams_systems_.push_back({AmsType::QIDI_BOX, "QIDI Box"});
+            }
+        } else if (has_snapmaker_) {
+            // Native Snapmaker filament system (no aftermarket MMU)
+            detected_ams_systems_.push_back({AmsType::SNAPMAKER, "Snapmaker"});
+            mmu_type_ = AmsType::SNAPMAKER;
+        } else if (!tool_names_.empty() &&
+                   (has_tool_changer_ || tool_names_.size() > 1 || has_indx_)) {
+            // More than one hot end, and no filament system managing them:
+            // parallel topology, one slot per tool. Registering it is what gives
+            // these printers slots, per-tool spool identity and the filament
+            // panel's tool selector instead of the single-extruder UI
+            // (prestonbrown/helixscreen#1350). klipper-toolchanger is a changer
+            // on its own word even with a single tool declared. The has_indx_
+            // clause admits a single-tool INDX installation the same way,
+            // without claiming a nonexistent native `toolchanger` object.
+            // Still last in the chain, so a real MMU always keeps its backend.
+            // Named for whoever actually owns the swap: with a real
+            // klipper-toolchanger present, resolve_tool_commands() hands the
+            // machine SELECT_TOOL/UNSELECT_TOOL and INDX sends nothing, so
+            // "Bondtech INDX" there would name a system whose commands the
+            // printer never sees. The same holds for tools counted from
+            // extruder heaters: those are plain T<n>, and only a finalized
+            // INDX inventory makes resolve_tool_commands() claim the provider.
+            const bool indx_owns_swap =
+                has_indx_ && !has_tool_changer_ && indx_inventory_finalized_;
+            detected_ams_systems_.push_back(
+                {AmsType::TOOL_CHANGER, indx_owns_swap ? "Bondtech INDX" : "Tool Changer"});
+            mmu_type_ = AmsType::TOOL_CHANGER;
+        }
+    }
+
     // Helper: convert string to uppercase
     static std::string to_upper(const std::string& str) {
         std::string result = str;
@@ -1734,6 +1812,10 @@ class PrinterDiscovery {
     std::string pin_watch_object_name_;
     bool has_medusahc_ = false;
     std::string medusahc_object_name_;
+    bool has_indx_ = false;
+    /// tool_names_ is INDX's own inventory (finalize_indx_inventory()), not a
+    /// count of extruder heaters.
+    bool indx_inventory_finalized_ = false;
     bool has_chamber_heater_ = false;
     bool has_chamber_sensor_ = false;
     std::string chamber_sensor_name_;

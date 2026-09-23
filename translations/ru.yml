@@ -632,6 +632,8 @@ translations:
     Spoolman и синхронизацию веса.
   Configure WiFi for this device, or skip if you're using Ethernet: Настройте WiFi
     для этого устройства или пропустите, если используете Ethernet
+  Configure a filament load macro in Settings first: Сначала настройте макрос загрузки филамента в Настройках
+  Configure a filament unload macro in Settings first: Сначала настройте макрос выгрузки филамента в Настройках
   Configure devices in Moonraker: Настроить устройства в Moonraker
   Configure label printer and auto-discovery: Настройка принтера этикеток и автообнаружение
   Configure printer sensors: Настроить датчики принтера
@@ -3007,6 +3009,8 @@ translations:
   The left RFID reader in this CFS unit may need service: Левому RFID-считывателю этого блока CFS может требоваться обслуживание
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : Загружена катушка {}, но файл нарезан для {}. Филамент с наполнителем печатается с меньшим потоком и требует закалённого сопла.
+  ? The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
+  : Моторы были отключены во время паузы, и парковка сейчас может задеть печать. Отмените печать, чтобы использовать управление филаментом.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены.
   The printer halted this print and cannot resume it. Restart from the beginning?: Принтер
@@ -3170,9 +3174,12 @@ translations:
   Tool Switcher: 'Переключатель инструментов'
   'Tool change failed: {}': 'Ошибка смены инструмента: {}'
   Tool change to T{}: 'Смена инструмента на T{}'
+  Tool commands: Команды инструмента
   Tool mapping failed: Ошибка сопоставления инструмента
   Tool offsets (mm): Смещения инструментов (мм)
   Tool offsets saved: Смещения инструментов сохранены
+  Tool park macro: Макрос для парковки инструмента
+  Tool select macro: Макрос для выбора инструмента
   Tool swap: Смена инструмента
   Toolhead: 'Печатающая головка'
   Toolhead LED: 'LED печатающей головки'
@@ -3376,6 +3383,9 @@ translations:
     вы уже делали это недавно или хотите больше контроля над подготовкой печати.
   Where UI sounds play: Где воспроизводятся звуки интерфейса
   Whether filament is loaded: Загружен ли филамент
+  Which macro parks the current tool: Какой макрос паркует текущий инструмент
+  Which macro selects a tool (sent as MACRO TOOL=<n>): Какой макрос выбирает инструмент (отправляется как MACRO TOOL=<n>)
+  Which macro selects and parks a tool: Какой макрос выбирает и паркует инструмент
   Which macro the Close feeder button sends: Какой макрос отправляет кнопка «Закрыть фидер»
   Which macro the Open feeder button sends: Какой макрос отправляет кнопка «Открыть фидер»
   White: Белый

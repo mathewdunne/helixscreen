@@ -33,8 +33,11 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/toolchanger_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "ams_backend_toolchanger.h"
 #include "ams_state.h"
+#include "ams_tool_topology.h"
 #include "panel_widget_manager.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
@@ -391,4 +394,93 @@ TEST_CASE_METHOD(NozzleTempsFixture,
     state().update_from_status(nlohmann::json{{"heater_bed", {{"target", 200.0}}}});
     helix::ui::UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
     CHECK(label_mode_subject_value() == static_cast<int>(NozzleLabelMode::Number));
+}
+
+namespace {
+
+/// An INDX-shaped changer: several tools on one shared extruder, the mounted
+/// one named by save_variables.active_tool (-1 = parked).
+toolchanger_addon::ToolCommands indx_commands(int tool_count) {
+    toolchanger_addon::ToolCommands c;
+    c.present = true;
+    c.provider_name = "INDX";
+    c.select_prefix = "T";
+    c.unselect = "PARK_TOOL";
+    c.select_shortcut_available.assign(static_cast<size_t>(tool_count), true);
+    c.change_tool_macro = "CHANGE_TOOL";
+    return c;
+}
+
+void mount_indx_tool(AmsBackendToolChanger& backend, int active_tool) {
+    const nlohmann::json delta{{"save_variables", {{"variables", {{"active_tool", active_tool}}}}}};
+    ToolChangerTestAccess::handle_status(
+        backend, nlohmann::json{{"method", "notify_status_update"},
+                                {"params", nlohmann::json::array({delta, 0.0})}});
+    auto topo = build_ams_topology(&backend, 0);
+    REQUIRE(topo.has_value());
+    ToolState::instance().set_ams_topology(*topo);
+    helix::ui::UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
+}
+
+} // namespace
+
+TEST_CASE_METHOD(NozzleTempsFixture,
+                 "nozzle_temps: a shared-nozzle changer's row names the tool mounted now",
+                 "[widget_size][nozzle_temps][indx]") {
+    configure_one_extruder(state());
+    AmsBackendToolChanger backend(nullptr, nullptr);
+    backend.set_discovered_tools({"0", "1", "2"});
+    backend.set_tool_commands(indx_commands(3));
+    mount_indx_tool(backend, 0);
+
+    PanelWidgetHarness<NozzleTempsWidget> h(test_screen(), state());
+    lv_obj_t* container = h.child("nozzle_temps_container");
+    REQUIRE(container != nullptr);
+    REQUIRE(lv_obj_get_child_count(container) == 2); // one shared nozzle + bed
+
+    auto row_text = [&](const char* name) {
+        return std::string(lv_label_get_text(nth_row_label(container, 0, name)));
+    };
+    const auto& tools = ToolState::instance().tools();
+    REQUIRE(tools.size() == 3);
+    REQUIRE(tools[0].display_label != tools[2].display_label);
+    CHECK(row_text("tool_label_short") == tools[0].display_label);
+    CHECK(row_text("tool_label_long") == "Nozzle 1");
+    CHECK(row_text("tool_label_number") == "1");
+
+    mount_indx_tool(backend, 2);
+    CHECK(row_text("tool_label_short") == ToolState::instance().tools()[2].display_label);
+    CHECK(row_text("tool_label_long") == "Nozzle 3");
+    CHECK(row_text("tool_label_number") == "3");
+
+    // Parked: no tool is mounted, so the row names the nozzle, never the raw
+    // klipper object.
+    mount_indx_tool(backend, -1);
+    CHECK(row_text("tool_label_short") != "extruder");
+    CHECK(row_text("tool_label_long") == "Nozzle");
+    CHECK(row_text("tool_label_number").empty());
+}
+
+TEST_CASE_METHOD(NozzleTempsFixture,
+                 "nozzle_temps: a tool swap on a real toolchanger keeps its rows",
+                 "[widget_size][nozzle_temps][indx]") {
+    // One row per extruder, each named by its own extruder: a swap changes
+    // nothing a row shows, so the rows are not torn down for it.
+    configure_one_extruder(state());
+    PanelWidgetHarness<NozzleTempsWidget> h(test_screen(), state());
+    lv_obj_t* container = h.child("nozzle_temps_container");
+    REQUIRE(container != nullptr);
+    add_second_extruder(state());
+    REQUIRE(lv_obj_get_child_count(container) == 3);
+    lv_obj_t* first_row = lv_obj_get_child(container, 0);
+    const std::string first_label =
+        lv_label_get_text(nth_row_label(container, 0, "tool_label_short"));
+
+    ToolState::instance().update_from_status(nlohmann::json{{"toolchanger", {{"tool_number", 1}}}});
+    REQUIRE(ToolState::instance().active_tool_index() == 1);
+    helix::ui::UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
+
+    CHECK(lv_obj_get_child(container, 0) == first_row);
+    CHECK(std::string(lv_label_get_text(nth_row_label(container, 0, "tool_label_short"))) ==
+          first_label);
 }

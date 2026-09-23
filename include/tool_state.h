@@ -106,6 +106,24 @@ struct ToolTopology {
     int active_tool = -1;
     std::vector<int> tool_to_slot;
     int backend_index = 0; ///< Source backend in AmsState::backends_
+
+    /// True when active_tool < 0 means "not yet reported" (AmsBackend::
+    /// negative_active_tool_is_unreported()) rather than every other
+    /// backend's own meaning for a negative value (Happy Hare bypass, an
+    /// unmapped route, disconnected data). Only such a backend's topology
+    /// sets this; every other backend keeps set_ams_topology()'s existing
+    /// fallback to T0.
+    bool active_tool_unreported = false;
+
+    /// Set when every tool in this topology shares one physical
+    /// extruder/heater (AmsBackend::shared_extruder_name()). ToolState maps
+    /// every constructed tool's extruder_name to this, instead of the
+    /// positional carry-over from init_tools()'s per-index enumeration,
+    /// which only ever covers as many tools as there are physical extruders.
+    /// Also what has_multiple_nozzles() adds to has_multiple_extruders(): a
+    /// shared-resource nozzle changer has several independently selectable
+    /// nozzles despite reporting exactly one physical extruder.
+    std::optional<std::string> shared_extruder_name;
 };
 
 /// Manages tool information for multi-tool printers (toolchangers, multi-extruder).
@@ -166,6 +184,23 @@ class ToolState {
     /// it counts AMS slots fed into one hotend, which need no badge.
     [[nodiscard]] bool has_multiple_extruders() const {
         return extruder_count() > 1;
+    }
+
+    /// Whether more than one independently selectable nozzle exists, distinct
+    /// from has_multiple_extruders(): a shared-resource nozzle changer
+    /// (several tools, one physical extruder/heater) has several such
+    /// nozzles despite reporting exactly one extruder, while several
+    /// filament lanes feeding one nozzle (AFC, CFS, ...) do not count merely
+    /// for having many tools.
+    ///
+    /// The predicate for anything naming WHICH tool's nozzle is shown (the
+    /// nozzle_icon badge, the printed "Nozzle 1" label) — has_multiple_extruders()
+    /// answers a different question (does the heater panel need a selector).
+    [[nodiscard]] bool has_multiple_nozzles() const {
+        if (has_multiple_extruders()) {
+            return true;
+        }
+        return ams_topology_active_ && ams_topology_shared_extruder_ && tools_.size() > 1;
     }
 
     /// Returns "Nozzle" for single-tool, "Nozzle 1" for multi-tool (active tool),
@@ -414,6 +449,11 @@ class ToolState {
     bool ams_topology_active_ = false;
     int ams_topology_tool_count_ = 0;
     std::vector<int> ams_topology_tool_to_slot_;
+    /// See has_multiple_nozzles(). Latched from
+    /// ToolTopology::shared_extruder_name on every set_ams_topology() call,
+    /// independent of needs_rebuild — the active-tool identity can change
+    /// without the tool list shape changing.
+    bool ams_topology_shared_extruder_ = false;
 
     /// Save spool assignments to local JSON file
     void save_spool_json() const;

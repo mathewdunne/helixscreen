@@ -258,7 +258,7 @@ Select the mock AMS topology/type.
 
 | Property | Value |
 |----------|-------|
-| **Values** | `none`, `afc`, `toolchanger` / `tc`, `mixed`, `multi`, `torture`, `vivid`, `ifs`, `htlf`, `snapmaker`, `medusahc` / `medusahc-fork`, `ifs-module` |
+| **Values** | `none`, `afc`, `toolchanger` / `tc`, `mixed`, `multi`, `torture`, `vivid`, `ifs`, `htlf`, `snapmaker`, `medusahc` / `medusahc-fork`, `ifs-module`, `indx` |
 | **Default** | Happy Hare, LINEAR, 4 slots |
 | **File** | `src/printer/ams_backend.cpp` |
 
@@ -278,6 +278,7 @@ Select the mock AMS topology/type.
 | `medusahc` | 1 | **MedusaHC hotend changer - mock HARDWARE, real backend.** Irbis3D controller. Aliases: `medusa`, `mhc`. See below |
 | `medusahc-fork` | 1 | MedusaHC as driven by topi314's fork. Alias: `medusa-fork` |
 | `ifs-module` | 1 | **Standalone AD5X IFS module - mock HARDWARE, real backend.** The Forge-X drop-in's `ifs`/`ifs_materials` objects + stock-named sensors. Aliases: `ifs_module`, `ad5x-module`. See below |
+| `indx` | 12 | **Bondtech INDX nozzle changer - mock HARDWARE, real backend.** Exact `indx` object, one shared heater, `TOOL_POSITIONS`/`save_variables`. See below |
 
 ```bash
 # Simulate AFC Box Turtle
@@ -347,6 +348,29 @@ separate status frames rather than collapsing into one update. `SELECT_TOOL`,
 
 The default `mmu` object is suppressed in these modes - it would detect Happy Hare and
 stand a second AMS backend up alongside the changer.
+
+#### `indx` - mock hardware, real backend
+
+Same rule as the MedusaHC and `ifs-module` modes: no `AmsBackendMock` is built. The mock
+publishes exactly what a real Bondtech INDX installation does — the `indx` status object,
+one shared physical heater (the bare `extruder`; unlike `toolchanger`/`medusahc` this mode
+does **not** add `extruder1/2/3`), `save_variables`, `gcode_macro TOOL_POSITIONS` and a
+`gcode_macro T<n>` per configured tool — so real discovery's deferred inventory
+finalization and the production `AmsBackendToolChanger` + `toolchanger_addon` INDX path
+run at runtime, not only in the unit tests. No fake `toolchanger` or `tool T<n>` objects
+are ever published. The default `mmu` object and the generic `LOAD_FILAMENT`/
+`UNLOAD_FILAMENT` macros every other printer type gets are both suppressed — a stock INDX
+printer ships none of them.
+
+```bash
+HELIX_MOCK_AMS=indx ./build/bin/helix-screen --test -vv
+```
+
+`gcode_script()` handles `T<n>` and `PARK_TOOL` (token-exact). Each arms a swap that
+completes after a short simulated delay so a caller can observe "busy" before the reported
+`active_tool` changes, published on the same periodic notification tick as the
+MedusaHC/IFS-module simulations. See [FILAMENT_BACKEND_INDX.md](FILAMENT_BACKEND_INDX.md)
+for the full protocol contract.
 
 #### `ifs-module` - mock hardware, real backend
 

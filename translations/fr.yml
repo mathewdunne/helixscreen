@@ -646,6 +646,8 @@ translations:
     Spoolman et les paramètres de synchronisation du poids.
   Configure WiFi for this device, or skip if you're using Ethernet: Configurer le
     WiFi pour cet appareil, ou ignorez si vous utilisez Ethernet
+  Configure a filament load macro in Settings first: Configurez d'abord une macro de chargement de filament dans les Paramètres
+  Configure a filament unload macro in Settings first: Configurez d'abord une macro de déchargement de filament dans les Paramètres
   Configure devices in Moonraker: Configurer les appareils dans Moonraker
   Configure label printer and auto-discovery: Configurer l'imprimante d'étiquettes
     et la découverte automatique
@@ -3063,6 +3065,8 @@ translations:
   The left RFID reader in this CFS unit may need service: Le lecteur RFID gauche de cette unité CFS nécessite peut-être une intervention
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : La bobine chargée est {}, mais ce fichier a été tranché pour {}. Un filament chargé fonctionne à un débit plus faible et nécessite une buse durcie.
+  ? The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
+  : Les moteurs ont été éteints pendant la pause, et une prise d'origine maintenant pourrait heurter l'impression. Annulez l'impression pour utiliser les commandes de filament.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : L'impression est en pause. Changer d'outil maintenant déplace la tête d'impression et remplace le filament au niveau de la buse. Reprenez l'impression une fois le changement terminé.
   The printer halted this print and cannot resume it. Restart from the beginning?: L'imprimante
@@ -3241,9 +3245,12 @@ translations:
   Tool Switcher: 'Sélecteur d''outil'
   'Tool change failed: {}': 'Échec du changement d''outil : {}'
   Tool change to T{}: 'Changement d''outil vers T{}'
+  Tool commands: Commandes d'outil
   Tool mapping failed: Échec de la correspondance d'outils
   Tool offsets (mm): Offsets d'outil (mm)
   Tool offsets saved: Offsets d'outil enregistrés
+  Tool park macro: Macro de stationnement d'outil
+  Tool select macro: Macro de sélection d'outil
   Tool swap: Changement d'outil
   Toolhead: 'Tête d''outil'
   Toolhead LED: 'LED de la tête d''outil'
@@ -3452,6 +3459,9 @@ translations:
     plus de contrôle sur la préparation de votre impression.
   Where UI sounds play: Où les sons de l'interface sont diffusés
   Whether filament is loaded: Si du filament est chargé
+  Which macro parks the current tool: Quelle macro parque l'outil actuel
+  Which macro selects a tool (sent as MACRO TOOL=<n>): Quelle macro sélectionne un outil (envoyée sous la forme MACRO TOOL=<n>)
+  Which macro selects and parks a tool: Quelle macro sélectionne et parque un outil
   Which macro the Close feeder button sends: Macro envoyée par le bouton Fermer l'alimentateur
   Which macro the Open feeder button sends: Macro envoyée par le bouton Ouvrir l'alimentateur
   White: Blanc

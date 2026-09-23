@@ -580,6 +580,8 @@ translations:
   Configure PRINT_START: PRINT_START を設定
   Configure Spoolman integration and weight sync settings.: Spoolman 連携と重量同期設定を行います。
   Configure WiFi for this device, or skip if you're using Ethernet: WiFi を設定するか、イーサネットを使用する場合はスキップしてください
+  Configure a filament load macro in Settings first: 先に設定でフィラメントロードマクロを設定してください
+  Configure a filament unload macro in Settings first: 先に設定でフィラメントアンロードマクロを設定してください
   Configure devices in Moonraker: Moonraker でデバイスを設定
   Configure label printer and auto-discovery: ラベルプリンターの設定と自動検出
   Configure printer sensors: プリンターセンサーを設定
@@ -2822,6 +2824,8 @@ translations:
   The left RFID reader in this CFS unit may need service: この CFS ユニットの左側 RFID リーダーは修理が必要な可能性があります
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : 装填中のスプールは {} ですが、このファイルは {} 用にスライスされています。充填材入りフィラメントはフローレートが低くなり、硬化ノズルが必要です。
+  ? The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
+  : 一時停止中にモーターがオフになりました。今ホーミングすると印刷物に接触する可能性があります。フィラメント操作を使うには印刷をキャンセルしてください。
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。
   The printer halted this print and cannot resume it. Restart from the beginning?: プリンターはこの印刷を停止し、再開できません。最初からやり直しますか？
@@ -2964,9 +2968,12 @@ translations:
   Tool Switcher: 'ツール切り替え'
   'Tool change failed: {}': 'ツール変更に失敗しました: {}'
   Tool change to T{}: 'ツールを T{} に変更しています'
+  Tool commands: ツールコマンド
   Tool mapping failed: ツールマッピングに失敗しました
   Tool offsets (mm): ツールオフセット (mm)
   Tool offsets saved: ツールオフセットを保存しました
+  Tool park macro: ツールをパーキングするマクロ
+  Tool select macro: ツールを選択するマクロ
   Tool swap: ツール交換
   Toolhead: 'ツールヘッド'
   Toolhead LED: 'ツールヘッドLED'
@@ -3160,6 +3167,9 @@ translations:
   : 印刷開始時に %s を実行するかどうかを選択できるようになります。最近すでに実行した場合や、印刷準備をより細かく制御したい場合に時間を節約できます。
   Where UI sounds play: UIサウンドの再生先
   Whether filament is loaded: フィラメントの装填状態
+  Which macro parks the current tool: 現在のツールをパーキングするマクロ
+  Which macro selects a tool (sent as MACRO TOOL=<n>): ツールを選択するマクロ（MACRO TOOL=<n> として送信）
+  Which macro selects and parks a tool: ツールを選択してパーキングするマクロ
   Which macro the Close feeder button sends: 「フィーダーを閉じる」ボタンが送信するマクロ
   Which macro the Open feeder button sends: 「フィーダーを開く」ボタンが送信するマクロ
   White: ホワイト

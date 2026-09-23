@@ -526,3 +526,159 @@ TEST_CASE("unload_needs_manual_pull: only unloads with no lane to retract into",
     CHECK_FALSE(unload_needs_manual_pull(/*backend_present=*/true, /*target_slot=*/0));
     CHECK_FALSE(unload_needs_manual_pull(/*backend_present=*/true, /*target_slot=*/3));
 }
+
+// =============================================================================
+// OperationIntent — separating tool mount/park from filament feed (plan
+// §7.2/D1, docs/devel/plans/2026-09-20-bondtech-indx.md). Package D.
+//
+// has_separate_filament_operation is true ONLY for a shared-nozzle-changer
+// backend (Bondtech INDX via AmsBackend::shared_extruder_name()) whose
+// Load/Unload mounts/parks a tool rather than feeding filament. Every other
+// backend leaves it false, and these tests pin that the new parameter is
+// then a complete no-op — the whole point of expressing this as a capability
+// question rather than a vendor check scattered through callers.
+// =============================================================================
+
+using helix::ui::OperationIntent;
+
+namespace {
+/// A shared-nozzle-changer's caps shape: a tool changer whose Load/Unload
+/// tier-1 call would otherwise mount/park a tool.
+BackendCaps indx_shaped_caps() {
+    BackendCaps caps = fresh_ams();
+    caps.is_tool_changer = true;
+    caps.has_separate_filament_operation = true;
+    return caps;
+}
+} // namespace
+
+TEST_CASE("plan_load: ToolMount intent on a shared-nozzle-changer still mounts via the backend",
+          "[indx][dispatch]") {
+    AmsSystemInfo sys = make_sys(3, /*current_slot=*/-1);
+    auto plan = plan_load(sys, indx_shaped_caps(), /*target_slot=*/1, /*macro_available=*/false,
+                          /*macro_user_configured=*/false, OperationIntent::ToolMount);
+    CHECK(plan.tier == FilamentTier::AmsBackend);
+    CHECK(plan.ams_call == AmsCall::Load);
+}
+
+TEST_CASE("plan_load: Filament intent on a shared-nozzle-changer never reaches the backend",
+          "[indx][dispatch]") {
+    AmsSystemInfo sys = make_sys(3, /*current_slot=*/-1);
+    // Even with nothing mounted (no AlreadyMounted refusal possible), a
+    // Filament-intent caller must not mount the tool -- mounting is not
+    // feeding filament on this backend.
+    auto plan = plan_load(sys, indx_shaped_caps(), /*target_slot=*/1, /*macro_available=*/false,
+                          /*macro_user_configured=*/false, OperationIntent::Filament);
+    CHECK_FALSE(plan.tier == FilamentTier::AmsBackend);
+}
+
+TEST_CASE("plan_load: Filament intent with no configured/detected macro refuses, never raw gcode",
+          "[indx][dispatch]") {
+    // plan §7.2 point 6: there is no stock UNLOAD_FILAMENT upstream, and a
+    // missing filament action must stay unavailable/configurable rather than
+    // silently falling through to generic extrusion.
+    AmsSystemInfo sys = make_sys(3, /*current_slot=*/-1);
+    auto plan = plan_load(sys, indx_shaped_caps(), /*target_slot=*/1, /*macro_available=*/false,
+                          /*macro_user_configured=*/false, OperationIntent::Filament);
+    CHECK(plan.tier == FilamentTier::Refused);
+    CHECK(plan.refusal == FilamentRefusal::NoMacroConfigured);
+}
+
+TEST_CASE("plan_load: Filament intent still reaches an auto-detected macro",
+          "[indx][dispatch]") {
+    AmsSystemInfo sys = make_sys(3, /*current_slot=*/-1);
+    auto plan = plan_load(sys, indx_shaped_caps(), /*target_slot=*/1, /*macro_available=*/true,
+                          /*macro_user_configured=*/false, OperationIntent::Filament);
+    CHECK(plan.tier == FilamentTier::Macro);
+}
+
+TEST_CASE("plan_load: a user-configured macro outranks the backend only under Filament intent",
+          "[indx][dispatch]") {
+    // The user guide tells INDX users to configure Load Filament so the
+    // Filament panel works. That macro feeds filament; it must not replace the
+    // T<n> a tool-grid tap sends.
+    AmsSystemInfo sys = make_sys(3, /*current_slot=*/-1);
+    auto filament = plan_load(sys, indx_shaped_caps(), /*target_slot=*/1, /*macro_available=*/true,
+                              /*macro_user_configured=*/true, OperationIntent::Filament);
+    CHECK(filament.tier == FilamentTier::Macro);
+
+    auto mount = plan_load(sys, indx_shaped_caps(), /*target_slot=*/1, /*macro_available=*/true,
+                           /*macro_user_configured=*/true, OperationIntent::ToolMount);
+    CHECK(mount.tier == FilamentTier::AmsBackend);
+    CHECK(mount.ams_call == AmsCall::Load);
+}
+
+TEST_CASE("plan_unload: a user-configured macro outranks the backend only under Filament intent",
+          "[indx][dispatch]") {
+    auto filament = plan_unload(indx_shaped_caps(), /*target_slot=*/1, /*target_is_loaded=*/true,
+                                /*macro_available=*/true, /*macro_user_configured=*/true,
+                                OperationIntent::Filament);
+    CHECK(filament.tier == FilamentTier::Macro);
+
+    auto park = plan_unload(indx_shaped_caps(), /*target_slot=*/1, /*target_is_loaded=*/true,
+                            /*macro_available=*/true, /*macro_user_configured=*/true,
+                            OperationIntent::ToolMount);
+    CHECK(park.tier == FilamentTier::AmsBackend);
+    CHECK(park.ams_call == AmsCall::Unload);
+}
+
+TEST_CASE("plan_load/plan_unload: a user-configured macro still wins on an ordinary tool changer",
+          "[indx][dispatch][regression]") {
+    // has_separate_filament_operation is false here, so ToolMount intent
+    // changes nothing: the user's macro override keeps its full authority.
+    AmsSystemInfo sys = make_sys(5, /*current_slot=*/-1);
+    BackendCaps tc = fresh_ams();
+    tc.is_tool_changer = true;
+    for (auto intent : {OperationIntent::ToolMount, OperationIntent::Filament}) {
+        auto load_plan = plan_load(sys, tc, /*target_slot=*/1, /*macro_available=*/true,
+                                   /*macro_user_configured=*/true, intent);
+        CHECK(load_plan.tier == FilamentTier::Macro);
+        auto unload_plan =
+            plan_unload(tc, /*target_slot=*/1, /*target_is_loaded=*/true,
+                        /*macro_available=*/true, /*macro_user_configured=*/true, intent);
+        CHECK(unload_plan.tier == FilamentTier::Macro);
+    }
+}
+
+TEST_CASE("plan_unload: Filament intent on a shared-nozzle-changer never parks via the backend",
+          "[indx][dispatch]") {
+    auto plan = plan_unload(indx_shaped_caps(), /*target_slot=*/1, /*target_is_loaded=*/true,
+                            /*macro_available=*/false, /*macro_user_configured=*/false,
+                            OperationIntent::Filament);
+    CHECK(plan.tier == FilamentTier::Refused);
+    CHECK(plan.refusal == FilamentRefusal::NoMacroConfigured);
+}
+
+TEST_CASE("plan_unload: ToolMount intent on a shared-nozzle-changer still parks via the backend",
+          "[indx][dispatch]") {
+    auto plan = plan_unload(indx_shaped_caps(), /*target_slot=*/1, /*target_is_loaded=*/true,
+                            /*macro_available=*/false, /*macro_user_configured=*/false,
+                            OperationIntent::ToolMount);
+    CHECK(plan.tier == FilamentTier::AmsBackend);
+    CHECK(plan.ams_call == AmsCall::Unload);
+}
+
+TEST_CASE("plan_load/plan_unload: an ordinary tool changer is unaffected by intent",
+          "[indx][dispatch][regression]") {
+    // has_separate_filament_operation stays false for every non-INDX backend
+    // (Package C never sets shared_extruder_name() for MedusaHC/plain
+    // toolchangers), so OperationIntent must not change their behavior at all
+    // -- the regression this whole capability must not introduce.
+    AmsSystemInfo sys = make_sys(5, /*current_slot=*/4);
+    BackendCaps tc = fresh_ams();
+    tc.is_tool_changer = true;
+    tc.needs_unload_before_load = true;
+    REQUIRE_FALSE(tc.has_separate_filament_operation);
+
+    for (auto intent : {OperationIntent::ToolMount, OperationIntent::Filament}) {
+        auto load_plan = plan_load(sys, tc, /*target_slot=*/4, /*macro_available=*/true,
+                                   /*macro_user_configured=*/false, intent);
+        CHECK(load_plan.tier == FilamentTier::Refused);
+        CHECK(load_plan.refusal == FilamentRefusal::AlreadyMounted);
+
+        auto unload_plan = plan_unload(tc, /*target_slot=*/4, /*target_is_loaded=*/true,
+                                       /*macro_available=*/true, /*macro_user_configured=*/false,
+                                       intent);
+        CHECK(unload_plan.tier == FilamentTier::AmsBackend);
+    }
+}

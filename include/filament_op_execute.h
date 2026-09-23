@@ -61,6 +61,19 @@ namespace helix::ui {
 [[nodiscard]] BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out,
                                             int target_slot);
 
+/**
+ * @brief Whether @p backend is a shared-nozzle changer: several tools on one
+ *        extruder (AmsBackend::shared_extruder_name()).
+ *
+ * Such a backend's Load/Unload mount or park a tool, so feeding filament is a
+ * separate operation, and the printer's filament macros own their heating,
+ * homing and heater state: HelixScreen neither preheats, homes nor restores
+ * the heater around them.
+ *
+ * @param backend May be null (answers false).
+ */
+[[nodiscard]] bool is_shared_nozzle_changer(const AmsBackend* backend);
+
 /// The extruder a filament op heats, and the numbers a nozzle prefill holds to.
 struct OpNozzle {
     std::string extruder; ///< Klipper extruder name
@@ -84,13 +97,18 @@ struct OpNozzle {
                                          const SafetyLimits& limits);
 
 /// plan_load() with the StandardMacros LoadFilament slot read off the registry.
+/// @param intent Defaults to Filament (the Filament panel/runout controls);
+///        the AMS tool-grid/sidebar and the home tool-switcher pass ToolMount.
 [[nodiscard]] FilamentOpPlan plan_live_load(const AmsSystemInfo& info, const BackendCaps& caps,
-                                            int target_slot);
+                                            int target_slot,
+                                            OperationIntent intent = OperationIntent::Filament);
 
 /// plan_unload() with the StandardMacros UnloadFilament slot read off the registry.
 /// @param target_is_loaded From read_unload_target_loaded() — never answered inline.
+/// @param intent See plan_live_load().
 [[nodiscard]] FilamentOpPlan plan_live_unload(const BackendCaps& caps, int target_slot,
-                                              bool target_is_loaded);
+                                              bool target_is_loaded,
+                                              OperationIntent intent = OperationIntent::Filament);
 
 /// unload_target_is_loaded() with the four per-lane answers read off a live
 /// backend. False when @p backend is null: with no backend there is no lane to

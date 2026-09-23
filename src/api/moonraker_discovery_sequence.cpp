@@ -509,14 +509,27 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
             // Early hardware discovery callback - allows AMS/MMU backends to initialize
             // BEFORE the subscription response arrives, so they can receive initial state
             // naturally. Copy hardware_ under lock to prevent data races (#562, #777).
+            //
+            // A printer whose tool inventory is published only in runtime status is the
+            // one exception: this snapshot cannot describe its tools yet. Deferring the
+            // callback here breaks the discovery/subscription dependency cycle -
+            // complete_discovery_subscription() finalizes inventory from the
+            // subscription reply and fires this callback (with the finalized snapshot)
+            // immediately before on_discovery_complete_, once, for this discovery
+            // generation. Every other printer gets the early callback here.
             if (on_hardware_discovered_) {
-                spdlog::debug("[Moonraker Client] Invoking early hardware discovery callback");
                 PrinterDiscovery hw_snapshot;
                 {
                     std::lock_guard<std::mutex> lock(hardware_mutex_);
                     hw_snapshot = hardware_;
                 }
-                on_hardware_discovered_(hw_snapshot);
+                if (helix::toolchanger_addon::tool_inventory_from_status(hw_snapshot)) {
+                    spdlog::debug("[Moonraker Client] Deferring early hardware discovery "
+                                  "callback until the tool inventory arrives in status");
+                } else {
+                    spdlog::debug("[Moonraker Client] Invoking early hardware discovery callback");
+                    on_hardware_discovered_(hw_snapshot);
+                }
             }
 
             // Step 2: Get server information
@@ -1616,9 +1629,14 @@ void MoonrakerDiscoverySequence::complete_discovery_subscription(uint64_t seq) {
     json subscribe_params = {{"objects", subscription_objects}};
     size_t num_subscribed = subscription_objects.size();
 
+    // The pre-subscription snapshot: whether THIS pass deferred its early
+    // hardware callback is decided from facts as of the subscribe request, not
+    // whatever hardware_ becomes afterward.
+    const bool inventory_deferred = helix::toolchanger_addon::tool_inventory_from_status(hw);
+
     client_.send_jsonrpc(
         "printer.objects.subscribe", subscribe_params,
-        [this, seq, num_subscribed](json sub_response) {
+        [this, seq, num_subscribed, inventory_deferred](json sub_response) {
             if (is_stale() || !is_current_sequence(seq))
                 return;
             if (sub_response.contains("result")) {
@@ -1662,6 +1680,30 @@ void MoonrakerDiscoverySequence::complete_discovery_subscription(uint64_t seq) {
             if (sub_response.contains("result") && sub_response["result"].contains("status")) {
                 initial_status = sub_response["result"]["status"];
             }
+
+            // Finalize a deferred tool inventory from this reply, then fire the
+            // deferred early hardware callback before on_discovery_complete_ -
+            // exactly once for this generation. A missing or malformed inventory
+            // leaves the tool list empty: the printer still completes discovery,
+            // just with no tool-changer backend.
+            if (inventory_deferred) {
+                {
+                    std::lock_guard<std::mutex> lock(hardware_mutex_);
+                    helix::toolchanger_addon::finalize_tool_inventory_from_status(hardware_,
+                                                                                  initial_status);
+                }
+                if (on_hardware_discovered_) {
+                    PrinterDiscovery finalized_snapshot;
+                    {
+                        std::lock_guard<std::mutex> lock(hardware_mutex_);
+                        finalized_snapshot = hardware_;
+                    }
+                    spdlog::debug("[Moonraker Client] Invoking deferred early hardware "
+                                  "discovery callback (tool inventory finalized)");
+                    on_hardware_discovered_(finalized_snapshot);
+                }
+            }
+
             if (on_discovery_complete_) {
                 PrinterDiscovery hw_snapshot;
                 {

@@ -14,6 +14,7 @@ enum class PrintJobState;
 #include <array>
 #include <cstddef>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace helix {
@@ -90,6 +91,28 @@ class FilamentConsumptionTracker {
     /// Tracks the print lifecycle independently of sink trackability so that
     /// mid-print sink registration can snapshot the new sink.
     bool print_in_progress_ = false;
+
+    /// Aggregate-path bookkeeping: the backend slot last seen as
+    /// backend->get_current_slot() when on_filament_used_changed() applied a
+    /// delta, keyed by backend index. AmsSlotSink::apply_delta() computes its
+    /// decrement from the TOTAL filament used since its own snapshot, not
+    /// since it last ran -- correct only while the same slot stays current the
+    /// whole time. A shared-resource tool changer (a backend reporting
+    /// shared_extruder_name()) changes which slot is current mid-print, so
+    /// the newly-current slot must rebaseline from HERE rather than being
+    /// charged for the whole print's filament history it was never mounted
+    /// for. Absent means "not seen since the last
+    /// snapshot_all_sinks()", which on_print_state_changed() clears on every
+    /// PRINTING transition so a fresh print never inherits a stale slot from
+    /// the previous one (or from being parked, which leaves no entry at all).
+    std::unordered_map<int, int> last_current_slot_by_backend_;
+
+    /// Previous aggregate filament_used reading. When a backend changes its
+    /// current slot between notifications, the next reading contains the first
+    /// real delta for that slot. Rebaselining at this previous value lets that
+    /// delta be applied to the newly-current slot without charging it for any
+    /// earlier part of the print.
+    float previous_aggregate_filament_used_mm_ = 0.0f;
 
     ObserverGuard print_state_obs_;
     ObserverGuard filament_used_obs_;

@@ -1498,6 +1498,7 @@ Each backend has its own leaf doc covering the protocol, data sources, G-code co
 | CFS | Creality Filament System (K2 built-in; K1/K1C/K1 Max upgrade) | [FILAMENT_BACKEND_CFS.md](FILAMENT_BACKEND_CFS.md) |
 | QIDI Box | QIDI PLUS4 / Q2 / MAX4 RFID hub, chainable to 4 boxes | [FILAMENT_BACKEND_QIDI_BOX.md](FILAMENT_BACKEND_QIDI_BOX.md) |
 | Snapmaker U1 | SnapSwap 4-toolhead parallel toolchanger with per-channel RFID | [FILAMENT_BACKEND_SNAPMAKER_U1.md](FILAMENT_BACKEND_SNAPMAKER_U1.md) |
+| Bondtech INDX | Nozzle changer, shared extruder/heater, no klipper-toolchanger (`AmsBackendToolChanger` add-on, like MedusaHC) | [FILAMENT_BACKEND_INDX.md](FILAMENT_BACKEND_INDX.md) |
 
 ### AmsType Enum
 

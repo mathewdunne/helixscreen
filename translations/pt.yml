@@ -640,6 +640,8 @@ translations:
     com Spoolman e configurações de sincronização de peso.
   Configure WiFi for this device, or skip if you're using Ethernet: Configure o WiFi
     para este dispositivo, ou pule se estiver usando Ethernet
+  Configure a filament load macro in Settings first: Configure primeiro um macro de carregamento de filamento em Configurações
+  Configure a filament unload macro in Settings first: Configure primeiro um macro de descarregamento de filamento em Configurações
   Configure devices in Moonraker: Configurar dispositivos no Moonraker
   Configure label printer and auto-discovery: Configurar impressora de etiquetas e
     descoberta automática
@@ -3044,6 +3046,8 @@ translations:
   The left RFID reader in this CFS unit may need service: O leitor RFID esquerdo desta unidade CFS pode precisar de manutenção
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : O carretel carregado é {}, mas este arquivo foi fatiado para {}. Filamento composto funciona com fluxo menor e precisa de um bico endurecido.
+  ? The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls.
+  : Os motores foram desligados durante a pausa, e referenciar agora pode atingir a impressão. Cancele a impressão para usar os controles de filamento.
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : A impressão está pausada. Trocar a ferramenta agora move o cabeçote e troca o
     filamento no bico. Retome a impressão assim que a troca terminar.
@@ -3215,9 +3219,12 @@ translations:
   Tool Switcher: 'Seletor de ferramentas'
   'Tool change failed: {}': 'Falha ao trocar ferramenta: {}'
   Tool change to T{}: 'Troca de ferramenta para T{}'
+  Tool commands: Comandos de ferramenta
   Tool mapping failed: Falha no mapeamento de ferramenta
   Tool offsets (mm): Offsets de ferramenta (mm)
   Tool offsets saved: Offsets de ferramenta salvos
+  Tool park macro: Macro de estacionar ferramenta
+  Tool select macro: Macro de selecionar ferramenta
   Tool swap: Troca de ferramenta
   Toolhead: 'Cabeçote'
   Toolhead LED: 'LED do cabeçote'
@@ -3424,6 +3431,9 @@ translations:
     da sua impressão.
   Where UI sounds play: Onde os sons da interface são reproduzidos
   Whether filament is loaded: Se há filamento carregado
+  Which macro parks the current tool: Qual macro estaciona a ferramenta atual
+  Which macro selects a tool (sent as MACRO TOOL=<n>): Qual macro seleciona uma ferramenta (enviado como MACRO TOOL=<n>)
+  Which macro selects and parks a tool: Qual macro seleciona e estaciona uma ferramenta
   Which macro the Close feeder button sends: Qual macro o botão Fechar alimentador envia
   Which macro the Open feeder button sends: Qual macro o botão Abrir alimentador envia
   White: Branco

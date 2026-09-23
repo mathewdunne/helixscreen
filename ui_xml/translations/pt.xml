@@ -573,6 +573,8 @@
   <translation tag="Configure PRINT_START" pt="Configurar PRINT_START"/>
   <translation tag="Configure Spoolman integration and weight sync settings." pt="Configurar integração com Spoolman e configurações de sincronização de peso."/>
   <translation tag="Configure WiFi for this device, or skip if you&apos;re using Ethernet" pt="Configure o WiFi para este dispositivo, ou pule se estiver usando Ethernet"/>
+  <translation tag="Configure a filament load macro in Settings first" pt="Configure primeiro um macro de carregamento de filamento em Configurações"/>
+  <translation tag="Configure a filament unload macro in Settings first" pt="Configure primeiro um macro de descarregamento de filamento em Configurações"/>
   <translation tag="Configure devices in Moonraker" pt="Configurar dispositivos no Moonraker"/>
   <translation tag="Configure label printer and auto-discovery" pt="Configurar impressora de etiquetas e descoberta automática"/>
   <translation tag="Configure printer sensors" pt="Configurar sensores da impressora"/>
@@ -2737,6 +2739,7 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." pt="As macros de ajuda estão instaladas e são ativadas após reiniciar o Klipper."/>
   <translation tag="The left RFID reader in this CFS unit may need service" pt="O leitor RFID esquerdo desta unidade CFS pode precisar de manutenção"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." pt="O carretel carregado é {}, mas este arquivo foi fatiado para {}. Filamento composto funciona com fluxo menor e precisa de um bico endurecido."/>
+  <translation tag="The motors were turned off during the pause, and homing now could hit the print. Cancel the print to use filament controls." pt="Os motores foram desligados durante a pausa, e referenciar agora pode atingir a impressão. Cancele a impressão para usar os controles de filamento."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." pt="A impressão está pausada. Trocar a ferramenta agora move o cabeçote e troca o filamento no bico. Retome a impressão assim que a troca terminar."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" pt="A impressora parou esta impressão e não pode retomá-la. Reiniciar do início?"/>
   <translation tag="The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear." pt="A impressora não fez home. Continuar fará home em todos os eixos, movendo o cabeçote. Certifique-se de que a mesa esteja livre."/>
@@ -2858,9 +2861,12 @@
   <translation tag="Tool Switcher" pt="Seletor de ferramentas"/>
   <translation tag="Tool change failed: {}" pt="Falha ao trocar ferramenta: {}"/>
   <translation tag="Tool change to T{}" pt="Troca de ferramenta para T{}"/>
+  <translation tag="Tool commands" pt="Comandos de ferramenta"/>
   <translation tag="Tool mapping failed" pt="Falha no mapeamento de ferramenta"/>
   <translation tag="Tool offsets (mm)" pt="Offsets de ferramenta (mm)"/>
   <translation tag="Tool offsets saved" pt="Offsets de ferramenta salvos"/>
+  <translation tag="Tool park macro" pt="Macro de estacionar ferramenta"/>
+  <translation tag="Tool select macro" pt="Macro de selecionar ferramenta"/>
   <translation tag="Tool swap" pt="Troca de ferramenta"/>
   <translation tag="Toolhead" pt="Cabeçote"/>
   <translation tag="Toolhead LED" pt="LED do cabeçote"/>
@@ -3047,6 +3053,9 @@
   <translation tag="When starting a print, you&apos;ll be able to choose whether to run %s. This saves time when you&apos;ve already done it recently or want more control over your print preparation." pt="Ao iniciar uma impressão, você poderá escolher se deseja executar %s. Isso economiza tempo quando você já fez isso recentemente ou deseja mais controle sobre a preparação da sua impressão."/>
   <translation tag="Where UI sounds play" pt="Onde os sons da interface são reproduzidos"/>
   <translation tag="Whether filament is loaded" pt="Se há filamento carregado"/>
+  <translation tag="Which macro parks the current tool" pt="Qual macro estaciona a ferramenta atual"/>
+  <translation tag="Which macro selects a tool (sent as MACRO TOOL=&lt;n&gt;)" pt="Qual macro seleciona uma ferramenta (enviado como MACRO TOOL=&lt;n&gt;)"/>
+  <translation tag="Which macro selects and parks a tool" pt="Qual macro seleciona e estaciona uma ferramenta"/>
   <translation tag="Which macro the Close feeder button sends" pt="Qual macro o botão Fechar alimentador envia"/>
   <translation tag="Which macro the Open feeder button sends" pt="Qual macro o botão Abrir alimentador envia"/>
   <translation tag="White" pt="Branco"/>

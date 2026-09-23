@@ -133,6 +133,7 @@ void ToolState::deinit_subjects() {
     ams_topology_active_ = false;
     ams_topology_tool_count_ = 0;
     ams_topology_tool_to_slot_.clear();
+    ams_topology_shared_extruder_ = false;
 
     subjects_.deinit_all();
     subjects_initialized_ = false;
@@ -148,6 +149,7 @@ void ToolState::init_tools(const helix::PrinterDiscovery& hardware) {
     ams_topology_active_ = false;
     ams_topology_tool_count_ = 0;
     ams_topology_tool_to_slot_.clear();
+    ams_topology_shared_extruder_ = false;
 
     // Which offsets this printer keeps per toolhead, and the model that reads
     // them. Asked once, here, because this is the only place ToolState sees
@@ -297,6 +299,10 @@ void ToolState::set_ams_topology(const ToolTopology& topo) {
     ams_topology_active_ = true;
     ams_topology_tool_count_ = topo.tool_count;
     ams_topology_tool_to_slot_ = topo.tool_to_slot;
+    // Independent of needs_rebuild: the active tool can change without the
+    // tool-list shape changing, but has_multiple_nozzles() must stay correct
+    // on every call, not only the ones that rebuild tools_.
+    ams_topology_shared_extruder_ = topo.shared_extruder_name.has_value();
 
     if (needs_rebuild) {
         // Snapshot per-tool hardware mappings populated by init_tools() so we can
@@ -322,6 +328,18 @@ void ToolState::set_ams_topology(const ToolTopology& topo) {
                 t.heater_name = previous[i].heater_name;
                 t.fan_name = previous[i].fan_name;
                 t.gcode_offsets = previous[i].gcode_offsets;
+            }
+            if (topo.shared_extruder_name) {
+                // Every tool drives the SAME physical extruder/heater: the
+                // positional carry-over above only ever covers as many tools
+                // as init_tools() found real extruder heaters for, leaving
+                // surplus tools (every INDX tool past the first) unmapped.
+                // heater_name stays unset so effective_heater() falls back to
+                // this shared extruder_name rather than a stale per-index one.
+                t.extruder_name = topo.shared_extruder_name;
+                t.heater_name = std::nullopt;
+            }
+            if (i < static_cast<int>(previous.size())) {
                 // And the spool record, but ONLY while this tool still sources
                 // the same lane. Which spool is mounted is durable user data and
                 // a rebuild has no business discarding it — dropping it wholesale
@@ -361,7 +379,14 @@ void ToolState::set_ams_topology(const ToolTopology& topo) {
     }
 
     int new_active = topo.active_tool;
-    if (new_active < 0 || new_active >= static_cast<int>(tools_.size())) {
+    if (new_active < 0) {
+        // Distinct from the out-of-range case below: a provider that flagged
+        // this topology as active_tool_unreported has no toolchanger.tool_number
+        // to default from, so a negative value here is an honest "no active
+        // tool known" — never coerced to T0, which would draw a highlight on a
+        // tool that may not be mounted at all.
+        new_active = topo.active_tool_unreported ? -1 : 0;
+    } else if (new_active >= static_cast<int>(tools_.size())) {
         new_active = 0; // Out-of-range falls back to T0 (matches init_tools convention)
     }
     if (new_active != active_tool_index_) {
@@ -380,6 +405,7 @@ void ToolState::clear_ams_topology() {
     ams_topology_active_ = false;
     ams_topology_tool_count_ = 0;
     ams_topology_tool_to_slot_.clear();
+    ams_topology_shared_extruder_ = false;
     tools_.clear();
     active_tool_index_ = 0;
     lv_subject_set_int(&tool_count_, 0);
@@ -740,13 +766,14 @@ const ToolInfo* ToolState::active_tool() const {
 }
 
 std::string ToolState::nozzle_label() const {
-    // Gated on physical extruders, not tool count: the label sits beside a
-    // nozzle temperature readout in the controls and filament panels, so it
-    // answers "which nozzle is this". set_ams_topology() expands tools_ to one
-    // entry per filament lane, and every lane on a single-hotend printer feeds
-    // the same nozzle - naming it after the loaded lane says nothing. Matches
-    // the nozzle_icon badge gate in ui_ams_tool_text.
-    if (!has_multiple_extruders()) {
+    // Gated on independently selectable nozzles, not extruder count: several
+    // nozzles can share one physical extruder/heater (a shared-resource
+    // nozzle changer), and set_ams_topology() also expands tools_ to one
+    // entry per filament LANE for AFC/CFS/HH, where every lane on a
+    // single-hotend printer feeds the same nozzle and naming it after the
+    // loaded lane says nothing. Matches the nozzle_icon badge gate in
+    // ui_ams_tool_text.
+    if (!has_multiple_nozzles()) {
         return lv_tr("Nozzle");
     }
     const auto* tool = active_tool();
@@ -768,13 +795,49 @@ std::string ToolState::nozzle_label() const {
 
 // Tool badge formatting moved to UI layer (ui_ams_tool_text.cpp)
 
-std::string ToolState::tool_name_for_extruder(const std::string& extruder_name) const {
-    for (const auto& tool : tools_) {
+/// The tool that answers for @p extruder_name, or nullptr when none does or
+/// the answer is ambiguous and unresolved.
+///
+/// On a shared-resource nozzle changer several tools really do share one
+/// extruder_name, so the first positional match is not necessarily the
+/// mounted one.
+/// When more than one tool claims this extruder, only the valid ACTIVE tool can
+/// break the tie; with no known active tool (parked/unreported) there is no
+/// specific tool to name.
+///
+/// @p shared_nozzle scopes that to the topology it was written for. Every
+/// lane-expanded AMS (AFC, Happy Hare, CFS, QIDI, AD5X IFS) also leaves every
+/// tool on the default "extruder" name, but those lanes feed ONE nozzle: there
+/// is no mounted tool to identify, and answering with the loaded lane would
+/// rename the single nozzle row every time the lane changed. The first match
+/// is the stable answer there.
+static const ToolInfo* find_tool_for_extruder(const std::vector<ToolInfo>& tools,
+                                              const ToolInfo* active,
+                                              const std::string& extruder_name,
+                                              bool shared_nozzle) {
+    const ToolInfo* match = nullptr;
+    int match_count = 0;
+    for (const auto& tool : tools) {
         if (tool.extruder_name && *tool.extruder_name == extruder_name) {
-            return tool.name;
+            if (!match) {
+                match = &tool;
+            }
+            ++match_count;
         }
     }
-    return {};
+    if (match_count <= 1 || !shared_nozzle) {
+        return match;
+    }
+    if (active && active->extruder_name && *active->extruder_name == extruder_name) {
+        return active;
+    }
+    return nullptr;
+}
+
+std::string ToolState::tool_name_for_extruder(const std::string& extruder_name) const {
+    const ToolInfo* tool =
+        find_tool_for_extruder(tools_, active_tool(), extruder_name, ams_topology_shared_extruder_);
+    return tool ? tool->name : std::string();
 }
 
 std::string ToolState::extruder_name_for_tool(int tool_index) const {
@@ -785,12 +848,9 @@ std::string ToolState::extruder_name_for_tool(int tool_index) const {
 }
 
 std::string ToolState::display_label_for_extruder(const std::string& extruder_name) const {
-    for (const auto& tool : tools_) {
-        if (tool.extruder_name && *tool.extruder_name == extruder_name) {
-            return tool.display_label;
-        }
-    }
-    return {};
+    const ToolInfo* tool =
+        find_tool_for_extruder(tools_, active_tool(), extruder_name, ams_topology_shared_extruder_);
+    return tool ? tool->display_label : std::string();
 }
 
 void ToolState::request_tool_change(int tool_index, IMoonrakerAPI* api,

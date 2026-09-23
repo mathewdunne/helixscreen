@@ -40,6 +40,7 @@
 #include "ams_state.h"
 #include "app_globals.h"
 #include "async_lifetime_guard.h"
+#include "filament_op_execute.h"
 #include "filament_op_router.h"
 #include "macro_executor.h"
 #include "macro_param_cache.h"
@@ -48,6 +49,7 @@
 #include "printer_discovery.h"
 #include "printer_state.h"
 #include "standard_macros.h"
+#include "test_helpers/print_state_test_drivers.h"
 
 #include <initializer_list>
 #include <map>
@@ -74,6 +76,15 @@ namespace {
 /// Gcode the tier-3 load fallback must contain. execute_gcode() annotates the
 /// script, so tests match on a substring rather than the whole string.
 constexpr const char* LOAD_FALLBACK_MARKER = "G1 E56";
+
+class SharedExtruderBackend : public helix::AmsBackendMock {
+  public:
+    SharedExtruderBackend() : AmsBackendMock(3) {}
+
+    [[nodiscard]] std::optional<std::string> shared_extruder_name() const override {
+        return std::string("extruder");
+    }
+};
 
 class DispatchSurfaceFixture : public LVGLTestFixture {
   public:
@@ -368,6 +379,66 @@ TEST_CASE_METHOD(DispatchSurfaceFixture,
 
     CHECK(drain_skip_total() == 0);
     CHECK(gcode_sent_containing("LOAD_FILAMENT"));
+}
+
+// =============================================================================
+// Printer-owned homing macros — final-send lifecycle gate
+// =============================================================================
+
+TEST_CASE_METHOD(DispatchSurfaceFixture,
+                 "Shared-extruder filament macros refuse a paused unhomed printer",
+                 "[filament][dispatch][wiring][indx][homing]") {
+    configure_filament_macros();
+    cache_macros({{"LOAD_FILAMENT", "G1 E50"}, {"UNLOAD_FILAMENT", "G1 E-50"}});
+    SharedExtruderBackend backend;
+    helix::test::set_wire_state(state, helix::PrintJobState::PAUSED);
+    lv_subject_copy_string(state.get_homed_axes_subject(), "");
+
+    helix::ui::FilamentOpSurface surface;
+    surface.param_policy = ParamPolicy::Suppress;
+    helix::ui::execute_filament_load(&backend, 1, surface);
+    helix::ui::execute_filament_unload(&backend, 1, /*target_is_loaded=*/true, surface);
+    helix::ui::UpdateQueue::instance().drain();
+
+    CHECK_FALSE(gcode_sent_containing("LOAD_FILAMENT"));
+    CHECK_FALSE(gcode_sent_containing("UNLOAD_FILAMENT"));
+}
+
+TEST_CASE_METHOD(DispatchSurfaceFixture,
+                 "Shared-extruder filament macros remain available while paused and homed",
+                 "[filament][dispatch][wiring][indx][homing]") {
+    configure_filament_macros();
+    cache_macros({{"LOAD_FILAMENT", "G1 E50"}});
+    SharedExtruderBackend backend;
+    helix::test::set_wire_state(state, helix::PrintJobState::PAUSED);
+    lv_subject_copy_string(state.get_homed_axes_subject(), "xyz");
+
+    helix::ui::FilamentOpSurface surface;
+    surface.param_policy = ParamPolicy::Suppress;
+    helix::ui::execute_filament_load(&backend, 1, surface);
+    helix::ui::UpdateQueue::instance().drain();
+
+    CHECK(gcode_sent_containing("LOAD_FILAMENT"));
+}
+
+TEST_CASE_METHOD(DispatchSurfaceFixture,
+                 "Shared-extruder macro rechecks homing after its parameter prompt",
+                 "[filament][dispatch][wiring][indx][homing]") {
+    configure_filament_macros();
+    SharedExtruderBackend backend;
+    lv_subject_copy_string(state.get_homed_axes_subject(), "xyz");
+
+    helix::ui::FilamentOpSurface surface;
+    surface.param_policy = ParamPolicy::Prompt;
+    helix::ui::execute_filament_load(&backend, 1, surface);
+    REQUIRE(pending_execute);
+
+    helix::test::set_wire_state(state, helix::PrintJobState::PAUSED);
+    lv_subject_copy_string(state.get_homed_axes_subject(), "");
+    pending_execute({});
+    helix::ui::UpdateQueue::instance().drain();
+
+    CHECK_FALSE(gcode_sent_containing("LOAD_FILAMENT"));
 }
 
 // =============================================================================

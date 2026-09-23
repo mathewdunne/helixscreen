@@ -1930,9 +1930,15 @@ void FilamentPanel::update_filament_op_buttons() {
     // belongs to the runout dialog, not to a resting panel) while routing the
     // bypass sentinel to the toolhead-wide flag — the only signal that can
     // answer for a spool with no lane behind it.
-    state.slot_is_loaded = helix::ui::unload_target_is_loaded(
+    const bool slot_is_loaded = helix::ui::unload_target_is_loaded(
         slot, backend->slot_is_actively_loaded(slot), backend->slot_has_filament_at_toolhead(slot),
         /*is_current_slot=*/false, sys.filament_loaded);
+    // On a shared-nozzle changer (Bondtech INDX) that answer is which nozzle is
+    // MOUNTED, not whether it holds filament, and nothing reports the latter.
+    // This panel's Load feeds filament (the user's Load Filament macro), so a
+    // mounted nozzle must not grey it.
+    const bool has_separate_filament_operation = helix::ui::is_shared_nozzle_changer(backend);
+    state.slot_is_loaded = slot_is_loaded && !has_separate_filament_operation;
     if (slot >= 0) {
         // Bypass deliberately skipped: there is no lane whose presence sensor
         // could answer, and slot_presence()'s nullopt ("unanswerable") is what
@@ -1942,7 +1948,7 @@ void FilamentPanel::update_filament_op_buttons() {
     // Unload/Purge act on whatever is at the toolhead for this slot, and the
     // panel's Unload is always the heated toolhead unload — the cold lane ops
     // (Eject / Recover) live on the AMS context menu, not here.
-    state.unload_available = state.slot_is_loaded;
+    state.unload_available = slot_is_loaded;
     state.unload_is_cold_lane_op = false;
 
     const auto gating = helix::ui::compute_op_button_gating(state);
@@ -2763,6 +2769,9 @@ FilamentPanelOutcome panel_load_outcome(const FilamentOpPlan& plan) {
             // lane into it would jam the hotend, so say what to do instead.
             out.toast = lv_tr("Remove the bypass spool from the toolhead first");
             break;
+        case FilamentRefusal::NoMacroConfigured:
+            out.toast = lv_tr("Configure a filament load macro in Settings first");
+            break;
         case FilamentRefusal::SelectSlot:
         default:
             out.toast = lv_tr("Select a filament slot to load");
@@ -2801,9 +2810,12 @@ FilamentPanelOutcome panel_unload_outcome(const FilamentOpPlan& plan, bool backe
         break;
 
     case FilamentTier::Refused:
-        // NothingLoaded is plan_unload's only refusal, and it never redirects:
-        // the panel already knows the slot.
-        out.toast = lv_tr("No filament loaded to unload");
+        if (plan.refusal == FilamentRefusal::NoMacroConfigured) {
+            out.toast = lv_tr("Configure a filament unload macro in Settings first");
+        } else {
+            // NothingLoaded never redirects: the panel already knows the slot.
+            out.toast = lv_tr("No filament loaded to unload");
+        }
         break;
 
     case FilamentTier::Macro:
@@ -2872,9 +2884,19 @@ helix::ui::FilamentOpSurface FilamentPanel::op_surface(FilamentOp op) {
 
     surface.on_async_success = [this, op]() {
         operation_guard_.end();
-        // Only on success: a failed op leaves the heater where the user can see
-        // what happened rather than dropping it out from under a retry.
-        restore_heater_after_preheat();
+        // A shared-nozzle-changer's (Bondtech INDX) filament macro tier is
+        // macro-owned end to end: HelixScreen never preheated for it
+        // (preheat_skip_reason() answers MacroSelfHeats for this backend), and
+        // "the macro request returned" is not proof of physical completion —
+        // a printer-side action:prompt_* handoff can return before the user
+        // has chosen anything. Scheduling a cooldown here would turn the
+        // heater off under a macro that may still be running.
+        AmsBackend* backend = AmsState::instance().get_backend();
+        if (!helix::ui::is_shared_nozzle_changer(backend)) {
+            // Only on success: a failed op leaves the heater where the user can
+            // see what happened rather than dropping it out from under a retry.
+            restore_heater_after_preheat();
+        }
         op_in_flight_.reset();
         op_succeeded(op);
     };
@@ -2933,10 +2955,12 @@ FilamentPanel::UnloadContext FilamentPanel::current_unload_context() const {
     if (backend) {
         sys = backend->get_system_info();
     }
-    // Only `present` matters to plan_unload; the remaining caps answer the
-    // load-vs-swap question, which unload does not ask.
+    // Only `present` (and has_separate_filament_operation) matters to
+    // plan_unload; the remaining caps answer the load-vs-swap question, which
+    // unload does not ask.
     helix::ui::BackendCaps caps;
     caps.present = backend != nullptr;
+    caps.has_separate_filament_operation = helix::ui::is_shared_nozzle_changer(backend);
 
     const bool loaded = helix::ui::read_unload_target_loaded(backend, sys, slot);
     return {helix::ui::plan_live_unload(caps, slot, loaded), loaded};
@@ -2970,7 +2994,7 @@ void FilamentPanel::execute_unload() {
     surface.on_refused = [this](const helix::ui::FilamentOpPlan& refused) {
         const helix::ui::FilamentPanelOutcome refusal =
             helix::ui::panel_unload_outcome(refused, false, -1);
-        spdlog::info("[{}] Unload refused — nothing loaded", get_name());
+        spdlog::info("[{}] Unload refused ({})", get_name(), static_cast<int>(refused.refusal));
         NOTIFY_WARNING(fmt::runtime(refusal.toast.c_str()));
     };
 

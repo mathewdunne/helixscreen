@@ -1968,7 +1968,12 @@ void PrintStatusWidget::DetailedFormatter::update_multi_tool() {
 
 void PrintStatusWidget::DetailedFormatter::update_tool_label() {
     auto& tools = ToolState::instance();
-    if (!tools.has_multiple_extruders()) {
+    // Identity-based, unlike update_multi_tool()'s extruder-based chevron
+    // gate: several independently selectable nozzles can share one physical
+    // extruder (a shared-resource nozzle changer), and this label answers
+    // "which tool's nozzle is this", not "is there a temperature stream to
+    // pick between".
+    if (!tools.has_multiple_nozzles()) {
         nozzle_tool_label_buf_[0] = '\0';
     } else {
         // Label tracks what the user is VIEWING — the pinned tool when one

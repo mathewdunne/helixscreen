@@ -175,3 +175,56 @@ TEST_CASE_METHOD(ToolCalFixture, "mock: the macro's description: is in configfil
     REQUIRE(section.contains("description"));
     CHECK(section["description"].get<std::string>().find("offset") != std::string::npos);
 }
+
+// =============================================================================
+// The INDX persona's T<n> shortcut parser
+// =============================================================================
+
+TEST_CASE("mock: an absurdly long T<n> is refused, not thrown out of",
+          "[indx][mock][toolchanger]") {
+    // The console panel sends whatever is typed. The digit run is validated but
+    // its LENGTH was not, so std::stoi raised std::out_of_range from inside
+    // gcode_script() with nothing on the way up to catch it.
+    helix::ScopedEnv ams_env{"HELIX_MOCK_AMS"};
+    setenv("HELIX_MOCK_AMS", "indx", 1);
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24, 100.0);
+
+    REQUIRE_NOTHROW(client.gcode_script("T99999999999"));
+    // An in-range tool still works, so the bound did not swallow the feature.
+    REQUIRE_NOTHROW(client.gcode_script("T1"));
+}
+
+TEST_CASE("mock: an INDX swap answers its rpc only once the swap lands",
+          "[indx][mock][toolchanger]") {
+    // T<n> blocks the gcode queue until the carriage is done, and INDX publishes
+    // no toolchanger status: the ack is the backend's only completion signal, so
+    // an early one ends the dispatch while the swap is still running.
+    helix::ScopedEnv ams_env{"HELIX_MOCK_AMS"};
+    setenv("HELIX_MOCK_AMS", "indx", 1);
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24, 100.0);
+
+    int acks = 0;
+    int tool_at_ack = -2;
+    auto send = [&](const char* script) {
+        client.send_jsonrpc(
+            "printer.gcode.script", json{{"script", script}},
+            [&](const json&) {
+                tool_at_ack = client.indx_save_variables_status_json()["variables"]["active_tool"];
+                ++acks;
+            },
+            [](const MoonrakerError&) {});
+    };
+
+    send("T1");
+    CHECK(acks == 0);
+    client.advance_indx_swap();
+    CHECK(acks == 0);
+    client.advance_indx_swap();
+    CHECK(acks == 1);
+    CHECK(tool_at_ack == 1);
+    CHECK(client.indx_save_variables_status_json()["variables"]["active_tool"] == 1);
+
+    // With nothing in flight, ordinary gcode still answers at once.
+    send("G4 P0");
+    CHECK(acks == 2);
+}

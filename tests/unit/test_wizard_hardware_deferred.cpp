@@ -301,7 +301,7 @@ TEST_CASE_METHOD(DeferredHardwareFixture,
 TEST_CASE_METHOD(DeferredHardwareFixture,
                  "Deferred hardware: accepting discovery never records AMS capability names",
                  "[wizard][hardware][deferred][ams]") {
-    // validate_expected_hardware() treats "mmu"/"AFC"/"ace"/"toolchanger" in the
+    // validate_expected_hardware() treats "mmu"/"AFC"/"ace"/"toolchanger"/"indx" in the
     // expected list as must-be-present and warns every boot if the system goes
     // away. Only the wizard's AMS step — where the user confirms the hardware —
     // may add those; blanket acceptance must not. The backend's own conventional

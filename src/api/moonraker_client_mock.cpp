@@ -19,6 +19,7 @@
 #include "sensor_state.h"
 #include "shaper_response.h"
 #include "simulated_clock.h"
+#include "toolchanger_addon.h"
 
 #include <spdlog/spdlog.h>
 
@@ -923,8 +924,15 @@ void MoonrakerClientMock::populate_capabilities() {
     mock_objects.push_back("gcode_macro PAUSE");
     mock_objects.push_back("gcode_macro RESUME");
     mock_objects.push_back("gcode_macro CANCEL_PRINT");
-    mock_objects.push_back("gcode_macro LOAD_FILAMENT");
-    mock_objects.push_back("gcode_macro UNLOAD_FILAMENT");
+    // A stock Bondtech INDX printer ships no LOAD_FILAMENT/UNLOAD_FILAMENT of
+    // its own: the user configures a wrapper, or global Load/Unload stays
+    // unavailable. Publishing the mock's generic default here would let
+    // detection or missing-action tests exercise a printer the upstream
+    // configuration does not actually describe.
+    if (!is_mock_indx()) {
+        mock_objects.push_back("gcode_macro LOAD_FILAMENT");
+        mock_objects.push_back("gcode_macro UNLOAD_FILAMENT");
+    }
     mock_objects.push_back("gcode_macro BED_MESH_CALIBRATE");
     mock_objects.push_back("gcode_macro G28");           // Home all
     mock_objects.push_back("gcode_macro M600");          // Filament change
@@ -956,7 +964,7 @@ void MoonrakerClientMock::populate_capabilities() {
     // Suppressed in the MedusaHC modes and the standalone IFS module mode: the
     // default mock ships "mmu", which detects Happy Hare (priority over the
     // IFS objects) and stands the wrong backend up.
-    if (mmu_enabled_ && !is_mock_medusahc() && !is_mock_ifs_module()) {
+    if (mmu_enabled_ && !is_mock_medusahc() && !is_mock_ifs_module() && !is_mock_indx()) {
         mock_objects.push_back("mmu");
     }
 
@@ -1077,6 +1085,27 @@ void MoonrakerClientMock::populate_capabilities() {
         mock_objects.push_back("gcode_macro CLOSE");
         spdlog::info("[MoonrakerClientMock] MedusaHC mock: variant={}",
                      variant == MedusaVariant::CONTROLLER ? "controller" : "fork");
+    }
+
+    // Bondtech INDX mock mode (HELIX_MOCK_AMS=indx): the exact `indx` status
+    // object plus the runtime inventory macro and saved active-tool store a
+    // real installation actually publishes. No fake `toolchanger`/`tool T<n>`
+    // objects - those belong to a klipper-toolchanger machine, which INDX is
+    // not. Like the MedusaHC modes above, try_create_mock() declines this
+    // value so real discovery runs and the production AmsBackendToolChanger +
+    // toolchanger_addon path drives these objects.
+    if (is_mock_indx()) {
+        mock_objects.push_back("indx");
+        mock_objects.push_back("save_variables");
+        mock_objects.push_back("gcode_macro TOOL_POSITIONS");
+        mock_objects.push_back("gcode_macro PARK_TOOL");
+        const int tool_count = indx_configured_tool_count_.load();
+        for (int i = 0; i < tool_count; ++i) {
+            mock_objects.push_back("gcode_macro T" + std::to_string(i));
+        }
+        spdlog::info("[MoonrakerClientMock] INDX mock: {} configured tools, indx + "
+                     "TOOL_POSITIONS + save_variables + PARK_TOOL",
+                     tool_count);
     }
 
     // Standalone IFS module mock mode (HELIX_MOCK_AMS=ifs-module): the
@@ -1424,6 +1453,20 @@ void MoonrakerClientMock::discover_printer(
                     discovery_.heaters().size(), discovery_.sensors().size(),
                     discovery_.fans().size(), discovery_.leds().size());
 
+                // Bondtech INDX (HELIX_MOCK_AMS=indx): finalize the provider-supplied
+                // tool inventory before the early hardware callback below, mirroring
+                // MoonrakerDiscoverySequence's deferred finalize_indx_inventory() step -
+                // the AMS/MMU initialization that callback triggers needs
+                // hw.tool_names() already populated. This discover_printer()
+                // shortcut never subscribes TOOL_POSITIONS the way the real
+                // sequence does, so nothing else here would ever call it.
+                if (is_mock_indx()) {
+                    discovery_.modify_hardware([&](PrinterDiscovery& hw) {
+                        hw.finalize_indx_inventory(helix::toolchanger_addon::indx_tool_ids(
+                            indx_configured_tool_count_.load()));
+                    });
+                }
+
                 // Early hardware discovery callback (for AMS/MMU initialization)
                 // Must be called BEFORE discovery_complete to match real implementation timing
                 spdlog::debug("[MoonrakerClientMock] Invoking early hardware discovery callback");
@@ -1487,6 +1530,17 @@ MoonrakerClientMock::MedusaVariant MoonrakerClientMock::mock_medusa_variant() {
 
 bool MoonrakerClientMock::is_mock_medusahc() const {
     return mock_medusa_variant() != MedusaVariant::NONE;
+}
+
+bool MoonrakerClientMock::is_mock_indx() const {
+    const char* ams_env = std::getenv("HELIX_MOCK_AMS");
+    if (!ams_env || !ams_env[0]) {
+        return false;
+    }
+    std::string ams_type(ams_env);
+    std::transform(ams_type.begin(), ams_type.end(), ams_type.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return ams_type == "indx";
 }
 
 bool MoonrakerClientMock::is_mock_ifs_module() const {
@@ -1776,6 +1830,84 @@ void MoonrakerClientMock::advance_medusa_swap() {
     medusa_phase_ticks_.store(0);
     medusa_feeder_open_.store(false);
     spdlog::info("[MoonrakerClientMock] MedusaHC swap complete: T{} on head", target);
+}
+
+nlohmann::json MoonrakerClientMock::indx_tool_positions_status_json() const {
+    // A unit test's set_indx_tool_count() override always wins - it exercises
+    // the discovery/subscription contract directly, independent of this
+    // interactive mode (see the seam's own doc comment).
+    if (auto tool_count = test_indx_tool_count()) {
+        return nlohmann::json{{"tool_count", *tool_count}};
+    }
+    if (!is_mock_indx()) {
+        return nlohmann::json::object();
+    }
+    return nlohmann::json{{"tool_count", indx_configured_tool_count_.load()}};
+}
+
+nlohmann::json MoonrakerClientMock::indx_save_variables_status_json() const {
+    if (auto active_tool = test_indx_active_tool()) {
+        return nlohmann::json{{"variables", {{"active_tool", *active_tool}}}};
+    }
+    if (!is_mock_indx()) {
+        return nlohmann::json::object();
+    }
+    return nlohmann::json{{"variables", {{"active_tool", indx_current_tool_sim_.load()}}}};
+}
+
+// Notifications an armed INDX swap takes to land. INDX has no
+// dropping/picking distinction to report - unlike start_medusa_swap(), the
+// delay exists purely so a caller can observe "busy" before the reported
+// active tool changes, matching a real toolchange's non-zero duration.
+static constexpr int kIndxSwapNotifications = 2;
+
+void MoonrakerClientMock::start_indx_swap(int tool) {
+    {
+        std::lock_guard<std::mutex> lock(indx_swap_mutex_);
+        indx_target_tool_sim_.store(tool);
+        indx_phase_ticks_sim_.store(kIndxSwapNotifications);
+    }
+    spdlog::info("[MoonrakerClientMock] INDX swap armed: {} -> {}", indx_current_tool_sim_.load(),
+                 tool);
+}
+
+void MoonrakerClientMock::advance_indx_swap() {
+    std::vector<std::function<void(const nlohmann::json&)>> acks;
+    int target;
+    {
+        std::lock_guard<std::mutex> lock(indx_swap_mutex_);
+        const int ticks = indx_phase_ticks_sim_.load();
+        if (ticks <= 0) {
+            return;
+        }
+        if (ticks > 1) {
+            indx_phase_ticks_sim_.store(ticks - 1);
+            return; // still busy
+        }
+        target = indx_target_tool_sim_.load();
+        indx_current_tool_sim_.store(target);
+        indx_phase_ticks_sim_.store(0);
+        acks.swap(indx_swap_acks_);
+    }
+    spdlog::info("[MoonrakerClientMock] INDX swap complete: active_tool={}", target);
+    for (auto& ack : acks) {
+        ack(nlohmann::json::object());
+    }
+}
+
+bool MoonrakerClientMock::hold_ack_until_indx_swap_lands(
+    std::function<void(const nlohmann::json&)>& success_cb) {
+    if (!is_mock_indx()) {
+        return false;
+    }
+    // The final tick and active tool update happen under this lock, so an ack
+    // is either held for the swap or released after the new tool is reported.
+    std::lock_guard<std::mutex> lock(indx_swap_mutex_);
+    if (indx_phase_ticks_sim_.load() <= 0) {
+        return false;
+    }
+    indx_swap_acks_.push_back(std::move(success_cb));
+    return true;
 }
 
 nlohmann::json MoonrakerClientMock::pin_watch_status_json() const {
@@ -2367,6 +2499,32 @@ int MoonrakerClientMock::gcode_script(const std::string& raw_gcode) {
                         [](unsigned char c) { return std::isdigit(c) != 0; })) {
             start_medusa_swap(std::stoi(cmd.substr(1)));
             return 0;
+        }
+    }
+
+    // Bondtech INDX commands (HELIX_MOCK_AMS=indx): token-exact, matching the
+    // MedusaHC block above. PARK_TOOL is INDX's default unmount command
+    // (toolchanger_addon.cpp resolve_tool_commands()); T<n> is the per-tool
+    // select shortcut. Out-of-range T<n> is left unhandled so it falls through
+    // to the generic ACTIVATE_EXTRUDER-style path below like any other unknown
+    // command, rather than silently mounting a tool the mock never configured.
+    if (is_mock_indx()) {
+        const size_t token_end = gcode.find_first_of(" \t");
+        const std::string cmd = gcode.substr(0, token_end);
+        if (cmd == "PARK_TOOL") {
+            start_indx_swap(-1);
+            return 0;
+        }
+        // Bounded to three digits: std::stoi throws std::out_of_range on a
+        // longer run of them, and nothing up the console-panel path catches it.
+        if (cmd.size() >= 2 && cmd.size() <= 4 && cmd[0] == 'T' &&
+            std::all_of(cmd.begin() + 1, cmd.end(),
+                        [](unsigned char c) { return std::isdigit(c) != 0; })) {
+            const int tool = std::stoi(cmd.substr(1));
+            if (tool >= 0 && tool < indx_configured_tool_count_.load()) {
+                start_indx_swap(tool);
+                return 0;
+            }
         }
     }
 
@@ -5299,6 +5457,22 @@ void MoonrakerClientMock::temperature_simulation_loop() {
             }
             if (auto pw = pin_watch_status_json(); !pw.empty()) {
                 status_obj["pin_watch io"] = pw;
+            }
+        }
+
+        // Bondtech INDX swap simulation: advance any armed swap and republish
+        // the two objects the provider actually reads (toolchanger_addon.cpp
+        // required_status_objects()). indx_tool_positions_status_json()/
+        // indx_save_variables_status_json() already fold in the test-only
+        // override seam, so a controlled-transport unit test exercises this
+        // same path.
+        if (is_mock_indx()) {
+            advance_indx_swap();
+            if (auto tp = indx_tool_positions_status_json(); !tp.empty()) {
+                status_obj["gcode_macro TOOL_POSITIONS"] = tp;
+            }
+            if (auto sv = indx_save_variables_status_json(); !sv.empty()) {
+                status_obj["save_variables"] = sv;
             }
         }
 

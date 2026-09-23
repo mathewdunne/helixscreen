@@ -9,6 +9,7 @@
 #include "filament_slot_override_store.h"
 #include "test_helpers/seeded_override.h"
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -42,6 +43,13 @@ class ToolChangerTestAccess {
     static void inject_override_store(AmsBackendToolChanger& b,
                                       std::unique_ptr<helix::ams::FilamentSlotOverrideStore> s) {
         b.override_store_ = std::move(s);
+    }
+
+    /// Force `running_` true on a bare (not start()-ed) instance, for a case
+    /// that wants a real IMoonrakerAPI wired up (so async gcode errors can be
+    /// injected through it) without the subscription setup start() drags in.
+    static void mark_running(AmsBackendToolChanger& b) {
+        b.running_ = true;
     }
 
     /// Whether an optimistic dispatch is still armed and awaiting resolution.
@@ -90,6 +98,13 @@ class ToolChangerTestAccess {
     static bool has_overrides(const AmsBackendToolChanger& b) {
         std::lock_guard<std::mutex> lock(b.mutex_);
         return !b.overrides_.empty();
+    }
+
+    /// The ack timeout dispatch_operation() would use. Private on the backend,
+    /// and the whole point of it is which provider shape gets the widened
+    /// ceiling, so a test has no other way to see it.
+    static uint32_t dispatch_timeout_ms(const AmsBackendToolChanger& b) {
+        return b.dispatch_timeout_ms();
     }
 
     /// Name of the Moonraker DB namespace the store was pointed at, so a test
