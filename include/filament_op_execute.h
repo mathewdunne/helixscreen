@@ -61,6 +61,19 @@ namespace helix::ui {
 [[nodiscard]] BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out,
                                             int target_slot);
 
+/**
+ * @brief Whether @p backend is a shared-nozzle changer: several tools on one
+ *        extruder (AmsBackend::shared_extruder_name()).
+ *
+ * Such a backend's Load/Unload mount or park a tool, so feeding filament is a
+ * separate operation, and the printer's filament macros own their heating,
+ * homing and heater state: HelixScreen neither preheats, homes nor restores
+ * the heater around them.
+ *
+ * @param backend May be null (answers false).
+ */
+[[nodiscard]] bool is_shared_nozzle_changer(const AmsBackend* backend);
+
 /// The extruder a filament op heats, and the numbers a nozzle prefill holds to.
 struct OpNozzle {
     std::string extruder; ///< Klipper extruder name

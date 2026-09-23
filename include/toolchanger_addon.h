@@ -37,6 +37,9 @@ namespace helix::toolchanger_addon {
 /// Sentinel meaning "use the detected default" in the settings picker.
 inline constexpr const char* kAutoMacro = "auto";
 
+/// ToolCommands::provider_name resolve_tool_commands() gives Bondtech INDX.
+inline constexpr const char* kIndxProviderName = "INDX";
+
 /// Filament feeder on the frame. Default-constructed is the "no feeder" answer,
 /// so a tool changer nobody told anything exposes nothing.
 struct Feeder {
@@ -277,6 +280,11 @@ struct ToolMovementOverride {
     /// Options for the settings picker: kAutoMacro followed by the plausible
     /// macros this printer reports. Empty when there is nothing to choose from.
     std::vector<std::string> macro_options;
+
+    /// Uppercased macros a later pick may name and still be valid: every
+    /// candidate plus each choice that resolved valid, which the picker lists
+    /// even when the candidate filter leaves it out.
+    std::vector<std::string> accepted_macros;
 };
 
 /// Resolve the stored Select/Park overrides against this printer's actual

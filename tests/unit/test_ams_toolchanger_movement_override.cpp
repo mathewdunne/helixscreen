@@ -480,6 +480,47 @@ TEST_CASE("Movement override: a valid choice outside the candidate filter is lis
           select_options.end());
 }
 
+TEST_CASE("Movement override: re-picking a valid select choice outside the candidate filter stays "
+          "valid",
+          "[indx][dispatch]") {
+    // The dropdown lists MY_SWAP because it resolved valid; picking it again
+    // after Auto must not turn a macro the printer reports into an invalid one.
+    PrinterDiscovery hw;
+    hw.parse_objects(
+        json::array({"extruder", "gcode_macro CUSTOM_TOOL_MACRO", "gcode_macro MY_SWAP"}));
+    MovementHelper h(3);
+    h.set_tool_commands(indx_commands(3));
+    h.set_tool_movement_override(
+        toolchanger_addon::resolve_tool_movement_override(hw, "MY_SWAP", "auto"));
+
+    REQUIRE(h.execute_device_action("tool_select_macro", std::any(std::string("auto"))).success());
+    REQUIRE(
+        h.execute_device_action("tool_select_macro", std::any(std::string("MY_SWAP"))).success());
+    REQUIRE(h.change_tool(1).success());
+    CHECK(h.sent().back() == "MY_SWAP TOOL=1");
+
+    helix::SettingsManager::instance().set_tool_select_macro("auto");
+}
+
+TEST_CASE("Movement override: re-picking a valid park choice outside the candidate filter stays "
+          "valid",
+          "[indx][dispatch]") {
+    PrinterDiscovery hw;
+    hw.parse_objects(
+        json::array({"extruder", "gcode_macro CUSTOM_TOOL_MACRO", "gcode_macro MY_DOCK"}));
+    MovementHelper h(3);
+    h.set_tool_commands(indx_commands(3));
+    h.set_tool_movement_override(
+        toolchanger_addon::resolve_tool_movement_override(hw, "auto", "MY_DOCK"));
+
+    REQUIRE(h.execute_device_action("tool_park_macro", std::any(std::string("auto"))).success());
+    REQUIRE(h.execute_device_action("tool_park_macro", std::any(std::string("MY_DOCK"))).success());
+    REQUIRE(h.unload_filament(0).success());
+    CHECK(h.sent().back() == "MY_DOCK");
+
+    helix::SettingsManager::instance().set_tool_park_macro("auto");
+}
+
 TEST_CASE("Movement override: a printer with no candidate macros still offers Auto to clear one",
           "[indx][dispatch]") {
     // macro_options is empty here, which previously hid the whole section --

@@ -70,8 +70,12 @@ BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out, int 
     // Only a shared-nozzle-changer backend (Bondtech INDX) sets this: its Load
     // mounts a tool, so it has a filament capability distinct from that — see
     // BackendCaps::has_separate_filament_operation.
-    caps.has_separate_filament_operation = backend->shared_extruder_name().has_value();
+    caps.has_separate_filament_operation = is_shared_nozzle_changer(backend);
     return caps;
+}
+
+bool is_shared_nozzle_changer(const AmsBackend* backend) {
+    return backend && backend->shared_extruder_name().has_value();
 }
 
 FilamentOpPlan plan_live_load(const AmsSystemInfo& info, const BackendCaps& caps, int target_slot,
@@ -131,7 +135,7 @@ PreheatSkip preheat_skip_reason(const FilamentOpPlan& plan, StandardMacroSlot sl
         // spelling LOAD_FILAMENT to filament_macro_profiles.cpp's table for
         // this — it would claim every OTHER printer's stock LOAD_FILAMENT
         // self-heats too.
-        if (backend && backend->shared_extruder_name().has_value()) {
+        if (is_shared_nozzle_changer(backend)) {
             return PreheatSkip::MacroSelfHeats;
         }
         if (filament_macros::macro_heats_hotend(StandardMacros::instance().get(slot).get_macro())) {
@@ -182,7 +186,7 @@ bool needs_home_confirmation(const FilamentOpPlan& plan, StandardMacroSlot slot,
         // Same provider-owned preparation policy as preheat_skip_reason():
         // the macro decides its own homing too, so HelixScreen neither
         // prompts nor synthesizes a G28 ahead of it (plan §7.3/§7.4).
-        if (backend && backend->shared_extruder_name().has_value()) {
+        if (is_shared_nozzle_changer(backend)) {
             return false;
         }
         return !filament_macros::macro_homes_if_needed(
@@ -490,8 +494,7 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
     // nothing here.
     helix::ui::BackendCaps caps;
     caps.present = backend != nullptr;
-    caps.has_separate_filament_operation =
-        backend != nullptr && backend->shared_extruder_name().has_value();
+    caps.has_separate_filament_operation = is_shared_nozzle_changer(backend);
 
     const auto& unload_info = StandardMacros::instance().get(StandardMacroSlot::UnloadFilament);
     const helix::ui::FilamentOpPlan plan = plan_live_unload(caps, slot, target_is_loaded);

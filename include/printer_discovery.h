@@ -1114,6 +1114,12 @@ class PrinterDiscovery {
         return has_indx_;
     }
 
+    /// tool_names() is INDX's own numbered inventory (finalize_indx_inventory()
+    /// ran since the last clear()), not a count of extruder heaters.
+    [[nodiscard]] bool indx_inventory_finalized() const {
+        return indx_inventory_finalized_;
+    }
+
     [[nodiscard]] bool has_chamber_heater() const {
         return has_chamber_heater_;
     }

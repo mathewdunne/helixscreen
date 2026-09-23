@@ -346,25 +346,12 @@ ToolCommands resolve_tool_commands(const PrinterDiscovery& hw) {
     // successful no-op) - unlike the MedusaHC-shaped providers above, whose
     // extra registers T<n>/its unmount unconditionally the moment it is
     // detected at all.
-    // ...and only against INDX's OWN inventory. finalize_indx_inventory()
-    // writes bare numbered ids ("0".."N-1"), which is what the T<n> shortcut
-    // probe and the "TOOL=<n>" argument contract below are defined against.
-    // parse_objects() fills tool_names_ from a different source when a printer
-    // reporting `indx` ALSO has several extruder heaters: tool_label() spellings
-    // ("T0", "T1"), which is_indx_inventory_candidate() rejects, so nothing ever
-    // finalizes them. Probing "T" + "T0" then answers false for every tool and
-    // claiming the provider anyway would refuse every swap on a machine whose
-    // plain T<n> worked - and would fold its real second extruder onto one
-    // shared_extruder_name() besides.
+    // ...and only against INDX's OWN numbered inventory, which is what the
+    // T<n> shortcut probe and the "TOOL=<n>" argument contract below are
+    // defined against. Tools counted from extruder heaters keep plain T<n>.
     const auto& tools = hw.tool_names();
-    const bool indx_inventory =
-        !tools.empty() && std::all_of(tools.begin(), tools.end(), [](const std::string& id) {
-            return !id.empty() && std::all_of(id.begin(), id.end(), [](unsigned char ch) {
-                return std::isdigit(ch) != 0;
-            });
-        });
-    if (!p && has_indx(hw) && indx_inventory) {
-        c.provider_name = "INDX";
+    if (!p && has_indx(hw) && hw.indx_inventory_finalized()) {
+        c.provider_name = kIndxProviderName;
         c.unselect = hw.has_macro("PARK_TOOL") ? "PARK_TOOL" : "";
         c.select_shortcut_available.reserve(tools.size());
         for (const auto& id : tools) {
@@ -432,7 +419,20 @@ std::vector<std::string> tool_movement_macro_candidates(const PrinterDiscovery& 
     // A movement override macro is one whose name says what it does. Unlike
     // feeder_macro_candidates(), there is no native-prefix shortcut here — the
     // machines this serves (plan §7.1/D3) have no shared vendor prefix.
+    // INDX's TOOL_POSITIONS only holds variables: "TOOL_POSITIONS TOOL=<n>"
+    // moves nothing, so it is never offered.
+    std::string variables_only;
+    if (has_indx(hw)) {
+        constexpr std::string_view kMacroPrefix = "gcode_macro ";
+        const std::string positions = indx_tool_positions_object(hw);
+        if (positions.rfind(kMacroPrefix, 0) == 0) {
+            variables_only = to_upper(positions.substr(kMacroPrefix.size()));
+        }
+    }
     for (const auto& macro : hw.macros()) {
+        if (!variables_only.empty() && macro == variables_only) {
+            continue;
+        }
         const bool named =
             macro.find("TOOL") != std::string::npos || macro.find("PARK") != std::string::npos ||
             macro.find("CHANGE") != std::string::npos ||
@@ -478,6 +478,14 @@ ToolMovementOverride resolve_tool_movement_override(const PrinterDiscovery& hw,
         result.macro_options.emplace_back(kAutoMacro);
         result.macro_options.insert(result.macro_options.end(), candidates.begin(),
                                     candidates.end());
+    }
+    result.accepted_macros = candidates;
+    for (const std::string* macro : {&result.select_macro, &result.park_macro}) {
+        if (!macro->empty() &&
+            std::find(result.accepted_macros.begin(), result.accepted_macros.end(), *macro) ==
+                result.accepted_macros.end()) {
+            result.accepted_macros.push_back(*macro);
+        }
     }
     return result;
 }

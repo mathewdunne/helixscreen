@@ -195,9 +195,10 @@ TEST_CASE_METHOD(ToolStateFixture,
     CHECK(ToolState::instance().active_tool() == nullptr);
 }
 
-TEST_CASE_METHOD(ToolStateFixture,
-                 "a valid INDX active tool overrides the unreported state, and parking returns to it",
-                 "[indx][resources][tool-state]") {
+TEST_CASE_METHOD(
+    ToolStateFixture,
+    "a valid INDX active tool overrides the unreported state, and parking returns to it",
+    "[indx][resources][tool-state]") {
     helix::AmsBackendToolChanger backend(nullptr, nullptr);
     backend.set_discovered_tools(discovered_tools(3));
     backend.set_tool_commands(indx_commands(3));
@@ -588,6 +589,11 @@ TEST_CASE_METHOD(IndxConsumptionFixture,
                        static_cast<int>(helix::PrintJobState::COMPLETE));
     UpdateQueue::instance().drain();
     tracker.stop();
+    // A later start() replays this subject's value to its fresh observer; a
+    // terminal state there would end that test's print as it begins.
+    lv_subject_set_int(printer.get_print_state_enum_subject(),
+                       static_cast<int>(helix::PrintJobState::STANDBY));
+    UpdateQueue::instance().drain();
 }
 
 // =============================================================================
@@ -649,16 +655,14 @@ TEST_CASE("PrinterMotionState reports a swap-driven combined Z origin truthfully
     state.init_subjects(false);
 
     // T0 mounted: tool_z(T0) + global bakes to -0.05mm.
-    state.update_from_status(
-        json{{"gcode_move", json{{"homing_origin", {0.0, 0.0, -0.05, 0.0}}}}});
+    state.update_from_status(json{{"gcode_move", json{{"homing_origin", {0.0, 0.0, -0.05, 0.0}}}}});
     REQUIRE(lv_subject_get_int(state.get_gcode_z_offset_subject()) == -50);
 
     // Swap to T3: INDX's _PICKUP_TOOL bakes a different tool_z with the SAME
     // global component, so the reported origin jumps to +0.30mm with no user
     // babystepping involved. HelixScreen displays exactly what Klipper
     // reports; it must not try to subtract out a "tool" component itself.
-    state.update_from_status(
-        json{{"gcode_move", json{{"homing_origin", {0.0, 0.0, 0.30, 0.0}}}}});
+    state.update_from_status(json{{"gcode_move", json{{"homing_origin", {0.0, 0.0, 0.30, 0.0}}}}});
     REQUIRE(lv_subject_get_int(state.get_gcode_z_offset_subject()) == 300);
 }
 
@@ -680,7 +684,7 @@ TEST_CASE("the tune overlay's session-travel guard is not corrupted when the swa
     // narrow INDX-specific fix: no double subtraction, no snap back toward the
     // stale base, and a small step from the new live value still lands where
     // requested.
-    constexpr double session_base_mm = -0.05; // stale: cached before the swap
+    constexpr double session_base_mm = -0.05;  // stale: cached before the swap
     constexpr double current_offset_mm = 0.30; // live: T3's combined origin
 
     auto r = helix::zoffset::adjust(/*api=*/nullptr, /*ps=*/nullptr, session_base_mm,

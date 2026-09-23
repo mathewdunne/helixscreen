@@ -173,6 +173,18 @@ TEST_CASE("toolchanger_addon: indx default commands are T<n> select / PARK_TOOL 
     REQUIRE(commands.unselect == "PARK_TOOL");
 }
 
+TEST_CASE("toolchanger_addon: the variable-only TOOL_POSITIONS macro is no movement candidate",
+          "[indx][dispatch]") {
+    // TOOL_POSITIONS only carries INDX's variables; "TOOL_POSITIONS TOOL=<n>"
+    // moves nothing, so offering it as a Select/Park macro is a trap.
+    auto hw = discover("objects_list_six_tool.json");
+    auto candidates = addon::tool_movement_macro_candidates(hw);
+
+    CHECK(std::find(candidates.begin(), candidates.end(), "TOOL_POSITIONS") == candidates.end());
+    CHECK(std::find(candidates.begin(), candidates.end(), "PARK_TOOL") != candidates.end());
+    CHECK(std::find(candidates.begin(), candidates.end(), "CHANGE_TOOL") != candidates.end());
+}
+
 TEST_CASE("toolchanger_addon: an unfinalized indx candidate claims no provider",
           "[indx][backend][priority]") {
     // Before the tool count is read there is no inventory to define T<n>

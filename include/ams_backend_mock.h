@@ -129,6 +129,13 @@ class AmsBackendMock : public AmsBackend {
         identity_extruder_mapping_ = enabled;
     }
 
+    /// Test hook: set get_current_slot()'s answer (-1 = nothing loaded) without
+    /// running a simulated load/unload.
+    void set_current_slot_for_testing(int slot) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        system_info_.current_slot = slot;
+    }
+
     // Path visualization
     [[nodiscard]] PathTopology get_topology() const override;
     [[nodiscard]] PathTopology get_unit_topology(int unit_index) const override;

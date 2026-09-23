@@ -411,3 +411,43 @@ TEST_CASE_METHOD(AmsSlotSinkFixture, "the PRINTING transition is what reports de
     helix::ui::UpdateQueue::instance().drain();
     tracker.stop();
 }
+
+TEST_CASE_METHOD(AmsSlotSinkFixture,
+                 "an unload and reload of the same lane charges every mm the print used",
+                 "[filament][tracker][ams_slot]") {
+    // A lane backend feeding one ordinary extruder charges the current slot from
+    // its print-start snapshot; a brief -1 excursion (unload, then reload of the
+    // same lane) must not drop what was extruded meanwhile.
+    auto& tracker = FilamentConsumptionTracker::instance();
+    auto& printer = get_printer_state();
+    REQUIRE_FALSE(mock->shared_extruder_name().has_value());
+    mock->set_current_slot_for_testing(0);
+
+    tracker.start();
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 0);
+    lv_subject_set_int(printer.get_print_state_enum_subject(),
+                       static_cast<int>(helix::PrintJobState::PRINTING));
+    helix::ui::UpdateQueue::instance().drain();
+
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 1000);
+    helix::ui::UpdateQueue::instance().drain();
+    mock->set_current_slot_for_testing(-1);
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 2000);
+    helix::ui::UpdateQueue::instance().drain();
+    mock->set_current_slot_for_testing(0);
+    lv_subject_set_int(printer.get_print_filament_used_subject(), 3000);
+    helix::ui::UpdateQueue::instance().drain();
+
+    // 3000mm PLA @ 1.75mm / 1.24 g/cm^3 ≈ 8.95 g.
+    CHECK(mock->get_slot_info(0).remaining_weight_g == Catch::Approx(491.05f).margin(0.05f));
+
+    lv_subject_set_int(printer.get_print_state_enum_subject(),
+                       static_cast<int>(helix::PrintJobState::COMPLETE));
+    helix::ui::UpdateQueue::instance().drain();
+    tracker.stop();
+    // A later start() replays this subject's value to its fresh observer; a
+    // terminal state there would end that test's print as it begins.
+    lv_subject_set_int(printer.get_print_state_enum_subject(),
+                       static_cast<int>(helix::PrintJobState::STANDBY));
+    helix::ui::UpdateQueue::instance().drain();
+}

@@ -11,6 +11,7 @@
 #include "lane_legacy_migration.h"
 #include "lane_source_store.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "operation_patterns.h"
 #include "print_lifecycle_state.h"
 #include "printer_state.h"
 #include "settings_manager.h"
@@ -519,8 +520,7 @@ void AmsBackendToolChanger::handle_status_update(const nlohmann::json& notificat
         // plain klipper-toolchanger) instance, and MedusaHC's dock-sensor
         // reading can never reach an INDX one. See
         // toolchanger_addon::read_indx_active_tool() and plan §5.2.
-        if (tool_commands_.present && tool_commands_.provider_name == "INDX" &&
-            params.contains("save_variables")) {
+        if (is_indx_provider() && params.contains("save_variables")) {
             const auto& sv = params["save_variables"];
             if (sv.is_object()) {
                 const auto reading = helix::toolchanger_addon::read_indx_active_tool(
@@ -1860,22 +1860,22 @@ AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_
         using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
         const bool is_select = (action_id == "tool_select_macro");
         const bool is_auto = (*chosen == helix::toolchanger_addon::kAutoMacro);
-        const bool is_known =
-            is_auto || std::find(movement_override_.macro_options.begin(),
-                                 movement_override_.macro_options.end(),
-                                 *chosen) != movement_override_.macro_options.end();
-        const Choice resolved =
-            is_auto ? Choice::kAuto : (is_known ? Choice::kValid : Choice::kInvalid);
+        const std::string macro = helix::to_upper(*chosen);
         {
             std::lock_guard<std::mutex> lock(mutex_);
+            const auto& accepted = movement_override_.accepted_macros;
+            const bool is_known =
+                is_auto || std::find(accepted.begin(), accepted.end(), macro) != accepted.end();
+            const Choice resolved =
+                is_auto ? Choice::kAuto : (is_known ? Choice::kValid : Choice::kInvalid);
             if (is_select) {
                 movement_override_.select_choice_raw = *chosen;
                 movement_override_.select_choice = resolved;
-                movement_override_.select_macro = (resolved == Choice::kValid) ? *chosen : "";
+                movement_override_.select_macro = (resolved == Choice::kValid) ? macro : "";
             } else {
                 movement_override_.park_choice_raw = *chosen;
                 movement_override_.park_choice = resolved;
-                movement_override_.park_macro = (resolved == Choice::kValid) ? *chosen : "";
+                movement_override_.park_macro = (resolved == Choice::kValid) ? macro : "";
             }
         }
         if (is_select) {

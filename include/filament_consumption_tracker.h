@@ -97,11 +97,11 @@ class FilamentConsumptionTracker {
     /// delta, keyed by backend index. AmsSlotSink::apply_delta() computes its
     /// decrement from the TOTAL filament used since its own snapshot, not
     /// since it last ran -- correct only while the same slot stays current the
-    /// whole time. A shared-resource tool changer (or any other multi-slot
-    /// backend routed through this aggregate path) changes which slot is
-    /// current mid-print, so the newly-current slot must rebaseline from HERE
-    /// rather than being charged for the whole print's filament history it
-    /// was never mounted for. Absent means "not seen since the last
+    /// whole time. A shared-resource tool changer (a backend reporting
+    /// shared_extruder_name()) changes which slot is current mid-print, so
+    /// the newly-current slot must rebaseline from HERE rather than being
+    /// charged for the whole print's filament history it was never mounted
+    /// for. Absent means "not seen since the last
     /// snapshot_all_sinks()", which on_print_state_changed() clears on every
     /// PRINTING transition so a fresh print never inherits a stale slot from
     /// the previous one (or from being parked, which leaves no entry at all).

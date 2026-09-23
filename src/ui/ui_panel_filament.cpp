@@ -1937,7 +1937,7 @@ void FilamentPanel::update_filament_op_buttons() {
     // MOUNTED, not whether it holds filament, and nothing reports the latter.
     // This panel's Load feeds filament (the user's Load Filament macro), so a
     // mounted nozzle must not grey it.
-    const bool has_separate_filament_operation = backend->shared_extruder_name().has_value();
+    const bool has_separate_filament_operation = helix::ui::is_shared_nozzle_changer(backend);
     state.slot_is_loaded = slot_is_loaded && !has_separate_filament_operation;
     if (slot >= 0) {
         // Bypass deliberately skipped: there is no lane whose presence sensor
@@ -2892,7 +2892,7 @@ helix::ui::FilamentOpSurface FilamentPanel::op_surface(FilamentOp op) {
         // has chosen anything. Scheduling a cooldown here would turn the
         // heater off under a macro that may still be running (plan §7.2/§7.3).
         AmsBackend* backend = AmsState::instance().get_backend();
-        if (!(backend && backend->shared_extruder_name().has_value())) {
+        if (!helix::ui::is_shared_nozzle_changer(backend)) {
             // Only on success: a failed op leaves the heater where the user can
             // see what happened rather than dropping it out from under a retry.
             restore_heater_after_preheat();
@@ -2960,8 +2960,7 @@ FilamentPanel::UnloadContext FilamentPanel::current_unload_context() const {
     // unload does not ask.
     helix::ui::BackendCaps caps;
     caps.present = backend != nullptr;
-    caps.has_separate_filament_operation =
-        backend != nullptr && backend->shared_extruder_name().has_value();
+    caps.has_separate_filament_operation = helix::ui::is_shared_nozzle_changer(backend);
 
     const bool loaded = helix::ui::read_unload_target_loaded(backend, sys, slot);
     return {helix::ui::plan_live_unload(caps, slot, loaded), loaded};

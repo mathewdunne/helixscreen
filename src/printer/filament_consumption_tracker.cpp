@@ -247,6 +247,17 @@ void FilamentConsumptionTracker::on_filament_used_changed(int filament_mm) {
             continue;
         }
 
+        // Single-extruder multi-slot backend: only the currently-loaded slot
+        // accrues the delta. Lanes feeding one ordinary extruder charge the
+        // current slot from its print-start snapshot, so an unload/reload of
+        // the same lane keeps every mm extruded in between.
+        if (!backend->shared_extruder_name().has_value()) {
+            if (ams->slot_index() == backend->get_current_slot()) {
+                ams->apply_delta(f_mm);
+            }
+            continue;
+        }
+
         // Record the backend's current slot once per aggregate notification,
         // including -1 while parked. Every slot sink for this backend must see
         // the same transition answer; updating it independently would let the
@@ -261,17 +272,13 @@ void FilamentConsumptionTracker::on_filament_used_changed(int filament_mm) {
             last_current_slot_by_backend_[ams->backend_index()] = current_slot;
         }
 
-        // Single-extruder multi-slot backend: only the currently-loaded slot
-        // accrues the delta.
         if (ams->slot_index() != current_slot) {
             continue;
         }
         // apply_delta() computes its decrement from the TOTAL filament used
         // since ITS OWN snapshot, which is only correct while this slot has
-        // been continuously current since then. A backend that changes which
-        // slot is current mid-print (a shared-resource tool changer swapping
-        // tools, or a lane change on any other multi-slot backend routed
-        // through this aggregate path) means the newly-current slot was NOT
+        // been continuously current since then. A shared-resource tool changer
+        // swapping tools mid-print means the newly-current slot was NOT
         // mounted for the filament used before it became current, so charge
         // it only from the previous aggregate reading — never the whole print's
         // history or a parked/uncurrent window it sat out. resume() keeps what

@@ -94,8 +94,7 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     // without a native toolchanger object identify themselves by the exact
     // discovery object the validator can check on the next startup.
     [[nodiscard]] const char* get_klipper_object_name() const override {
-        return tool_commands_.present && tool_commands_.provider_name == "INDX" ? "indx"
-                                                                                : "toolchanger";
+        return is_indx_provider() ? "indx" : "toolchanger";
     }
     [[nodiscard]] helix::ui::LaneNoun lane_noun() const override {
         return helix::ui::LaneNoun::Tool;
@@ -150,7 +149,7 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// the nozzle, never the whole toolhead, so there is exactly one Klipper
     /// `extruder` object regardless of configured tool count.
     [[nodiscard]] std::optional<std::string> shared_extruder_name() const override {
-        if (tool_commands_.present && tool_commands_.provider_name == "INDX") {
+        if (is_indx_provider()) {
             return std::string("extruder");
         }
         return std::nullopt;
@@ -164,7 +163,7 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// multi-extruder printer (provider ""), where nothing ever writes
     /// current_tool and the T0 default is the only active tool it gets.
     [[nodiscard]] bool negative_active_tool_is_unreported() const override {
-        return tool_commands_.present && tool_commands_.provider_name == "INDX";
+        return is_indx_provider();
     }
 
     /// Whether a recognized changer extra drives this machine's swaps, as
@@ -184,8 +183,7 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// overridden, both directions conservatively use the normal homing flow.
     [[nodiscard]] bool delegates_homing_to_printer() const override {
         using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
-        return tool_commands_.present && tool_commands_.provider_name == "INDX" &&
-               movement_override_.select_choice == Choice::kAuto &&
+        return is_indx_provider() && movement_override_.select_choice == Choice::kAuto &&
                movement_override_.park_choice == Choice::kAuto;
     }
 
@@ -427,6 +425,12 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     void on_home_confirmation_declined() override;
 
   private:
+    /// Bondtech INDX resolved as this machine's swap provider.
+    [[nodiscard]] bool is_indx_provider() const {
+        return tool_commands_.present &&
+               tool_commands_.provider_name == helix::toolchanger_addon::kIndxProviderName;
+    }
+
     /// Feeder this machine exposes; absent unless set_feeder() said otherwise.
     helix::toolchanger_addon::Feeder feeder_;
     /// Absent on every tool changer without dock sensors.
