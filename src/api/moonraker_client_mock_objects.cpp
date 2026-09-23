@@ -650,8 +650,7 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                 status_obj["gcode_macro _HELIX_STATE"] = {{"print_started", false}};
             }
 
-            // Bondtech INDX runtime inventory + saved active-tool identity
-            // (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1/§5.2).
+            // Bondtech INDX runtime inventory + saved active-tool identity.
             // indx_tool_positions_status_json()/indx_save_variables_status_json()
             // return a unit test's set_indx_tool_count()/set_indx_active_tool()
             // override when set (letting the production MoonrakerDiscoverySequence's

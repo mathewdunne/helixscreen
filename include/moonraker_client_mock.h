@@ -561,8 +561,8 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     }
 
     /**
-     * @brief Test-only override for INDX's `gcode_macro TOOL_POSITIONS.tool_count`
-     * (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1). Combine with
+     * @brief Test-only override for INDX's `gcode_macro TOOL_POSITIONS.tool_count`.
+     * Combine with
      * set_additional_objects() including "indx" and "gcode_macro TOOL_POSITIONS" so
      * a controlled-transport test exercises the real MoonrakerDiscoverySequence's
      * deferred-inventory finalization through an actual subscription reply.

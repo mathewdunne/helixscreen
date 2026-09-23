@@ -925,8 +925,7 @@ void MoonrakerClientMock::populate_capabilities() {
     mock_objects.push_back("gcode_macro RESUME");
     mock_objects.push_back("gcode_macro CANCEL_PRINT");
     // A stock Bondtech INDX printer ships no LOAD_FILAMENT/UNLOAD_FILAMENT of
-    // its own (docs/devel/plans/2026-09-20-bondtech-indx.md §8/§9 Package E
-    // point 2): the user configures a wrapper, or global Load/Unload stays
+    // its own: the user configures a wrapper, or global Load/Unload stays
     // unavailable. Publishing the mock's generic default here would let
     // detection or missing-action tests exercise a printer the upstream
     // configuration does not actually describe.
@@ -1092,9 +1091,8 @@ void MoonrakerClientMock::populate_capabilities() {
     // object plus the runtime inventory macro and saved active-tool store a
     // real installation actually publishes. No fake `toolchanger`/`tool T<n>`
     // objects - those belong to a klipper-toolchanger machine, which INDX is
-    // not (docs/devel/plans/2026-09-20-bondtech-indx.md §0/§5). Like the
-    // MedusaHC modes above, try_create_mock() declines this value so real
-    // discovery runs and the production AmsBackendToolChanger +
+    // not. Like the MedusaHC modes above, try_create_mock() declines this
+    // value so real discovery runs and the production AmsBackendToolChanger +
     // toolchanger_addon path drives these objects.
     if (is_mock_indx()) {
         mock_objects.push_back("indx");
@@ -1457,12 +1455,11 @@ void MoonrakerClientMock::discover_printer(
 
                 // Bondtech INDX (HELIX_MOCK_AMS=indx): finalize the provider-supplied
                 // tool inventory before the early hardware callback below, mirroring
-                // MoonrakerDiscoverySequence's deferred finalize_indx_inventory() step
-                // (docs/devel/plans/2026-09-20-bondtech-indx.md §5) - the AMS/MMU
-                // initialization that callback triggers needs hw.tool_names() already
-                // populated. This discover_printer() shortcut never subscribes
-                // TOOL_POSITIONS the way the real sequence does, so nothing else here
-                // would ever call it.
+                // MoonrakerDiscoverySequence's deferred finalize_indx_inventory() step -
+                // the AMS/MMU initialization that callback triggers needs
+                // hw.tool_names() already populated. This discover_printer()
+                // shortcut never subscribes TOOL_POSITIONS the way the real
+                // sequence does, so nothing else here would ever call it.
                 if (is_mock_indx()) {
                     discovery_.modify_hardware([&](PrinterDiscovery& hw) {
                         hw.finalize_indx_inventory(helix::toolchanger_addon::indx_tool_ids(
@@ -5460,8 +5457,8 @@ void MoonrakerClientMock::temperature_simulation_loop() {
         // the two objects the provider actually reads (toolchanger_addon.cpp
         // required_status_objects()). indx_tool_positions_status_json()/
         // indx_save_variables_status_json() already fold in the test-only
-        // override seam, so a controlled-transport unit test's behavior is
-        // unchanged.
+        // override seam, so a controlled-transport unit test exercises this
+        // same path.
         if (is_mock_indx()) {
             advance_indx_swap();
             if (auto tp = indx_tool_positions_status_json(); !tp.empty()) {

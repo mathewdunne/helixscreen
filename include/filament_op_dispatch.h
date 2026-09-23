@@ -34,13 +34,12 @@ enum class FilamentRefusal {
                        ///< filament capability (BackendCaps::has_separate_filament_operation),
                        ///< but no Load/Unload macro is configured or detected.
                        ///< Never falls back to raw extrusion/retraction for
-                       ///< this capability (plan §7.2/D1).
+                       ///< this capability.
 };
 
 /// Which physical action a dispatch surface is asking for. Distinguishes two
 /// operations that can share ONE backend on a shared-nozzle-changer (Bondtech
-/// INDX, docs/devel/plans/2026-09-20-bondtech-indx.md §7.2/D1): mounting/
-/// parking a tool (AMS tool-grid, sidebar select/park, the home
+/// INDX): mounting/parking a tool (AMS tool-grid, sidebar select/park, the home
 /// tool-switcher) versus feeding/retracting filament through it (the
 /// Filament panel, filament/runout controls). Carried explicitly rather than
 /// inferred from a UI label or widget id — the same backend answers both
@@ -131,9 +130,9 @@ struct BackendCaps {
     // A Filament-intent caller on a backend whose Load MOUNTS A TOOL rather
     // than feeds filament (has_separate_filament_operation) never reaches
     // tier 1: tool mount and filament feed are different physical operations
-    // there (plan §7.2/D1), and only the ToolMount-intent surfaces may use
-    // the backend call below. Degrading `present` lets the rest of this
-    // function's existing macro/raw-gcode ladder answer unchanged.
+    // there, and only the ToolMount-intent surfaces may use the backend call
+    // below. Degrading `present` lets the rest of this function's
+    // macro/raw-gcode ladder answer as it does for every other backend.
     const bool filament_op_has_no_backend_tier =
         intent == OperationIntent::Filament && caps.has_separate_filament_operation;
     BackendCaps effective = caps;
@@ -235,8 +234,8 @@ struct BackendCaps {
         return {FilamentTier::Macro, FilamentRefusal::None, AmsCall::None, target_slot};
     }
     if (filament_op_has_no_backend_tier) {
-        // Never a generic extrusion fallback for this capability (plan §7.2
-        // point 6): a shared-nozzle-changer with no configured/detected Load
+        // Never a generic extrusion fallback for this capability: a
+        // shared-nozzle-changer with no configured/detected Load
         // macro has no stock command to send at all.
         return {FilamentTier::Refused, FilamentRefusal::NoMacroConfigured, AmsCall::None,
                 target_slot};

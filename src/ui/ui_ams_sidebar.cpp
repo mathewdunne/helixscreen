@@ -1224,8 +1224,8 @@ void AmsOperationSidebar::handle_unload(int slot_index) {
         helix::ui::read_unload_target_loaded(AmsState::instance().get_backend(), info, target_slot);
 
     // AMS tool-grid/sidebar Unload is a PARK on a shared-nozzle-changer
-    // backend (Bondtech INDX), not a filament retraction — ToolMount intent
-    // (plan §7.2/D1). Inert on every other backend.
+    // backend (Bondtech INDX), not a filament retraction — ToolMount intent.
+    // Inert on every other backend.
     const helix::ui::FilamentOpPlan plan = helix::ui::plan_live_unload(
         caps, target_slot, loaded, helix::ui::OperationIntent::ToolMount);
 
@@ -1408,7 +1408,7 @@ void AmsOperationSidebar::handle_load_with_preheat(int slot_index) {
     const helix::ui::BackendCaps caps = read_backend_caps(info, slot_index);
 
     // AMS tool-grid/sidebar Load is a MOUNT on a shared-nozzle-changer backend
-    // (Bondtech INDX), not a filament feed — ToolMount intent (plan §7.2/D1).
+    // (Bondtech INDX), not a filament feed — ToolMount intent.
     // Inert on every other backend.
     const helix::ui::FilamentOpPlan plan =
         helix::ui::plan_live_load(info, caps, slot_index, helix::ui::OperationIntent::ToolMount);

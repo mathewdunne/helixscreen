@@ -2890,7 +2890,7 @@ helix::ui::FilamentOpSurface FilamentPanel::op_surface(FilamentOp op) {
         // "the macro request returned" is not proof of physical completion —
         // a printer-side action:prompt_* handoff can return before the user
         // has chosen anything. Scheduling a cooldown here would turn the
-        // heater off under a macro that may still be running (plan §7.2/§7.3).
+        // heater off under a macro that may still be running.
         AmsBackend* backend = AmsState::instance().get_backend();
         if (!helix::ui::is_shared_nozzle_changer(backend)) {
             // Only on success: a failed op leaves the heater where the user can

@@ -135,9 +135,8 @@ struct ToolCommands {
     /// one -- true by construction for the MedusaHC-shaped providers above,
     /// whose extra registers T<n> unconditionally. Bondtech INDX is the one
     /// provider where this can differ: a configured tool count can exceed
-    /// the shortcuts a user's indx.cfg declares (plan §5.1 point 5), so a
-    /// numbered tool can have no working T<n> and must fall back to
-    /// change_tool_macro.
+    /// the shortcuts a user's indx.cfg declares, so a numbered tool can have
+    /// no working T<n> and must fall back to change_tool_macro.
     std::vector<bool> select_shortcut_available;
     /// The verified upstream fallback selection macro accepting a bare
     /// `TOOL=<n>` parameter (e.g. "CHANGE_TOOL"), or empty when this printer
@@ -169,8 +168,6 @@ bool present(const PrinterDiscovery& hw);
 // merged into the shared read_tool() dispatch (see read_indx_active_tool()).
 // Only resolve_tool_commands()'s existing generic seam gains an INDX default;
 // resolve_tool_sensor()/resolve_feeder() correctly stay absent for it.
-//
-// See docs/devel/plans/2026-09-20-bondtech-indx.md §5 for the full contract.
 
 /// Bounds on INDX's provider-supplied tool inventory. Mirrors
 /// `AmsState::MAX_SLOTS` (currently 16); kept as its own constant so this
@@ -249,7 +246,7 @@ IndxActiveTool read_indx_active_tool(const nlohmann::json& save_variables_status
                                      int configured_tool_count);
 
 /// Per-printer override for the Select/Park commands a `ToolCommands::present`
-/// provider (plan §7.1/D3) uses. Distinct from `Feeder`'s "honour any stored
+/// provider uses. Distinct from `Feeder`'s "honour any stored
 /// name" contract: an invalid stored macro here must stay visibly invalid and
 /// send nothing, never silently substitute a different physical movement
 /// command. Three states per direction, not two — "auto" (detected default),
@@ -267,8 +264,8 @@ struct ToolMovementOverride {
     /// selection — kAutoMacro, or the (possibly invalid) macro name.
     std::string select_choice_raw{kAutoMacro};
     /// Populated only when select_choice == kValid. Sent as
-    /// "<select_macro> TOOL=<n>" — the fixed contract for this override
-    /// (plan §7.1), never an arbitrary template.
+    /// "<select_macro> TOOL=<n>" — the fixed contract for this override,
+    /// never an arbitrary template.
     std::string select_macro;
 
     Choice park_choice = Choice::kAuto;
@@ -291,8 +288,8 @@ struct ToolMovementOverride {
 /// macros. "auto" (or empty) keeps the detected default. A non-"auto" choice
 /// naming a macro this printer does not report resolves to kInvalid — the
 /// caller must send nothing for that direction rather than falling back to
-/// the automatic command (plan §7.1: "an invalid configured command stays
-/// visibly invalid and sends nothing").
+/// the automatic command: an invalid configured command stays visibly
+/// invalid and sends nothing.
 ToolMovementOverride resolve_tool_movement_override(const PrinterDiscovery& hw,
                                                     const std::string& select_choice = kAutoMacro,
                                                     const std::string& park_choice = kAutoMacro);

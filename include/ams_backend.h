@@ -2931,7 +2931,6 @@ class AmsBackend {
 
     /**
      * @brief Set the resolved per-printer Select/Park command overrides
-     * (plan D3, docs/devel/plans/2026-09-20-bondtech-indx.md §7.1)
      *
      * Called before start(), after set_tool_commands(). Only meaningful on a
      * backend whose ToolCommands::present is true — a plain klipper-toolchanger

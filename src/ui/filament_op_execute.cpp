@@ -128,10 +128,9 @@ PreheatSkip preheat_skip_reason(const FilamentOpPlan& plan, StandardMacroSlot sl
 
     case FilamentTier::Macro:
         // A shared-nozzle-changer's (Bondtech INDX) filament macro tier is
-        // macro-owned end to end (plan §7.2/§7.3 preparation policy):
-        // HelixScreen sends the requested command and the printer macro
-        // decides its own heating, including for a custom wrapper no
-        // name-based profile could ever recognize. Never add the generic
+        // macro-owned end to end: HelixScreen sends the requested command and
+        // the printer macro decides its own heating, including for a custom
+        // wrapper no name-based profile could ever recognize. Never add the generic
         // spelling LOAD_FILAMENT to filament_macro_profiles.cpp's table for
         // this — it would claim every OTHER printer's stock LOAD_FILAMENT
         // self-heats too.
@@ -185,7 +184,7 @@ bool needs_home_confirmation(const FilamentOpPlan& plan, StandardMacroSlot slot,
     case FilamentTier::Macro:
         // Same provider-owned preparation policy as preheat_skip_reason():
         // the macro decides its own homing too, so HelixScreen neither
-        // prompts nor synthesizes a G28 ahead of it (plan §7.3/§7.4).
+        // prompts nor synthesizes a G28 ahead of it.
         if (is_shared_nozzle_changer(backend)) {
             return false;
         }

@@ -799,9 +799,8 @@ std::string ToolState::nozzle_label() const {
 /// the answer is ambiguous and unresolved.
 ///
 /// On a shared-resource nozzle changer several tools really do share one
-/// extruder_name, and the first positional match is not necessarily the
-/// mounted one — that is exactly the bug this exists to avoid: reverse lookup
-/// used to answer with tools_[0] regardless of which tool was actually active.
+/// extruder_name, so the first positional match is not necessarily the
+/// mounted one.
 /// When more than one tool claims this extruder, only the valid ACTIVE tool can
 /// break the tie; with no known active tool (parked/unreported) there is no
 /// specific tool to name.
@@ -811,7 +810,7 @@ std::string ToolState::nozzle_label() const {
 /// tool on the default "extruder" name, but those lanes feed ONE nozzle: there
 /// is no mounted tool to identify, and answering with the loaded lane would
 /// rename the single nozzle row every time the lane changed. The first match
-/// is the stable answer there, as it was before.
+/// is the stable answer there.
 static const ToolInfo* find_tool_for_extruder(const std::vector<ToolInfo>& tools,
                                               const ToolInfo* active,
                                               const std::string& extruder_name,

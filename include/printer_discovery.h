@@ -489,8 +489,7 @@ class PrinterDiscovery {
             // it means (candidate inventory source, command defaults) is
             // helix::toolchanger_addon's business. Matched exactly - an
             // `mcu indxmcu`, `angle indx` or `neopixel indx` component object
-            // is not this status object and is not sufficient detection
-            // (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1).
+            // is not this status object and is not sufficient detection.
             else if (name == "indx") {
                 has_indx_ = true;
             }
@@ -729,18 +728,18 @@ class PrinterDiscovery {
      * `parse_objects()` cannot pick INDX's slot count itself — it lives in a
      * runtime macro value (`gcode_macro TOOL_POSITIONS.tool_count`), not the
      * object list — so the discovery sequence calls this once that value is
-     * read from the subscription reply (docs/devel/plans/2026-09-20-bondtech-indx.md
-     * §5.1 points 4-7). Reuses the SAME priority helper `parse_objects()`
-     * itself calls, so this can never become a second independent chain.
+     * read from the subscription reply. Reuses the SAME priority helper
+     * `parse_objects()` itself calls, so this can never become a second
+     * independent chain.
      *
      * The caller is responsible for checking candidacy first
      * (`helix::toolchanger_addon::is_indx_inventory_candidate()`) — this
      * method trusts `tool_ids` and applies it unconditionally. Populating
-     * `tool_names_` this way (rather than a separate field) is exactly the
-     * existing "count hot ends, not native tool objects" shape the September
-     * 2026 toolchanger generalization already established; it does not, by
-     * itself, subscribe fabricated `tool <n>` objects, since that subscription
-     * is separately gated on `has_tool_changer()`, which INDX never sets.
+     * `tool_names_` this way (rather than a separate field) follows the same
+     * "count hot ends, not native tool objects" shape as parse_objects(); it
+     * does not, by itself, subscribe fabricated `tool <n>` objects, since that
+     * subscription is separately gated on `has_tool_changer()`, which INDX
+     * never sets.
      *
      * @param tool_ids Numbered tool ids from `helix::toolchanger_addon::indx_tool_ids()`.
      *                 A non-empty vector is required; an empty one is a no-op.
@@ -1108,8 +1107,8 @@ class PrinterDiscovery {
     }
 
     /// The exact `indx` status object is present. This delivery's sole
-    /// detection signal for Bondtech INDX (docs/devel/plans/2026-09-20-bondtech-indx.md
-    /// §5.1) - never inferred from config keys or `T<n>` shortcut macros.
+    /// detection signal for Bondtech INDX - never inferred from config keys
+    /// or `T<n>` shortcut macros.
     [[nodiscard]] bool has_indx() const {
         return has_indx_;
     }
@@ -1650,9 +1649,8 @@ class PrinterDiscovery {
   private:
     /// Factored out of parse_objects() so finalize_indx_inventory() can rerun
     /// it after tool_names_ changes without a second, independent priority
-    /// chain (docs/devel/plans/2026-09-20-bondtech-indx.md §5.1 point 6).
-    /// Idempotent: clears and rebuilds detected_ams_systems_/mmu_type_ purely
-    /// from the current object facts each call.
+    /// chain. Idempotent: clears and rebuilds detected_ams_systems_/mmu_type_
+    /// purely from the current object facts each call.
     void select_ams_backend_priority() {
         detected_ams_systems_.clear();
 

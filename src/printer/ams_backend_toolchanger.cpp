@@ -519,7 +519,7 @@ void AmsBackendToolChanger::handle_status_update(const nlohmann::json& notificat
         // printer's save_variables.active_tool can never reach a MedusaHC (or
         // plain klipper-toolchanger) instance, and MedusaHC's dock-sensor
         // reading can never reach an INDX one. See
-        // toolchanger_addon::read_indx_active_tool() and plan §5.2.
+        // toolchanger_addon::read_indx_active_tool().
         if (is_indx_provider() && params.contains("save_variables")) {
             const auto& sv = params["save_variables"];
             if (sv.is_object()) {
@@ -1176,21 +1176,19 @@ AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction 
 
     auto token = lifetime_.token();
 
-    // Async-failure unwind (plan §7.3): a rejected/timed-out G28 or payload
+    // Async-failure unwind: a rejected/timed-out G28 or payload
     // must clear exactly what begin_dispatch_locked() armed, through the same
     // generation-guarded abandon_dispatch() the synchronous "never sent" leg
     // below already uses -- otherwise pending_dispatch_action_ stays latched
     // on a generation nothing is tracking, is_busy() refuses every later
     // operation, and the user is left looking at a permanent spinner with no
-    // visible error (the log-only default this replaces just wrote to spdlog
-    // and left system_info_.action untouched).
+    // visible error.
     //
     // Only reachable with a live api_: with none, ensure_homed_then()/
     // dispatch_payload() dispatch synchronously through the 1-arg/2-arg
     // execute_gcode() virtuals for fixture compatibility (its own doc
     // comment), and a null on_error keeps that route intact -- a failure
-    // there is already caught by the `if (!result)` net below, exactly as
-    // before this fix.
+    // there is already caught by the `if (!result)` net below.
     std::function<void(const MoonrakerError&)> on_error = nullptr;
     if (api_) {
         on_error = [this, token, generation](const MoonrakerError& err) {
@@ -1228,8 +1226,8 @@ AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction 
         // local state, so the generic `!!` router keeps ownership of
         // reporting the rejection to the user
         // (docs/devel/RPC_ERROR_OWNERSHIP.md). std::nullopt (derive from
-        // on_error == nullptr) with no live api_, matching the pre-fix legacy
-        // shape exactly.
+        // on_error == nullptr) with no live api_, keeping the fixture route's
+        // synchronous shape.
         api_ ? std::optional<bool>(false) : std::nullopt);
 
     if (!result) {
@@ -1270,13 +1268,13 @@ AmsError AmsBackendToolChanger::do_unload_filament(int slot_index) {
     // its unmount takes no tool argument, because there is only ever one tool on
     // the head to drop.
     if (tool_commands_.present) {
-        // An explicit Park override (plan D3/§7.1) outranks PARK_TOOL/unselect.
+        // An explicit Park override outranks PARK_TOOL/unselect.
         // A stored choice this printer no longer reports is an explicit
         // unsupported capability — zero sends, never a silent substitution.
-        // Only a named provider offers the picker, and the stored choice is one
-        // global setting across printers: consulting it on a plain
-        // multi-extruder machine would refuse its swaps over a macro picked for
-        // a different printer, with no picker there to clear it.
+        // The override applies only when a named provider is present: the
+        // picker exists only for a named provider, so a choice stored while
+        // one was present would otherwise have no UI to clear it once the
+        // printer no longer reports that provider.
         using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
         const bool override_applies = has_named_tool_provider();
         if (override_applies && movement_override_.park_choice == Choice::kInvalid) {
@@ -1324,13 +1322,15 @@ AmsError AmsBackendToolChanger::do_change_tool(int tool_number) {
         }
 
         if (tool_commands_.present) {
-            // An explicit Select override (plan D3/§7.1) outranks both the
+            // An explicit Select override outranks both the
             // T<n> shortcut and the CHANGE_TOOL fallback. A stored choice
             // this printer no longer reports (kInvalid) is an explicit
             // unsupported capability — zero sends, never a silent fall
             // through to the automatic command.
             // Scoped like the Park override above: the picker exists only for
-            // a named provider, and the setting is global across printers.
+            // a named provider, so a choice stored while one was present
+            // would otherwise have no UI to clear it once the printer no
+            // longer reports that provider.
             using Choice = helix::toolchanger_addon::ToolMovementOverride::Choice;
             const bool override_applies = has_named_tool_provider();
             if (override_applies && movement_override_.select_choice == Choice::kInvalid) {
@@ -1344,8 +1344,8 @@ AmsError AmsBackendToolChanger::do_change_tool(int tool_number) {
                 // (Bondtech INDX); empty means every numbered tool has one, true
                 // by construction for the MedusaHC-shaped providers this table
                 // also serves. Missing BOTH the shortcut and the verified
-                // fallback macro is an explicit unsupported capability (plan
-                // §7.1), never a silent substitution.
+                // fallback macro is an explicit unsupported capability,
+                // never a silent substitution.
                 const bool shortcut_available =
                     tool_commands_.select_shortcut_available.empty() ||
                     (tool_number <
@@ -1389,7 +1389,7 @@ AmsError AmsBackendToolChanger::recover() {
     // drives swaps, so there is no toolchanger object for
     // INITIALIZE_TOOLCHANGER to act on and no equivalent automatic
     // reset/recovery contract. Never substitute INDX_FORCE_STATE, a firmware
-    // restart, or a latch operation (plan §7.3).
+    // restart, or a latch operation.
     if (tool_commands_.present) {
         return AmsErrorHelper::not_supported("Recovery");
     }
@@ -1724,7 +1724,7 @@ std::vector<helix::printer::DeviceSection> AmsBackendToolChanger::get_device_sec
         sections.push_back(
             DS{"feeder", "Filament feeder", 0, "Release or grip the filament by hand"});
     }
-    // Select/Park overrides (plan D3) need no feeder — the provider owns
+    // Select/Park overrides need no feeder — the provider owns
     // applicability, which here is "a recognized changer extra drives the
     // swaps, and there is either a macro to pick or a stored choice to clear".
     if (has_named_tool_provider() && movement_override_configurable(movement_override_)) {

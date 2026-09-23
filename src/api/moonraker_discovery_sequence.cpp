@@ -516,7 +516,7 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
             // complete_discovery_subscription() finalizes inventory from the
             // subscription reply and fires this callback (with the finalized snapshot)
             // immediately before on_discovery_complete_, once, for this discovery
-            // generation. Every other printer's early callback timing is unchanged.
+            // generation. Every other printer gets the early callback here.
             if (on_hardware_discovered_) {
                 PrinterDiscovery hw_snapshot;
                 {

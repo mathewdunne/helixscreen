@@ -299,7 +299,7 @@ void SettingsManager::init_subjects() {
         config->get<std::string>(config->df() + wizard::FEEDER_CLOSE_MACRO, "auto");
 
     // Tool-changer Select/Park command overrides (default: "auto" = detected
-    // default). Per-printer, unlike the global Load/Unload macro choices (D5).
+    // default). Per-printer, unlike the global Load/Unload macro choices.
     tool_select_macro_ = config->get<std::string>(config->df() + wizard::TOOL_SELECT_MACRO, "auto");
     tool_park_macro_ = config->get<std::string>(config->df() + wizard::TOOL_PARK_MACRO, "auto");
 

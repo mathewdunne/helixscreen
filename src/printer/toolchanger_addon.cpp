@@ -341,9 +341,9 @@ ToolCommands resolve_tool_commands(const PrinterDiscovery& hw) {
     // MedusaHC-shaped table above never matches it (see the comment on
     // has_indx() in toolchanger_addon.h), so this is the one place its
     // command default is recorded. Both PARK_TOOL and the per-tool T<n>
-    // shortcut are gated on the macro actually existing (plan §7.1: a
+    // shortcut are gated on the macro actually existing: a
     // missing command is an explicit unsupported capability, never a
-    // successful no-op) - unlike the MedusaHC-shaped providers above, whose
+    // successful no-op - unlike the MedusaHC-shaped providers above, whose
     // extra registers T<n>/its unmount unconditionally the moment it is
     // detected at all.
     // ...and only against INDX's OWN numbered inventory, which is what the
@@ -418,7 +418,7 @@ std::vector<std::string> tool_movement_macro_candidates(const PrinterDiscovery& 
     std::vector<std::string> out;
     // A movement override macro is one whose name says what it does. Unlike
     // feeder_macro_candidates(), there is no native-prefix shortcut here — the
-    // machines this serves (plan §7.1/D3) have no shared vendor prefix.
+    // machines this serves have no shared vendor prefix.
     // INDX's TOOL_POSITIONS only holds variables: "TOOL_POSITIONS TOOL=<n>"
     // moves nothing, so it is never offered.
     std::string variables_only;
@@ -498,9 +498,8 @@ std::vector<std::string> required_status_objects(const PrinterDiscovery& hw) {
     // INDX's inventory and active-tool identity both live in objects the
     // MedusaHC-shaped table above never names (see the comment on has_indx()
     // in toolchanger_addon.h). Subscribing real `TOOL_POSITIONS`/
-    // `save_variables` is what breaks the discovery/subscription cycle
-    // described in the plan's §5.1 - never fabricated `toolchanger`/`tool
-    // T<n>` objects for this provider.
+    // `save_variables` is what breaks the discovery/subscription cycle --
+    // never fabricated `toolchanger`/`tool T<n>` objects for this provider.
     if (has_indx(hw)) {
         objects.emplace_back("save_variables");
         // Config-cased, not the uppercased alias has_macro() matches -- see
@@ -554,8 +553,7 @@ bool is_indx_inventory_candidate(const PrinterDiscovery& hw) {
     }
     // A real klipper-toolchanger, an already-claimed MMU/filament backend, or
     // an auto-detected multi-extruder tool list all outrank an INDX facts-only
-    // guess (docs/devel/plans/2026-09-20-bondtech-indx.md §10 "Priority").
-    // Recording the candidate must never disturb their selection.
+    // guess. Recording the candidate must never disturb their selection.
     if (hw.has_tool_changer() || hw.has_mmu() || hw.has_snapmaker()) {
         return false;
     }
@@ -590,7 +588,7 @@ std::optional<IndxInventory> read_indx_inventory(const nlohmann::json& tool_posi
     // is_number_integer() is false for JSON booleans and floats, so both are
     // already rejected here without a separate check - only a genuine integer
     // reaches the bounds test. No config-string fallback: this is the runtime
-    // field the plan requires, not configfile.config's string-typed sibling.
+    // field this needs, not configfile.config's string-typed sibling.
     if (!it->is_number_integer()) {
         return IndxInventory{false, 0, "tool_count is not an integer"};
     }

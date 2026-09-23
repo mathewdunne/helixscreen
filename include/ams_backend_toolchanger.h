@@ -133,7 +133,7 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// misattribute consumption across whichever tools share it. Returning
     /// nullopt for every extruder in that case lets the aggregate
     /// `filament_used` path — keyed on this backend's own current slot —
-    /// own consumption instead (docs/devel/plans/2026-09-20-bondtech-indx.md §6).
+    /// own consumption instead.
     [[nodiscard]] std::optional<int> slot_for_extruder(int extruder_idx) const override {
         if (shared_extruder_name()) {
             return std::nullopt;
@@ -383,7 +383,7 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         tool_commands_ = std::move(commands);
     }
 
-    /// Per-printer Select/Park overrides (plan D3). Only consulted when
+    /// Per-printer Select/Park overrides. Only consulted when
     /// has_named_tool_provider() — a plain klipper-toolchanger has nothing to
     /// override, and a plain multi-extruder printer is never offered the
     /// picker that stores one.
@@ -437,7 +437,7 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     helix::toolchanger_addon::ToolSensor tool_sensor_;
     /// Absent whenever klipper-toolchanger owns the swap.
     helix::toolchanger_addon::ToolCommands tool_commands_;
-    /// Per-printer Select/Park overrides (plan D3). Every field defaults to
+    /// Per-printer Select/Park overrides. Every field defaults to
     /// "auto" until set_tool_movement_override() runs.
     helix::toolchanger_addon::ToolMovementOverride movement_override_;
     /// Latest per-dock occupancy from the dock sensors, indexed by slot: true
